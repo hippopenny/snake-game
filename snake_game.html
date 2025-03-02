@@ -50,40 +50,6 @@
             margin: 0 10px;
         }
         
-        #level-progress-container {
-            width: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            padding: 5px 20px;
-            box-sizing: border-box;
-        }
-        
-        #level-progress-outer {
-            width: 100%;
-            background-color: #444;
-            border-radius: 5px;
-            height: 20px;
-            position: relative;
-        }
-        
-        #level-progress-bar {
-            height: 100%;
-            background-color: #4CAF50;
-            border-radius: 5px;
-            transition: width 0.3s;
-            width: 0%;
-        }
-        
-        #level-progress-text {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            text-align: center;
-            line-height: 20px;
-            color: #fff;
-            font-weight: bold;
-        }
-        
         #game-over, #level-up {
             position: absolute;
             top: 50%;
@@ -211,6 +177,83 @@
         #minimap-toggle:hover {
             background-color: rgba(0, 0, 0, 0.9);
         }
+        
+        #bestscores-container {
+            position: absolute;
+            bottom: 20px;
+            left: 190px;
+            width: 150px;
+            z-index: 10;
+        }
+
+        #bestscores {
+            width: 150px;
+            height: 150px;
+            background-color: rgba(0, 0, 0, 0.2);
+            border: 1px solid #444;
+            border-radius: 5px;
+            display: block;
+        }
+
+        #bestscores-toggle {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: 1px solid #444;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            line-height: 18px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 14px;
+            pointer-events: auto;
+            z-index: 11;
+        }
+
+        #bestscores-toggle:hover {
+            background-color: rgba(0, 0, 0, 0.9);
+        }
+        
+        #level-progress-container {
+            position: relative;
+            width: 60px;
+            height: 60px;
+            margin-left: 10px;
+        }
+
+        #level-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        #next-level-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+            color: white;
+            text-align: center;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        #heart-container {
+            position: relative;
+            width: 60px;
+            height: 60px;
+        }
+
+
+        
+        #heart-value {
+            font-size: 24px;
+            color: white;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -224,6 +267,7 @@
                 <p>Reach higher scores to level up and increase difficulty!</p>
                 <p>Compete with up to 100 players simultaneously!</p>
                 <p>Press 'M' to toggle minimap.</p>
+                <p>Press 'B' to toggle best score locations map.</p>
             </div>
             <button id="start-btn">Start Game</button>
         </div>
@@ -235,13 +279,6 @@
                 <div id="speed">Speed: 1x</div>
                 <div id="players-count">Players: 1</div>
             </div>
-            <div id="level-progress-container">
-                <div id="level-progress-outer">
-                    <div id="level-progress-bar"></div>
-                    <div id="level-progress-text">0/50 points to next level</div>
-                </div>
-            </div>
-            
             <div id="game-over">
                 <h2>Game Over!</h2>
                 <p id="final-score">Score: 0</p>
@@ -257,6 +294,11 @@
             <div id="minimap-container">
                 <button id="minimap-toggle">M</button>
                 <canvas id="minimap"></canvas>
+            </div>
+            
+            <div id="bestscores-container">
+                <button id="bestscores-toggle">L</button>
+                <canvas id="bestscores"></canvas>
             </div>
         </div>
     </div>

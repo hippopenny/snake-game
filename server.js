@@ -11,9 +11,12 @@ const BASE_FOOD_LIFETIME = 30000; // 30 seconds base lifetime
 
 // Food types
 const FOOD_TYPES = [
-    { type: 'normal', points: 10, color: '#FF5722', probability: 0.7 },
+    { type: 'normal', points: 10, color: '#FF5722', probability: 0.6 },
     { type: 'bonus', points: 20, color: '#FFC107', probability: 0.2 },
-    { type: 'super', points: 50, color: '#8BC34A', probability: 0.1 }
+    { type: 'super', points: 50, color: '#8BC34A', probability: 0.1 },
+    { type: 'speed_boost', points: 5, color: '#00BCD4', probability: 0.033, powerUp: 'speed_boost', duration: 5000 },
+    { type: 'invincibility', points: 5, color: '#9C27B0', probability: 0.033, powerUp: 'invincibility', duration: 5000 },
+    { type: 'magnet', points: 5, color: '#FFEB3B', probability: 0.034, powerUp: 'magnet', duration: 5000 }
 ];
 
 // Track connected clients to handle disconnections properly
@@ -45,7 +48,8 @@ wss.on('connection', (ws) => {
                     score: data.score,
                     level: data.level,
                     lastUpdate: Date.now(),
-                    connectionId: clientMap.get(ws)
+                    connectionId: clientMap.get(ws),
+                    activePowerUp: data.activePowerUp
                 };
                 
                 // Check for collisions with other players
@@ -58,8 +62,18 @@ wss.on('connection', (ws) => {
                 const foodIndex = data.foodIndex;
                 
                 if (foodIndex >= 0 && foodIndex < foods.length) {
+                    const eatenFood = foods[foodIndex];
                     foods.splice(foodIndex, 1);
                     console.log(`Food eaten by player ${playerId}`);
+                    
+                    // Activate power-up if the eaten food was a power-up
+                    if (eatenFood.powerUp) {
+                        players[playerId].activePowerUp = {
+                            type: eatenFood.powerUp,
+                            expiresAt: Date.now() + eatenFood.duration
+                        };
+                        console.log(`Power-up ${eatenFood.powerUp} activated for player ${playerId}`);
+                    }
                     
                     // Generate new food
                     while (foods.length < MAX_FOODS) {
@@ -247,7 +261,7 @@ function updateFoods() {
     });
 }
 
-// Clean up disconnected players (those who haven't updated in a while)
+// Clean up disconnected players and expired power-ups
 setInterval(() => {
     const now = Date.now();
     for (const id in players) {
@@ -255,8 +269,11 @@ setInterval(() => {
         if (player.lastUpdate && now - player.lastUpdate > 5000) {
             console.log(`Removing inactive player ${id}`);
             delete players[id];
+        } else if (player.activePowerUp && now > player.activePowerUp.expiresAt) {
+            console.log(`Power-up ${player.activePowerUp.type} expired for player ${id}`);
+            delete player.activePowerUp;
         }
     }
-}, 5000);
+}, 1000);
 
 console.log('Snake game server running on port 8080');
