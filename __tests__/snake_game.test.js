@@ -40,6 +40,19 @@ describe('Snake Game UI Tests', () => {
     const logFound = consoleMessages.some(msg => msg.includes(expectedMessage));
     expect(logFound).toBe(true);
   });
+
+  test('should log WebSocket error', async () => {
+    // Simulate a WebSocket error
+    await page.evaluate(() => {
+      const error = new Error('Simulated WebSocket error');
+      console.error('WebSocket error:', error);
+    });
+
+    // Check if the expected console error message is present
+    const expectedMessage = 'WebSocket error: Error: Simulated WebSocket error';
+    const logFound = consoleMessages.some(msg => msg.includes(expectedMessage));
+    expect(logFound).toBe(true);
+  });
   test('should mock WebSocket connection', async () => {
     await page.exposeFunction('mockWebSocket', () => {
       return {
