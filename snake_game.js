@@ -2460,5 +2460,6 @@ module.exports = {
     moveSnake,
     checkCollisions,
     updateScoreAndLevel,
-    // Add other functions you want to test
+    deactivatePowerUp,
+    gameOver
 };
