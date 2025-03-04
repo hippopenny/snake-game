@@ -2124,49 +2124,38 @@ mobileControlsContainer.style.display = 'none'; // Hidden by default, will show 
 mobileControlsContainer.style.zIndex = '1001';
 document.body.appendChild(mobileControlsContainer);
 
-// Create D-pad buttons
-const directions = [
-    { id: 'up', symbol: '▲', x: 50, y: 0 },
-    { id: 'right', symbol: '▶', x: 100, y: 50 },
-    { id: 'down', symbol: '▼', x: 50, y: 100 },
-    { id: 'left', symbol: '◀', x: 0, y: 50 }
-];
+const joystickContainer = document.createElement('div');
+joystickContainer.id = 'joystick-container';
+joystickContainer.style.position = 'absolute';
+joystickContainer.style.bottom = '20px';
+joystickContainer.style.left = '20px';
+joystickContainer.style.width = '150px';
+joystickContainer.style.height = '150px';
+joystickContainer.style.zIndex = '1001';
+document.body.appendChild(joystickContainer);
 
-directions.forEach(dir => {
-    const button = document.createElement('div');
-    button.id = `mobile-${dir.id}`;
-    button.className = 'mobile-control-button';
-    button.innerHTML = dir.symbol;
-    button.style.position = 'absolute';
-    button.style.left = `${dir.x}px`;
-    button.style.top = `${dir.y}px`;
-    button.style.width = '50px';
-    button.style.height = '50px';
-    button.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-    button.style.color = 'white';
-    button.style.borderRadius = '50%';
-    button.style.display = 'flex';
-    button.style.justifyContent = 'center';
-    button.style.alignItems = 'center';
-    button.style.fontSize = '24px';
-    button.style.fontWeight = 'bold';
-    button.style.cursor = 'pointer';
-    button.style.userSelect = 'none';
-    button.style.border = '2px solid rgba(255, 255, 255, 0.3)';
-    
-    // Add touch event listeners
-    button.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        button.style.backgroundColor = 'rgba(76, 175, 80, 0.7)';
-        handleMobileControl(dir.id);
-    });
-    
-    button.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        button.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-    });
-    
-    mobileControlsContainer.appendChild(button);
+const joystick = nipplejs.create({
+    zone: joystickContainer,
+    mode: 'static',
+    position: { left: '50%', bottom: '50%' },
+    color: 'green',
+    size: 100
+});
+
+joystick.on('dir:up', () => {
+    if (direction !== 'down') nextDirection = 'up';
+});
+
+joystick.on('dir:down', () => {
+    if (direction !== 'up') nextDirection = 'down';
+});
+
+joystick.on('dir:left', () => {
+    if (direction !== 'right') nextDirection = 'left';
+});
+
+joystick.on('dir:right', () => {
+    if (direction !== 'left') nextDirection = 'right';
 });
 
 // Create mobile menu buttons container
