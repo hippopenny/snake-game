@@ -1,4 +1,5 @@
 const { chromium } = require('playwright');
+const { moveSnake, checkCollisions, updateScoreAndLevel, deactivatePowerUp, gameOver } = require('../snake_game');
 
 describe('Snake Game UI Tests', () => {
   let browser;
@@ -70,5 +71,74 @@ describe('Snake Game UI Tests', () => {
     });
 
     // Test WebSocket interactions here
+  });
+});
+
+describe('Snake Game Logic Tests', () => {
+  let snake;
+  let direction;
+  const GRID_SIZE = 50;
+
+  beforeEach(() => {
+    snake = [
+      { x: 5, y: 5 },
+      { x: 4, y: 5 },
+      { x: 3, y: 5 }
+    ];
+    direction = 'right';
+  });
+
+  test('moveSnake should move the snake in the current direction', () => {
+    moveSnake(snake, direction);
+    expect(snake[0]).toEqual({ x: 6, y: 5 });
+  });
+
+  test('moveSnake should move the snake up', () => {
+    direction = 'up';
+    moveSnake(snake, direction);
+    expect(snake[0]).toEqual({ x: 5, y: 4 });
+  });
+
+  test('checkCollisions should detect collision with walls', () => {
+    snake[0] = { x: GRID_SIZE, y: 5 };
+    const collision = checkCollisions(snake, GRID_SIZE);
+    expect(collision).toBe(true);
+  });
+
+  test('checkCollisions should detect self-collision', () => {
+    snake = [
+      { x: 5, y: 5 },
+      { x: 5, y: 6 },
+      { x: 5, y: 7 },
+      { x: 5, y: 5 }
+    ];
+    const collision = checkCollisions(snake, GRID_SIZE);
+    expect(collision).toBe(true);
+  });
+
+  test('updateScoreAndLevel should update score and level correctly', () => {
+    let score = 60;
+    let level = 1;
+    const levelThresholds = [0, 50, 100, 150];
+    updateScoreAndLevel(score, level, levelThresholds);
+    expect(level).toBe(2);
+  });
+
+  test('deactivatePowerUp should clear active power-up', () => {
+    let activePowerUp = { type: 'speed_boost', expiresAt: Date.now() + 10000 };
+    deactivatePowerUp();
+    expect(activePowerUp).toBeNull();
+  });
+
+  test('gameOver should handle collision game over', () => {
+    const reason = 'collision';
+    gameOver(reason);
+    expect(gameRunning).toBe(false);
+  });
+
+  test('gameOver should handle starvation game over', () => {
+    const reason = 'starvation';
+    gameOver(reason);
+    expect(gameRunning).toBe(false);
   });
 });
