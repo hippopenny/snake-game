@@ -3,10 +3,16 @@ const { chromium } = require('playwright');
 describe('Snake Game UI Tests', () => {
   let browser;
   let page;
+  let consoleMessages = [];
 
   beforeAll(async () => {
     browser = await chromium.launch();
     page = await browser.newPage();
+    // Set up console listener
+    page.on('console', (msg) => {
+      consoleMessages.push(msg.text());
+    });
+
     await page.goto('file://' + __dirname + '/../snake_game.html'); // Load the actual HTML file
   });
 
@@ -25,7 +31,15 @@ describe('Snake Game UI Tests', () => {
     expect(await gameCanvas.isVisible()).toBe(true);
   });
 
-  // Mock WebSocket
+  test('should log WebSocket connection established', async () => {
+    // Wait for the page to load and the WebSocket connection to be established
+    await page.waitForTimeout(1000); // Adjust the timeout as needed
+
+    // Check if the expected console message is present
+    const expectedMessage = 'WebSocket connection established. Player ID:';
+    const logFound = consoleMessages.some(msg => msg.includes(expectedMessage));
+    expect(logFound).toBe(true);
+  });
   test('should mock WebSocket connection', async () => {
     await page.exposeFunction('mockWebSocket', () => {
       return {
