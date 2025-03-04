@@ -1,6 +1,8 @@
 const { chromium } = require('playwright');
 const { moveSnake, checkCollisions, updateScoreAndLevel, deactivatePowerUp, gameOver } = require('../snake_game');
 
+// Separate unit tests from integration tests
+
 describe('Snake Game UI Tests', () => {
   let browser;
   let page;
@@ -21,6 +23,7 @@ describe('Snake Game UI Tests', () => {
     await browser.close();
   });
 
+  // Integration test using Playwright
   test('should display the start screen', async () => {
     const startScreen = await page.$('#start-screen');
     expect(await startScreen.isVisible()).toBe(true);
@@ -88,6 +91,7 @@ describe('Snake Game Logic Tests', () => {
     direction = 'right';
   });
 
+  // Unit tests for game logic
   test('moveSnake should move the snake in the current direction', () => {
     moveSnake(snake, direction);
     expect(snake[0]).toEqual({ x: 6, y: 5 });
