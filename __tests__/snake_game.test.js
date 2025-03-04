@@ -1,9 +1,7 @@
 const { chromium } = require('playwright');
 const { moveSnake, checkCollisions, updateScoreAndLevel, deactivatePowerUp, gameOver } = require('../snake_game');
 
-// Separate unit tests from integration tests
-
-describe('Snake Game UI Tests', () => {
+describe('Snake Game Integration Tests', () => {
   let browser;
   let page;
   let consoleMessages = [];
@@ -77,7 +75,7 @@ describe('Snake Game UI Tests', () => {
   });
 });
 
-describe('Snake Game Logic Tests', () => {
+describe('Snake Game Unit Tests', () => {
   let snake;
   let direction;
   const GRID_SIZE = 50;
