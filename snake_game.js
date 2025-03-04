@@ -433,6 +433,11 @@ function initGame() {
     updateSpeedDisplay();
     updateHungerBar(); // Initialize hunger bar
     
+    // Hide leaderboard by default
+    if (bestScoresVisible) {
+        toggleBestScores();
+    }
+    
     gameOverScreen.style.display = 'none';
     levelUpScreen.style.display = 'none';
     
@@ -2023,7 +2028,7 @@ document.addEventListener('keydown', function(e) {
         return;
     }
     
-    // Toggle mini leaderboard with 'L' key
+    // Toggle leaderboard with 'L' key
     if (e.key === 'l' || e.key === 'L') {
         toggleBestScores();
         return;
