@@ -365,19 +365,45 @@ socket.onclose = (event) => {
 };
 
 const GRID_SIZE = 50;
-const CELL_SIZE = 10; // Size of each cell in pixels
+let CELL_SIZE = 10; // Size of each cell in pixels
 
 // Set up the game canvas
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
 
-// Set canvas size based on grid size and cell size
-canvas.width = GRID_SIZE * CELL_SIZE;
-canvas.height = GRID_SIZE * CELL_SIZE;
+// Adjust the canvas size based on screen size
+function getAvailableScreenSize() {
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+    
+    // Subtract space for UI elements if needed
+    const availableWidth = screenWidth - 40; // Adjust as needed
+    const availableHeight = screenHeight - 200; // Adjust as needed for UI elements
+    
+    return { width: availableWidth, height: availableHeight };
+}
+
+function adjustCanvasSize() {
+    const { width, height } = getAvailableScreenSize();
+    
+    // Calculate the maximum size that maintains the aspect ratio
+    const maxGridSize = Math.min(width, height);
+    
+    // Set the canvas size
+    canvas.width = maxGridSize;
+    canvas.height = maxGridSize;
+    
+    // Adjust the cell size based on the new canvas size
+    CELL_SIZE = Math.floor(maxGridSize / GRID_SIZE);
+    
+    // Update the canvas style to ensure it fits the screen
+    canvas.style.width = `${maxGridSize}px`;
+    canvas.style.height = `${maxGridSize}px`;
+}
 
 // Initialize leaderboard when the document is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize mini leaderboard
+    adjustCanvasSize();
     
     // Initialize heat map
     initHeatMap();
@@ -2614,3 +2640,4 @@ function updatePowerUpStatus() {
         powerUpCountdownBar.style.animation = '';
     }
 }
+window.addEventListener('resize', adjustCanvasSize);
