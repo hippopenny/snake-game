@@ -1,5 +1,4 @@
 const { chromium } = require('playwright');
-const { moveSnake, checkCollisions, updateScoreAndLevel, deactivatePowerUp, gameOver } = require('../snake_game');
 
 describe('Snake Game Integration Tests', () => {
   let browser;
