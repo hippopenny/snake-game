@@ -2111,7 +2111,6 @@ powerUpCountdownBar.style.width = '100%';
 powerUpCountdownBar.style.transition = 'width 0.1s linear';
 powerUpCountdownContainer.appendChild(powerUpCountdownBar);
 
-// Mobile controls
 const mobileControlsContainer = document.createElement('div');
 mobileControlsContainer.id = 'mobile-controls';
 mobileControlsContainer.style.position = 'absolute';
@@ -2123,40 +2122,6 @@ mobileControlsContainer.style.height = '150px';
 mobileControlsContainer.style.display = 'none'; // Hidden by default, will show on touch devices
 mobileControlsContainer.style.zIndex = '1001';
 document.body.appendChild(mobileControlsContainer);
-
-const joystickContainer = document.createElement('div');
-joystickContainer.id = 'joystick-container';
-joystickContainer.style.position = 'absolute';
-joystickContainer.style.bottom = '20px';
-joystickContainer.style.left = '20px';
-joystickContainer.style.width = '150px';
-joystickContainer.style.height = '150px';
-joystickContainer.style.zIndex = '1001';
-document.body.appendChild(joystickContainer);
-
-const joystick = nipplejs.create({
-    zone: joystickContainer,
-    mode: 'static',
-    position: { left: '50%', bottom: '50%' },
-    color: 'green',
-    size: 100
-});
-
-joystick.on('dir:up', () => {
-    if (direction !== 'down') nextDirection = 'up';
-});
-
-joystick.on('dir:down', () => {
-    if (direction !== 'up') nextDirection = 'down';
-});
-
-joystick.on('dir:left', () => {
-    if (direction !== 'right') nextDirection = 'left';
-});
-
-joystick.on('dir:right', () => {
-    if (direction !== 'left') nextDirection = 'right';
-});
 
 // Create mobile menu buttons container
 const mobileMenuContainer = document.createElement('div');
