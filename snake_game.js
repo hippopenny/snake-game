@@ -2181,8 +2181,8 @@ document.body.appendChild(mobileMenuContainer);
 
 // Create mobile menu buttons
 const menuButtons = [
-    { id: 'minimap', symbol: 'M', title: 'Toggle Minimap' },
-    { id: 'leaderboard', symbol: 'L', title: 'Toggle Leaderboard' }
+    // { id: 'minimap', symbol: 'M', title: 'Toggle Minimap' },
+    // { id: 'leaderboard', symbol: 'L', title: 'Toggle Leaderboard' }
 ];
 
 menuButtons.forEach((btn, index) => {
