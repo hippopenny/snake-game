@@ -2,6 +2,10 @@
   "scripts": {
     "test": "jest"
   },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "setupFiles": ["./jest.setup.js"]
+  },
   "dependencies": {
     "ws": "^8.18.1"
   },
