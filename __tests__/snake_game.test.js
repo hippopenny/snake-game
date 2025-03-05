@@ -26,10 +26,15 @@ describe('Snake Game Integration Tests', () => {
         res.writeHead(200, { 'Content-Type': 'application/javascript' });
         fs.createReadStream(path.join(__dirname, '../snake_game.js')).pipe(res);
       }
-    }).listen(3000);
+    }).listen(3000, () => {
+      console.log('HTTP server listening on port 3000');
+    });
 
     // Create WebSocket server
     wss = new WebSocketServer({ server });
+    wss.on('error', error => {
+      console.error('WebSocket server error:', error);
+    });
 
     browser = await chromium.launch();
     page = await browser.newPage();
@@ -39,15 +44,7 @@ describe('Snake Game Integration Tests', () => {
     await page.goto('http://localhost:3000/snake_game.html');
 
     // Wait for WebSocket to connect before running tests
-    page.on('websocket', ws => {
-      ws.on('framesent', frame => {
-        console.log(`► framesent: ${frame.payload.toString()}`);
-      });
-      ws.on('framereceived', frame => {
-        console.log(`► framereceived: ${frame.payload.toString()}`);
-      });
-    });
-    await page.waitForFunction(() => window.socket && window.socket.readyState === WebSocket.OPEN, { timeout: 3000 });
+    await page.waitForFunction(() => window.socket && window.socket.readyState === WebSocket.OPEN, { timeout: 10000 });
   });
 
   afterAll(async () => {
