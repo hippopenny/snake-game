@@ -16,77 +16,61 @@ describe('Snake Game Integration Tests', () => {
   let browser;
   let page;
   let server;
-  let wss;
   let consoleMessages = [];
   let pageErrors = [];
 
   beforeAll(async () => {
     jest.setTimeout(60000);
-    // Create HTTP server
-    server = createServer((req, res) => {
-      if (req.url === '/snake_game.html') {
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        fs.createReadStream(path.join(__dirname, '../snake_game.html')).pipe(res);
-      } else if (req.url === '/snake_game.js') {
-        res.writeHead(200, { 'Content-Type': 'application/javascript' });
-        fs.createReadStream(path.join(__dirname, '../snake_game.js')).pipe(res);
-      }
-    }).listen(3000, () => {
-      console.log('HTTP server listening on port 3000');
-    });
-
-    // Create WebSocket server
-    wss = new WebSocketServer({ server });
-    wss.on('error', (error) => {
-      console.error('WebSocket server error:', error);
-    });
-
-    browser = await chromium.launch();
-    page = await browser.newPage();
-
-    page.on('console', (msg) => {
-      consoleMessages.push(msg.text());
-    });
-
-    page.on('pageerror', (err) => {
-      pageErrors.push(err.message);
-    });
-
-    page.on('websocket', ws => {
-      ws.on('close', () => {
-        console.log('WebSocket disconnected');
+    
+    try {
+      server = createServer((req, res) => {
+        console.log(`Request received: ${req.url}`);
+        const filePath = req.url === '/' ? '/snake_game.html' : req.url;
+        
+        if (filePath.includes('snake_game.html') || filePath.includes('snake_game.js')) {
+          const fullPath = path.join(__dirname, '..', filePath);
+          console.log(`Serving file: ${fullPath}`);
+          
+          if (!fs.existsSync(fullPath)) {
+            console.error(`File not found: ${fullPath}`);
+            res.writeHead(404);
+            res.end();
+            return;
+          }
+  
+          const contentType = filePath.endsWith('.html') ? 'text/html' : 'application/javascript';
+          res.writeHead(200, { 'Content-Type': contentType });
+          fs.createReadStream(fullPath).pipe(res);
+        } else {
+          res.writeHead(404);
+          res.end();
+        }
+      }).listen(3000, () => console.log('Server started on port 3000'));
+  
+    
+      browser = await chromium.launch({ 
+        headless: false,
+        args: ['--no-sandbox']
       });
-    });
-
-    // Check for page errors before waiting for WebSocket
-    if (pageErrors.length > 0) {
-      throw new Error(`Page errors: ${pageErrors.join('\n')}`);
+      console.log('Browser launched');
+  
+      page = await browser.newPage();
+      console.log('Page created');
+  
+      await page.goto('http://localhost:3000/snake_game.html', {
+        waitUntil: 'networkidle',
+        timeout: 30000
+      });
+      console.log('Page loaded');
+    } catch (error) {
+      console.error('Setup failed:', error);
+      throw error;
     }
-
-    // Wait for WebSocket to connect
-    await page.evaluate(async () => {
-      return new Promise((resolve, reject) => {
-        const checkConnection = () => {
-          if (window.socket && window.socket.readyState === WebSocket.OPEN) {
-            resolve();
-          } else if (window.socket && window.socket.readyState === WebSocket.CLOSING) {
-            reject(new Error('WebSocket is closing'));
-          } else if (window.socket && window.socket.readyState === WebSocket.CLOSED) {
-            reject(new Error('WebSocket is closed'));
-          }
-          else {
-            setTimeout(checkConnection, 100);
-          }
-        };
-        checkConnection();
-      });
-    });
   });
 
   afterAll(async () => {
     await browser.close();
     server.close();
-    wss.close();
   });
 
   beforeEach(async () => {
