@@ -1,8 +1,9 @@
-module.exports = {
+export default {
+  testEnvironment: 'node',
+  transform: {},
+  testMatch: ['**/__tests__/**/*.test.js'],
   preset: 'jest-playwright-preset',
-  testEnvironment: 'jest-playwright-preset',
-  setupFiles: ['./jest.setup.js'], // Ensure this path is correct
-  transform: {
-    '^.+\\.js$': 'babel-jest',
-  },
+  moduleNameMapper: {
+    '@playwright/test': '<rootDir>/node_modules/@playwright/test'
+  }
 };
