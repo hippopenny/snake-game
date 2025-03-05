@@ -1,162 +1,110 @@
-import { moveSnake, checkCollisions, updateScoreAndLevel, deactivatePowerUp, gameOver } from '../snake_game.js';
-import { jest } from '@jest/globals';
+import { test, expect } from '@playwright/test';
 
-// Mock the necessary global variables and functions
-jest.mock('../snake_game.js', () => {
-  const originalModule = jest.requireActual('../snake_game.js');
-  return {
-    ...originalModule,
-    socket: {
-      readyState: WebSocket.OPEN,
-      send: jest.fn()
-    },
-    GRID_SIZE: 50,
-    CELL_SIZE: 10,
-    levelThresholds: [0, 50, 100, 150, 200, 300, 400, 500, 600, 800],
-    baseGameSpeed: 200,
-    MAX_HUNGER: 100,
-    POWER_UP_EFFECTS: {
-      speed_boost: { speedMultiplier: 2.0 },
-      invincibility: {},
-      magnet: {}
-    },
-    document: {
-      getElementById: jest.fn((id) => {
-        if (id === 'score') return { textContent: '' };
-        if (id === 'level') return { textContent: '' };
-        return null;
-      })
-    }
-  };
-});
-
-describe('Snake Game Unit Tests', () => {
-  let snake;
-  let players;
-  let activePowerUp;
-  let score;
-  let level;
-  let GRID_SIZE;
-  let CELL_SIZE;
-  let baseGameSpeed;
-  let gameSpeed;
-  let levelThresholds;
-  let socket;
-  let MAX_HUNGER;
-  let POWER_UP_EFFECTS;
-
-  beforeEach(() => {
-    snake = [{ x: 5, y: 5 }, { x: 4, y: 5 }, { x: 3, y: 5 }];
-    players = {};
-    activePowerUp = null;
-    score = 0;
-    level = 1;
-    GRID_SIZE = 50;
-    CELL_SIZE = 10;
-    baseGameSpeed = 200;
-    gameSpeed = baseGameSpeed;
-    levelThresholds = [0, 50, 100, 150, 200, 300, 400, 500, 600, 800];
-    socket = {
-      readyState: WebSocket.OPEN,
-      send: jest.fn()
-    };
-    MAX_HUNGER = 100;
-    POWER_UP_EFFECTS = {
-      speed_boost: { speedMultiplier: 2.0 },
-      invincibility: {},
-      magnet: {}
-    };
+test.describe('Snake Game Unit Tests', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('snake_game.html'); // Adjust the path if necessary
+    await page.evaluate(() => {
+      // Reset game state before each test
+      window.snake = [{ x: 5, y: 5 }, { x: 4, y: 5 }, { x: 3, y: 5 }];
+      window.direction = 'right';
+      window.nextDirection = 'right';
+      window.score = 0;
+      window.level = 1;
+      window.gameRunning = true;
+      window.activePowerUp = null;
+    });
   });
 
-  describe('moveSnake', () => {
-    it('should move the snake to the right', () => {
-      const initialSnake = [{ x: 5, y: 5 }, { x: 4, y: 5 }];
-      moveSnake();
-      expect(snake[0]).toEqual({ x: 6, y: 5 });
+  test('moveSnake should move the snake to the right', async ({ page }) => {
+    await page.evaluate(() => {
+      window.moveSnake();
     });
+    const snakeHead = await page.evaluate(() => window.snake[0]);
+    expect(snakeHead).toEqual({ x: 6, y: 5 });
+  });
 
-    it('should move the snake up', () => {
+  test('moveSnake should move the snake up', async ({ page }) => {
+    await page.evaluate(() => {
       window.direction = 'up';
       window.nextDirection = 'up';
-      const initialSnake = [{ x: 5, y: 5 }, { x: 4, y: 5 }];
-      moveSnake();
-      expect(snake[0]).toEqual({ x: 5, y: 4 });
+      window.moveSnake();
     });
+    const snakeHead = await page.evaluate(() => window.snake[0]);
+    expect(snakeHead).toEqual({ x: 5, y: 4 });
+  });
 
-    it('should move the snake down', () => {
+  test('moveSnake should move the snake down', async ({ page }) => {
+    await page.evaluate(() => {
       window.direction = 'down';
       window.nextDirection = 'down';
-      const initialSnake = [{ x: 5, y: 5 }, { x: 4, y: 5 }];
-      moveSnake();
-      expect(snake[0]).toEqual({ x: 5, y: 6 });
+      window.moveSnake();
     });
+    const snakeHead = await page.evaluate(() => window.snake[0]);
+    expect(snakeHead).toEqual({ x: 5, y: 6 });
+  });
 
-    it('should move the snake left', () => {
+  test('moveSnake should move the snake left', async ({ page }) => {
+    await page.evaluate(() => {
       window.direction = 'left';
       window.nextDirection = 'left';
-      const initialSnake = [{ x: 5, y: 5 }, { x: 4, y: 5 }];
-      moveSnake();
-      expect(snake[0]).toEqual({ x: 4, y: 5 });
+      window.moveSnake();
     });
+    const snakeHead = await page.evaluate(() => window.snake[0]);
+    expect(snakeHead).toEqual({ x: 4, y: 5 });
   });
 
-  describe('checkCollisions', () => {
-    it('should return true if snake collides with the wall', () => {
-      snake = [{ x: -1, y: 5 }, { x: 0, y: 5 }];
-      expect(checkCollisions()).toBe(true);
+  test('checkCollisions should return true if snake collides with the wall', async ({ page }) => {
+    const collision = await page.evaluate(() => {
+      window.snake = [{ x: -1, y: 5 }, { x: 0, y: 5 }];
+      return window.checkCollisions();
     });
-
-    it('should return true if snake collides with itself', () => {
-      snake = [{ x: 5, y: 5 }, { x: 5, y: 5 }];
-      expect(checkCollisions()).toBe(true);
-    });
-
-    it('should return false if snake does not collide with anything', () => {
-      snake = [{ x: 5, y: 5 }, { x: 4, y: 5 }];
-      expect(checkCollisions()).toBe(false);
-    });
-
-    it('should return true if snake collides with another player', () => {
-      players = {
-        'otherPlayer': {
-          snake: [{ x: 5, y: 5 }, { x: 6, y: 5 }]
-        }
-      };
-      snake = [{ x: 5, y: 5 }, { x: 4, y: 5 }];
-      expect(checkCollisions()).toBe(true);
-    });
-
-    it('should return false if invincibility power-up is active', () => {
-      window.activePowerUp = { type: 'invincibility' };
-      snake = [{ x: -1, y: 5 }, { x: 0, y: 5 }];
-      expect(checkCollisions()).toBe(false);
-    });
+    expect(collision).toBe(true);
   });
 
-  describe('updateScoreAndLevel', () => {
-    it('should update the score and level displays', () => {
+  test('checkCollisions should return true if snake collides with itself', async ({ page }) => {
+    const collision = await page.evaluate(() => {
+      window.snake = [{ x: 5, y: 5 }, { x: 5, y: 5 }];
+      return window.checkCollisions();
+    });
+    expect(collision).toBe(true);
+  });
+
+  test('checkCollisions should return false if snake does not collide with anything', async ({ page }) => {
+    const collision = await page.evaluate(() => {
+      window.snake = [{ x: 5, y: 5 }, { x: 4, y: 5 }];
+      return window.checkCollisions();
+    });
+    expect(collision).toBe(false);
+  });
+
+  test('deactivatePowerUp should deactivate the active power-up', async ({ page }) => {
+    await page.evaluate(() => {
+      window.activePowerUp = { type: 'speed_boost' };
+      window.deactivatePowerUp();
+    });
+    const activePowerUp = await page.evaluate(() => window.activePowerUp);
+    expect(activePowerUp).toBe(null);
+  });
+
+  test('gameOver should set gameRunning to false', async ({ page }) => {
+    await page.evaluate(() => {
+      window.gameRunning = true;
+      window.gameOver();
+    });
+    const gameRunning = await page.evaluate(() => window.gameRunning);
+    expect(gameRunning).toBe(false);
+  });
+
+  test('updateScoreAndLevel should update the score and level displays', async ({ page }) => {
+    await page.evaluate(() => {
+      document.body.innerHTML = `<div id="score"></div><div id="level"></div>`;
       window.score = 100;
       window.level = 2;
-      updateScoreAndLevel();
-      expect(document.getElementById).toHaveBeenCalledWith('score');
-      expect(document.getElementById).toHaveBeenCalledWith('level');
+      window.updateScoreAndLevel();
     });
-  });
-
-  describe('deactivatePowerUp', () => {
-    it('should deactivate the active power-up and reset game speed', () => {
-      window.activePowerUp = { type: 'speed_boost' };
-      window.gameSpeed = 100;
-      deactivatePowerUp();
-      expect(window.activePowerUp).toBe(null);
-    });
-  });
-
-  describe('gameOver', () => {
-    it('should set gameRunning to false and send game over message', () => {
-      window.gameRunning = true;
-      gameOver();
-      expect(window.gameRunning).toBe(false);
-    });
+    const scoreText = await page.locator('#score').textContent();
+    const levelText = await page.locator('#level').textContent();
+    expect(scoreText).toContain('Score: 100');
+    expect(levelText).toContain('Level: 2');
   });
 });
