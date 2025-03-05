@@ -13,7 +13,7 @@ describe('Snake Game Integration Tests', () => {
       consoleMessages.push(msg.text());
     });
 
-    await page.goto('file://' + __dirname + '/../snake_game.html'); // Load the actual HTML file
+    await page.goto('http://localhost:3000/snake_game.html'); // Load the actual HTML file
   });
 
   afterAll(async () => {
