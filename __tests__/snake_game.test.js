@@ -296,8 +296,8 @@ test.describe('Snake Game Unit Tests', () => {
 });
 
 test.describe('Snake Game Integration Tests', () => {
-    let browser: Browser;
-    let page: Page;
+    let browser;
+    let page;
 
     test.beforeAll(async () => {
         browser = await chromium.launch();
