@@ -102,14 +102,14 @@ describe('Snake Game Unit Tests', () => {
        test('moveSnake should move the snake in the current direction', async () => {
         const initialSnake = [{ x: 5, y: 5 }, { x: 4, y: 5 }, { x: 3, y: 5 }];
 
-                // Call the function
-                window.moveSnake();
-            },
-            initialSnake
-        );
+        // Call the function
+        await page.evaluate(() => window.moveSnake());
+    },
+    initialSnake
+);
 
-        await expect(page.evaluate(() => window.moveSnake)).toHaveBeenCalled();
-    });
+await expect(page.evaluate(() => window.moveSnake)).toHaveBeenCalled();
+});
 
     test('checkCollisions should detect collision with walls', async () => {
         const initialSnake = [{ x: 0, y: 0 }];
@@ -121,7 +121,7 @@ describe('Snake Game Unit Tests', () => {
             return window.checkCollisions();
         }, initialSnake);
 
-        expect(page.evaluate(() => window.checkCollisions)).toHaveBeenCalled();
+        await expect(page.evaluate(() => window.checkCollisions)).toHaveBeenCalled();
     });
 
     test('checkCollisions should not detect self-collision initially', async () => {
@@ -137,7 +137,7 @@ describe('Snake Game Unit Tests', () => {
             window.checkCollisions.mockImplementation(() => true);
             return window.checkCollisions();
         }, initialSnake);
-        expect(page.evaluate(() => window.checkCollisions)).toHaveBeenCalled();
+        await expect(page.evaluate(() => window.checkCollisions)).toHaveBeenCalled();
     });
 
     test('updateScoreAndLevel should update score and level correctly', async () => {
