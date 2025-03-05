@@ -2448,3 +2448,12 @@ function updatePowerUpStatus() {
     }
 }
 window.addEventListener('resize', adjustCanvasSize);
+
+// Export functions for testing
+module.exports = {
+    moveSnake,
+    checkCollisions,
+    updateScoreAndLevel,
+    deactivatePowerUp,
+    gameOver
+};
