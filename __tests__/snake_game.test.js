@@ -162,7 +162,7 @@ describe('Snake Game Unit Tests', () => {
         const { level } = await page.evaluate((initialState) => {
             window.score = initialState.score;
             window.level = initialState.level;
-            window.levelThresholds = initialState.levelThresholds;
+            window.levelThresholds = JSON.parse(JSON.stringify(initialState.levelThresholds));
             window.updateScoreAndLevel();
             return { level: window.level };
         }, initialState);
@@ -173,7 +173,7 @@ describe('Snake Game Unit Tests', () => {
         const result = await page.evaluate(() => {
             window.activePowerUp = { type: 'speed_boost', expiresAt: Date.now() + 10000 };
             window.deactivatePowerUp();
-            return { activePowerUp: window.activePowerUp };
+            return { activePowerUp: window.activePowerUp === null ? null : window.activePowerUp };
         });
         expect(result.activePowerUp).toBe(null);
     });
