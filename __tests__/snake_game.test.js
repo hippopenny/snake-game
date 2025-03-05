@@ -104,11 +104,8 @@ describe('Snake Game Unit Tests', () => {
 
                 // Call the function
                 window.moveSnake();
-
-                // Return the modified snake
-                return window.snake;
             },
-            initialSnake,
+            initialSnake
         );
 
                 expect(page.evaluate(() => window.moveSnake)).toHaveBeenCalled();
