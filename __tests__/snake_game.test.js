@@ -108,7 +108,7 @@ describe('Snake Game Unit Tests', () => {
             initialSnake
         );
 
-                expect(page.evaluate(() => window.moveSnake)).toHaveBeenCalled();
+        await expect(page.evaluate(() => window.moveSnake)).toHaveBeenCalled();
     });
 
     test('checkCollisions should detect collision with walls', async () => {
@@ -153,7 +153,8 @@ describe('Snake Game Unit Tests', () => {
             window.updateScoreAndLevel();
             return { level: window.level };
         }, initialState);
-                expect(level).toBe(1);
+        const level = await page.evaluate(() => window.level);
+        expect(level).toBe(1);
     });
 
     test('deactivatePowerUp should clear active power-up', async () => {
