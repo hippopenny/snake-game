@@ -86,12 +86,10 @@ describe('Snake Game Tests', () => {
     const initialSnake = [{ x: 5, y: 5 }];
     expect(newSnake[0].x).toBeGreaterThan(initialSnake[0].x);
   });
-
+ 
   test('should update score when eating food', async () => {
-    await page.click('#start-btn');
-    
     const initialScore = await page.evaluate(() => window.score);
-    
+     
     await page.evaluate(() => {
       const headPos = window.snake[0];
       window.foods = [{ x: headPos.x + 1, y: headPos.y, points: 10 }];
@@ -103,10 +101,8 @@ describe('Snake Game Tests', () => {
     const newScore = await page.evaluate(() => window.score);
     expect(newScore).toBeGreaterThan(initialScore);
   });
-
+ 
   test('should end game on wall collision', async () => {
-    await page.click('#start-btn');
-    
     // Move snake to wall
     await page.evaluate(() => {
       window.snake = [{ x: -1, y: 5 }];
@@ -116,10 +112,9 @@ describe('Snake Game Tests', () => {
     const gameRunning = await page.evaluate(() => window.gameRunning);
     expect(gameRunning).toBe(false);
   });
-
+ 
   test('should end game on self collision', async () => {
-    await page.click('#start-btn');
-    
+     
     await page.evaluate(() => {
       window.snake = [
         { x: 5, y: 5 },
@@ -133,12 +128,10 @@ describe('Snake Game Tests', () => {
     const gameRunning = await page.evaluate(() => window.gameRunning);
     expect(gameRunning).toBe(false);
   });
-
+ 
   test('should update level when reaching score threshold', async () => {
-    await page.click('#start-btn');
-    
     const initialLevel = await page.evaluate(() => window.level);
-    
+     
     await page.evaluate(() => {
       window.score = 50; // Score needed for level 2
       window.updateScoreAndLevel();
@@ -147,10 +140,9 @@ describe('Snake Game Tests', () => {
     const newLevel = await page.evaluate(() => window.level);
     expect(newLevel).toBeGreaterThan(initialLevel);
   });
-
+ 
   test('should show game over screen on collision', async () => {
-    await page.click('#start-btn');
-    
+     
     await page.evaluate(() => {
       window.gameOver('collision');
     });
@@ -158,12 +150,10 @@ describe('Snake Game Tests', () => {
     const gameOverVisible = await page.isVisible('#game-over');
     expect(gameOverVisible).toBe(true);
   });
-
+ 
   test('should toggle minimap visibility', async () => {
-    await page.click('#start-btn');
-    
     const initialVisibility = await page.evaluate(() => window.minimapVisible);
-    
+     
     await page.keyboard.press('M');
     
     const newVisibility = await page.evaluate(() => window.minimapVisible);
@@ -216,10 +206,9 @@ describe('Snake Drawing Tests', () => {
             window.ctx = window.originalCtx;
         });
     });
-
+ 
     test('should draw basic snake without power-ups', async () => {
-        await page.click('#start-btn');
-        
+         
         const drawCalls = await page.evaluate(() => {
             window.drawSnake(window.snake, true);
             return window.ctx.calls;
@@ -229,8 +218,9 @@ describe('Snake Drawing Tests', () => {
         expect(drawCalls).toContain('fill');
         expect(drawCalls.length).toBeGreaterThan(0);
     });
-
+ 
     test('should draw snake with speed boost power-up', async () => {
+         
         await page.evaluate(() => {
             window.activePowerUp = {
                 type: 'speed_boost',
@@ -247,8 +237,9 @@ describe('Snake Drawing Tests', () => {
 
         expect(powerUpColor).toBe('#00BCD4'); // Speed boost color
     });
-
+ 
     test('should draw snake with invincibility power-up', async () => {
+         
         await page.evaluate(() => {
             window.activePowerUp = {
                 type: 'invincibility',
@@ -269,10 +260,9 @@ describe('Snake Drawing Tests', () => {
         expect(shadowProps.color).toBe('#9C27B0');
         expect(shadowProps.blur).toBe(20);
     });
-
+ 
     test('should draw opponent snake differently', async () => {
-        await page.click('#start-btn');
-        
+         
         const colors = await page.evaluate(() => {
             // Draw player snake
             window.drawSnake(window.snake, true);
@@ -287,10 +277,9 @@ describe('Snake Drawing Tests', () => {
 
         expect(colors.playerColor).not.toBe(colors.opponentColor);
     });
-
+ 
     test('should draw snake head decorations', async () => {
-        await page.click('#start-btn');
-        
+         
         const decorationCalls = await page.evaluate(() => {
             window.drawSnake(window.snake, true);
             return window.ctx.calls.filter(call => 
@@ -301,8 +290,9 @@ describe('Snake Drawing Tests', () => {
         // Should have at least 2 eye decorations
         expect(decorationCalls.length).toBeGreaterThanOrEqual(2);
     });
-
+ 
     test('should draw magnet power-up orbits', async () => {
+         
         await page.evaluate(() => {
             window.activePowerUp = {
                 type: 'magnet',
