@@ -124,22 +124,25 @@ describe('Snake Game Integration Tests', () => {
     }).toBe(false);
   });
 
-  test('should handle WebSocket player updates', async () => {
+  test('should handle WebSocket player updates and draw other players', async () => {
     // Start the game
     await page.click('#start-btn');
 
     const testPlayer = {
       id: 'test-id',
       snake: [{ x: 10, y: 10 }],
-      score: 100
+      score: 100,
+      level: 1
     };
 
     // Send player data to the game via WebSocket
     await page.evaluate((player) => {
+      window.otherPlayers = {};
+      window.otherPlayers[player.id] = player;
       window.socket.send(JSON.stringify({
-        type: 'update',
+        type: 'state',
         id: player.id,
-        snake: player.snake,
+        players: { [player.id]: player },
         score: player.score
       }));
     }, testPlayer);
@@ -148,9 +151,10 @@ describe('Snake Game Integration Tests', () => {
     await page.waitForTimeout(500);
 
     // Verify that the player data has been updated in the game
-    const players = await page.evaluate(() => window.players);
-    expect(players['test-id']).toBeDefined();
-    expect(players['test-id'].score).toBe(100);
+    const otherPlayers = await page.evaluate(() => window.otherPlayers);
+    expect(otherPlayers['test-id']).toBeDefined();
+    expect(otherPlayers['test-id'].score).toBe(100);
+    expect(otherPlayers['test-id'].snake[0].x).toBe(10);
   });
 
   test('should log WebSocket connection established', async () => {
