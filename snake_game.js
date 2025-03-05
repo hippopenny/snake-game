@@ -1360,12 +1360,6 @@ function gameOver(reason = 'collision') {
     
     finalScoreDisplay.textContent = `Score: ${score} (Best: ${highestScore})`;
     finalLevelDisplay.textContent = `Level: ${level}`;
-    gameOverScreen.style.display = 'block';
-    
-    // Store high scores locally
-    if (score > localStorage.getItem('snake_highest_score') || !localStorage.getItem('snake_highest_score')) {
-        localStorage.setItem('snake_highest_score', score);
-    }
     
     if (socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({
