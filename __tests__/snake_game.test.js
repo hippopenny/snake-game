@@ -26,13 +26,16 @@ describe('Snake Game Integration Tests', () => {
 
     // Create WebSocket server
     wss = new WebSocketServer({ server });
-    
+
     browser = await chromium.launch();
     page = await browser.newPage();
     page.on('console', (msg) => {
       consoleMessages.push(msg.text());
     });
     await page.goto('http://localhost:3000/snake_game.html');
+
+    // Wait for WebSocket to connect before running tests
+    await page.waitForEvent('websocket');
   });
 
   afterAll(async () => {
@@ -63,21 +66,16 @@ describe('Snake Game Integration Tests', () => {
     await page.click('#start-btn');
 
     // Get initial score
-    const initialScore = await page.evaluate(() => window.score);
+    let initialScore = await page.evaluate(() => window.score);
 
-    // Find the initial snake head position
-    const initialHead = await page.evaluate(() => window.snake[0]);
-
-    // Move the snake towards a food.  This assumes there's food nearby and the snake starts at {x:5, y:5}.
-    // The game speed is 200ms, so wait for a few game ticks to ensure movement.
+    // Move the snake towards a food.
     await page.keyboard.press('ArrowRight');
-    await page.waitForTimeout(600);
 
-    // Get the new score
-    const newScore = await page.evaluate(() => window.score);
-
-    // Assert that the score has increased, implying food was eaten
-    expect(newScore).toBeGreaterThan(initialScore);
+    // Wait for the score to increase
+    await expect.poll(async () => await page.evaluate(() => window.score), {
+      timeout: 1000,
+      intervals: [100]
+    }).toBeGreaterThan(initialScore);
   });
 
   test('should end game on wall collision', async () => {
@@ -91,9 +89,11 @@ describe('Snake Game Integration Tests', () => {
       await page.waitForTimeout(200); // Wait for the snake to move
     }
 
-    // Check if the game is over
-    const gameRunning = await page.evaluate(() => window.gameRunning);
-    expect(gameRunning).toBe(false);
+    // Wait for the game to end
+    await expect.poll(async () => await page.evaluate(() => window.gameRunning), {
+      timeout: 2000,
+      intervals: [200]
+    }).toBe(false);
   });
 
   test('should end game on self collision', async () => {
@@ -110,9 +110,11 @@ describe('Snake Game Integration Tests', () => {
       ];
     });
 
-    // Check if the game is over
-    const gameRunning = await page.evaluate(() => window.gameRunning);
-    expect(gameRunning).toBe(false);
+    // Wait for the game to end
+    await expect.poll(async () => await page.evaluate(() => window.gameRunning), {
+      timeout: 2000,
+      intervals: [200]
+    }).toBe(false);
   });
 
   test('should handle WebSocket player updates', async () => {
@@ -127,17 +129,12 @@ describe('Snake Game Integration Tests', () => {
 
     // Send player data to the game via WebSocket
     await page.evaluate((player) => {
-      // Ensure WebSocket is open before sending
-      if (window.socket && window.socket.readyState === WebSocket.OPEN) {
-        window.socket.send(JSON.stringify({
-          type: 'update',
-          id: player.id,
-          snake: player.snake,
-          score: player.score
-        }));
-      } else {
-        console.error('WebSocket not open, cannot send player data');
-      }
+      window.socket.send(JSON.stringify({
+        type: 'update',
+        id: player.id,
+        snake: player.snake,
+        score: player.score
+      }));
     }, testPlayer);
 
     // Wait for a short time to allow the game to process the update
@@ -150,20 +147,23 @@ describe('Snake Game Integration Tests', () => {
   });
 
   test('should log WebSocket connection established', async () => {
-    await page.waitForTimeout(1000);
     const expectedMessage = 'WebSocket connection established. Player ID:';
-    const logFound = consoleMessages.some(msg => msg.includes(expectedMessage));
-    expect(logFound).toBe(true);
+    await expect.poll(() => consoleMessages.some(msg => msg.includes(expectedMessage)), {
+      timeout: 1000,
+      intervals: [100]
+    }).toBe(true);
   });
 
   test('should log WebSocket error', async () => {
-    // Simulate WebSocket error
+    // Simulate WebSocket error and capture console.error messages
     await page.evaluate(() => {
-      const error = new Error('Simulated WebSocket error');
-      console.error('WebSocket error:', error);
+      console.error('WebSocket error:', 'Simulated WebSocket error');
     });
-    const expectedMessage = 'WebSocket error: Error: Simulated WebSocket error';
-    const logFound = consoleMessages.some(msg => msg.includes(expectedMessage));
-    expect(logFound).toBe(true);
+
+    const expectedMessage = 'WebSocket error: Simulated WebSocket error';
+    await expect.poll(() => consoleMessages.some(msg => msg.includes(expectedMessage)), {
+      timeout: 1000,
+      intervals: [100]
+    }).toBe(true);
   });
 });
