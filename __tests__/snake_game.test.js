@@ -59,27 +59,48 @@ describe('Snake Game Integration Tests', () => {
   });
 
   test('should increase score when food is eaten', async () => {
+    // Start the game
+    await page.click('#start-btn');
+
+    // Get initial score
     const initialScore = await page.evaluate(() => window.score);
-    // Simulate snake eating food by placing food at snake head position
-    await page.evaluate(() => {
-      const headPos = window.snake[0];
-      window.foods = [{ x: headPos.x, y: headPos.y }];
-      window.checkCollisions();
-    });
+
+    // Find the initial snake head position
+    const initialHead = await page.evaluate(() => window.snake[0]);
+
+    // Move the snake towards a food.  This assumes there's food nearby and the snake starts at {x:5, y:5}.
+    // The game speed is 200ms, so wait for a few game ticks to ensure movement.
+    await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(600);
+
+    // Get the new score
     const newScore = await page.evaluate(() => window.score);
+
+    // Assert that the score has increased, implying food was eaten
     expect(newScore).toBeGreaterThan(initialScore);
   });
 
   test('should end game on wall collision', async () => {
-    await page.evaluate(() => {
-      window.snake[0] = { x: -1, y: 0 }; // Position snake outside bounds
-      window.checkCollisions();
-    });
+    // Start the game
+    await page.click('#start-btn');
+
+    // Move the snake to the left until it collides with the wall
+    await page.keyboard.press('ArrowLeft');
+    for (let i = 0; i < 10; i++) {
+      await page.keyboard.press('ArrowLeft');
+      await page.waitForTimeout(200); // Wait for the snake to move
+    }
+
+    // Check if the game is over
     const gameRunning = await page.evaluate(() => window.gameRunning);
     expect(gameRunning).toBe(false);
   });
 
   test('should end game on self collision', async () => {
+    // Start the game
+    await page.click('#start-btn');
+
+    // Make the snake long enough to collide with itself
     await page.evaluate(() => {
       window.snake = [
         { x: 5, y: 5 },
@@ -87,27 +108,46 @@ describe('Snake Game Integration Tests', () => {
         { x: 5, y: 7 },
         { x: 5, y: 5 } // Head collides with tail
       ];
-      window.checkCollisions();
     });
+
+    // Check if the game is over
     const gameRunning = await page.evaluate(() => window.gameRunning);
     expect(gameRunning).toBe(false);
   });
 
   test('should handle WebSocket player updates', async () => {
+    // Start the game
+    await page.click('#start-btn');
+
     const testPlayer = {
       id: 'test-id',
       snake: [{ x: 10, y: 10 }],
       score: 100
     };
-    
+
+    // Send player data to the game via WebSocket
     await page.evaluate((player) => {
-      window.players[player.id] = player;
+      // Ensure WebSocket is open before sending
+      if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+        window.socket.send(JSON.stringify({
+          type: 'update',
+          id: player.id,
+          snake: player.snake,
+          score: player.score
+        }));
+      } else {
+        console.error('WebSocket not open, cannot send player data');
+      }
     }, testPlayer);
-    
+
+    // Wait for a short time to allow the game to process the update
+    await page.waitForTimeout(500);
+
+    // Verify that the player data has been updated in the game
     const players = await page.evaluate(() => window.players);
     expect(players['test-id']).toBeDefined();
     expect(players['test-id'].score).toBe(100);
-});
+  });
 
   test('should log WebSocket connection established', async () => {
     await page.waitForTimeout(1000);
@@ -117,6 +157,7 @@ describe('Snake Game Integration Tests', () => {
   });
 
   test('should log WebSocket error', async () => {
+    // Simulate WebSocket error
     await page.evaluate(() => {
       const error = new Error('Simulated WebSocket error');
       console.error('WebSocket error:', error);
