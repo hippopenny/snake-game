@@ -85,16 +85,24 @@ describe('Snake Game Integration Tests', () => {
   });
 
   test('should increase score when food is eaten', async () => {
-    // Mock food position to be next to the snake
+    // Place food near the snake's starting position
     await page.evaluate(() => {
       window.foods = [{ x: 6, y: 5, color: 'red', createdAt: Date.now(), lifetime: 5000 }];
     });
 
-    // Get initial score
-    let initialScore = await page.evaluate(() => window.score);
+    const initialScore = await page.evaluate(() => window.score);
 
-    // Move the snake towards the food.
-    await page.keyboard.press('ArrowRight');
+    // Function to check if the snake has eaten the food
+    const hasEatenFood = async () => {
+      const head = await page.evaluate(() => window.snake[0]);
+      return head.x === 6 && head.y === 5;
+    };
+
+    // Move the snake until it eats the food
+    while (!(await hasEatenFood())) {
+      await page.keyboard.press('ArrowRight');
+      await page.waitForTimeout(100); // Short delay to allow the game to update
+    }
 
     // Wait for the score to increase
     await expect.poll(async () => await page.evaluate(() => window.score), {
@@ -104,11 +112,11 @@ describe('Snake Game Integration Tests', () => {
   });
 
   test('should end game on wall collision', async () => {
-    // Move the snake to the left until it collides with the wall
-    await page.keyboard.press('ArrowLeft');
-    for (let i = 0; i < 10; i++) {
-      await page.keyboard.press('ArrowLeft');
-    }
+    // Set snake near the wall
+    await page.evaluate(() => {
+      window.snake = [{ x: 0, y: 5 }];
+      window.direction = 'left';
+    });
 
     // Wait for the game to end
     await expect.poll(async () => await page.evaluate(() => window.gameRunning), {
@@ -118,14 +126,11 @@ describe('Snake Game Integration Tests', () => {
   });
 
   test('should end game on self collision', async () => {
-    // Make the snake long enough to collide with itself
+    // Set up a snake that will collide with itself after a few moves
     await page.evaluate(() => {
-      window.snake = [
-        { x: 5, y: 5 },
-        { x: 5, y: 6 },
-        { x: 5, y: 7 },
-        { x: 5, y: 5 } // Head collides with tail
-      ];
+      window.snake = [{ x: 5, y: 5 }, { x: 5, y: 6 }, { x: 6, y: 6 }, { x: 6, y: 5 }];
+      window.direction = 'up';
+      window.nextDirection = 'right';
     });
 
     // Wait for the game to end
@@ -142,13 +147,13 @@ describe('Snake Game Integration Tests', () => {
       score: 100,
       level: 1
     };
+
     // Send player data to the game via WebSocket
     await page.evaluate(async (player) => {
       window.socket.send(JSON.stringify({
         type: 'state',
         players: { [player.id]: player },
         foods: [],
-        score: player.score
       }));
     }, testPlayer);
 
@@ -222,5 +227,37 @@ describe('Snake Game Integration Tests', () => {
 
     // Verify that the game speed has returned to normal
     expect(await page.evaluate(() => window.gameSpeed)).toBe(initialGameSpeed);
+  });
+
+  test('should receive and process game state updates from the server', async () => {
+    // Define a test game state
+    const gameState = {
+      type: 'state',
+      players: {
+        'test-player': {
+          id: 'test-player',
+          snake: [{ x: 2, y: 2 }, { x: 1, y: 2 }],
+          score: 5,
+          level: 1,
+        },
+      },
+      foods: [{ x: 7, y: 8, color: 'blue', createdAt: Date.now(), lifetime: 5000 }],
+    };
+
+    // Send the game state to the client
+    await page.evaluate((gameState) => {
+      window.socket.send(JSON.stringify(gameState));
+    }, gameState);
+
+    // Wait for a short time to allow the game to process the update
+    await page.waitForTimeout(200);
+
+    // Verify that the player data has been updated in the game
+    const playerSnake = await page.evaluate(() => window.players['test-player'].snake);
+    expect(playerSnake).toEqual([{ x: 2, y: 2 }, { x: 1, y: 2 }]);
+
+    // Verify that the food data has been updated in the game
+    const foods = await page.evaluate(() => window.foods);
+    expect(foods).toEqual([{ x: 7, y: 8, color: 'blue', createdAt: expect.any(Number), lifetime: 5000 }]);
   });
 });
