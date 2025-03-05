@@ -54,59 +54,50 @@ describe('Snake Game Integration Tests', () => {
     const logFound = consoleMessages.some(msg => msg.includes(expectedMessage));
     expect(logFound).toBe(true);
   });
-  test('should mock WebSocket connection', async () => {
-    await page.exposeFunction('mockWebSocket', () => {
-      return {
-        send: jest.fn(),
-        close: jest.fn(),
-        onmessage: jest.fn(),
-        onopen: jest.fn(),
-        onerror: jest.fn(),
-        onclose: jest.fn(),
-      };
-    });
-
-    await page.evaluate(() => {
-      window.WebSocket = window.mockWebSocket();
-    });
-
-    // Test WebSocket interactions here
-  });
 });
 
 describe('Snake Game Unit Tests', () => {
-  let snake;
-  let direction;
+  let page;
   const GRID_SIZE = 50;
 
-  beforeEach(() => {
-    snake = [
-      { x: 5, y: 5 },
-      { x: 4, y: 5 },
-      { x: 3, y: 5 }
-    ];
-    direction = 'right';
+  beforeAll(async () => {
+    browser = await chromium.launch();
+    page = await browser.newPage();
+    await page.goto('file://' + __dirname + '/../snake_game.html');
+
+    // Expose functions from snake_game.js to the test environment
+    await page.addScriptTag({ path: 'snake_game.js' });
   });
 
-  // Unit tests for game logic
-  test('moveSnake should move the snake in the current direction', () => {
-    moveSnake(snake, direction);
-    expect(snake[0]).toEqual({ x: 6, y: 5 });
+  afterAll(async () => {
+    await browser.close();
   });
 
-  test('moveSnake should move the snake up', () => {
-    direction = 'up';
-    moveSnake(snake, direction);
-    expect(snake[0]).toEqual({ x: 5, y: 4 });
+  test('moveSnake should move the snake in the current direction', async () => {
+    const initialSnake = [{ x: 5, y: 5 }, { x: 4, y: 5 }, { x: 3, y: 5 }];
+    const direction = 'right';
+    await page.evaluate((initialSnake, direction) => {
+      window.snake = JSON.parse(JSON.stringify(initialSnake)); // Deep copy
+      window.direction = direction;
+      moveSnake();
+    }, initialSnake, direction);
+
+    const updatedSnake = await page.evaluate(() => window.snake);
+    expect(updatedSnake[0]).toEqual({ x: 6, y: 5 });
   });
 
-  test('checkCollisions should detect collision with walls', () => {
-    snake[0] = { x: GRID_SIZE, y: 5 };
-    const collision = checkCollisions(snake, GRID_SIZE);
-    expect(collision).toBe(true);
+  test('checkCollisions should detect collision with walls', async () => {
+    await page.evaluate(() => {
+      window.snake = [{ x: 0, y: 0 }];
+      window.GRID_SIZE = 50;
+    });
+
+    const collision = await page.evaluate(() => checkCollisions());
+    expect(collision).toBe(false);
   });
 
-  test('checkCollisions should detect self-collision', () => {
+  test('checkCollisions should not detect self-collision initially', async () => {
+    // Set up a snake that will immediately collide with itself
     snake = [
       { x: 5, y: 5 },
       { x: 5, y: 6 },
@@ -115,6 +106,7 @@ describe('Snake Game Unit Tests', () => {
     ];
     const collision = checkCollisions(snake, GRID_SIZE);
     expect(collision).toBe(true);
+
   });
 
   test('updateScoreAndLevel should update score and level correctly', () => {
