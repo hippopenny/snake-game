@@ -2449,7 +2449,6 @@ function updatePowerUpStatus() {
 }
 window.addEventListener('resize', adjustCanvasSize);
 
-// Export functions for testing
 window.moveSnake = moveSnake;
 window.checkCollisions = checkCollisions;
 window.updateScoreAndLevel = updateScoreAndLevel;
