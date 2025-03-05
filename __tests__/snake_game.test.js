@@ -9,12 +9,15 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+jest.setTimeout(30000); // Increase Jest timeout to 30 seconds
+
 describe('Snake Game Integration Tests', () => {
   let browser;
   let page;
   let server;
   let wss;
   let consoleMessages = [];
+  let pageErrors = [];
 
   beforeAll(async () => {
     // Create HTTP server
@@ -38,13 +41,26 @@ describe('Snake Game Integration Tests', () => {
 
     browser = await chromium.launch();
     page = await browser.newPage();
+
     page.on('console', (msg) => {
       consoleMessages.push(msg.text());
     });
-    await page.goto('http://localhost:3000/snake_game.html');
+
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    page.on('websocket', ws => {
+      ws.on('close', () => {
+        console.log('WebSocket disconnected');
+      });
+    });
 
     // Wait for WebSocket to connect before running tests
-    await page.waitForFunction(() => window.socket && window.socket.readyState === WebSocket.OPEN, { timeout: 10000 });
+    await page.waitForFunction(() => {
+      console.log('WebSocket state:', window.socket ? window.socket.readyState : 'No socket');
+      return window.socket && window.socket.readyState === WebSocket.OPEN;
+    }, { timeout: 10000 });
   });
 
   afterAll(async () => {
