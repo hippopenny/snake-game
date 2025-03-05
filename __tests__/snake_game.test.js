@@ -1,7 +1,3 @@
-/**
- * @jest-environment jsdom
- */
-
 import { test, expect, chromium, Browser, Page } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
