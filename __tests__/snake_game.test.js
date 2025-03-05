@@ -39,7 +39,15 @@ describe('Snake Game Integration Tests', () => {
     await page.goto('http://localhost:3000/snake_game.html');
 
     // Wait for WebSocket to connect before running tests
-    await page.waitForEvent('websocket', { timeout: 3000 });
+    page.on('websocket', ws => {
+      ws.on('framesent', frame => {
+        console.log(`► framesent: ${frame.payload.toString()}`);
+      });
+      ws.on('framereceived', frame => {
+        console.log(`► framereceived: ${frame.payload.toString()}`);
+      });
+    });
+    await page.waitForFunction(() => window.socket && window.socket.readyState === WebSocket.OPEN, { timeout: 3000 });
   });
 
   afterAll(async () => {
@@ -64,23 +72,25 @@ describe('Snake Game Integration Tests', () => {
       window.gameRunning = false;
       window.foods = [];
       window.activePowerUp = null;
+      window.players = {};
     });
     await page.click('#start-btn');
+    await page.waitForTimeout(100); // Short delay to allow the game to initialize
   });
 
   test('should display the start screen', async () => {
-    const startScreen = await page.$('#start-screen');
-    expect(await startScreen.isVisible()).toBe(true);
+    await page.waitForSelector('#start-screen', { visible: true });
   });
 
   test('should start the game when start button is clicked', async () => {
-    const gameCanvas = await page.$('#game-canvas');
-    expect(await gameCanvas.isVisible()).toBe(true);
+    await page.waitForSelector('#game-canvas', { visible: true });
     expect(await page.evaluate(() => window.gameRunning)).toBe(true);
   });
 
   test('should move snake in response to arrow keys', async () => {
+    await page.focus('#game-canvas');
     await page.keyboard.press('ArrowUp');
+    await page.waitForFunction(() => window.direction === 'up');
     expect(await page.evaluate(() => window.direction)).toBe('up');
   });
 
@@ -157,16 +167,16 @@ describe('Snake Game Integration Tests', () => {
       }));
     }, testPlayer);
 
-    // Wait for a short time to allow the game to process the update
-    await page.waitForTimeout(200);
+    // Wait for the player to be added
+    await page.waitForFunction((playerId) => !!window.players[playerId], { timeout: 1000 }, testPlayer.id);
 
     // Verify that the player data has been updated in the game
-    const snakeX = await page.evaluate(() => {
-      if (window.players['test-id'] && window.players['test-id'].snake.length > 0) {
-        return window.players['test-id'].snake[0].x;
+    const snakeX = await page.evaluate((playerId) => {
+      if (window.players[playerId] && window.players[playerId].snake.length > 0) {
+        return window.players[playerId].snake[0].x;
       }
       return null;
-    });
+    }, testPlayer.id);
     expect(snakeX).toBe(10);
   });
 
@@ -213,10 +223,7 @@ describe('Snake Game Integration Tests', () => {
     await page.keyboard.press('ArrowRight');
 
     // Wait for the power-up to be applied
-    await expect.poll(async () => await page.evaluate(() => window.activePowerUp && window.activePowerUp.type === 'speed_boost'), {
-      timeout: 1000,
-      intervals: [100]
-    }).toBe(true);
+    await page.waitForFunction(() => window.activePowerUp && window.activePowerUp.type === 'speed_boost', { timeout: 1000 });
 
     // Verify that the game speed has increased
     const boostedGameSpeed = await page.evaluate(() => window.gameSpeed);
@@ -249,8 +256,11 @@ describe('Snake Game Integration Tests', () => {
       window.socket.send(JSON.stringify(gameState));
     }, gameState);
 
-    // Wait for a short time to allow the game to process the update
-    await page.waitForTimeout(200);
+    // Wait for the player data to be updated
+    await page.waitForFunction(() => {
+      const player = window.players['test-player'];
+      return player && player.snake[0].x === 2 && player.snake[0].y === 2;
+    }, { timeout: 1000 });
 
     // Verify that the player data has been updated in the game
     const playerSnake = await page.evaluate(() => window.players['test-player'].snake);
