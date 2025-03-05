@@ -170,4 +170,38 @@ describe('Snake Game Integration Tests', () => {
       intervals: [100]
     }).toBe(true);
   });
+
+  test('should apply speed boost power-up effect', async () => {
+    // Start the game
+    await page.click('#start-btn');
+
+    // Evaluate to set up a speed boost power-up
+    await page.evaluate(() => {
+      // Mock the food array to include a speed_boost power-up
+      window.foods = [{
+        x: 1,
+        y: 1,
+        color: 'red',
+        powerUp: true,
+        type: 'speed_boost',
+        createdAt: Date.now(),
+        lifetime: 5000
+      }];
+    });
+
+    // Move the snake towards the food to consume the power-up
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight');
+
+    // Wait for the power-up to be applied
+    await page.waitForTimeout(500);
+
+    // Verify that the game speed has increased
+    const initialGameSpeed = await page.evaluate(() => window.gameSpeed);
+    await page.waitForTimeout(500);
+    const boostedGameSpeed = await page.evaluate(() => window.gameSpeed);
+
+    // Expect the game speed to be faster after applying the powerup
+    expect(boostedGameSpeed).toBeLessThan(initialGameSpeed);
+  });
 });
