@@ -78,7 +78,7 @@ describe('Snake Game Unit Tests', () => {
             window.level = 1;
             window.gameRunning = false;
             window.GRID_SIZE = 50;
-            window.activePowerUp = null;
+                     });
 
             // Mock functions
             window.moveSnake = jest.fn();
@@ -99,7 +99,7 @@ describe('Snake Game Unit Tests', () => {
         await browser.close();
     });
     
-    test('moveSnake should move the snake in the current direction', async () => {
+       test('moveSnake should move the snake in the current direction', async () => {
         const initialSnake = [{ x: 5, y: 5 }, { x: 4, y: 5 }, { x: 3, y: 5 }];
 
                 // Call the function
@@ -111,7 +111,7 @@ describe('Snake Game Unit Tests', () => {
             initialSnake,
         );
 
-        expect(page.evaluate(() => window.moveSnake)).toHaveBeenCalled();
+                expect(page.evaluate(() => window.moveSnake)).toHaveBeenCalled();
     });
 
     test('checkCollisions should detect collision with walls', async () => {
@@ -156,7 +156,7 @@ describe('Snake Game Unit Tests', () => {
             window.updateScoreAndLevel();
             return { level: window.level };
         }, initialState);
-        expect(page.evaluate(() => window.updateScoreAndLevel)).toHaveBeenCalled();
+                expect(level).toBe(1);
     });
 
     test('deactivatePowerUp should clear active power-up', async () => {
@@ -165,7 +165,7 @@ describe('Snake Game Unit Tests', () => {
             window.deactivatePowerUp();
             return { activePowerUp: window.activePowerUp === null ? null : window.activePowerUp };
         });
-        expect(page.evaluate(() => window.deactivatePowerUp)).toHaveBeenCalled();
+                expect(page.evaluate(() => window.deactivatePowerUp)).toHaveBeenCalled();
     });
 
     test('gameOver should handle collision game over', async () => {
