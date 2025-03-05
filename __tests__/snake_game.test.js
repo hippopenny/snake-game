@@ -64,7 +64,7 @@ describe('Snake Game Unit Tests', () => {
     beforeAll(async () => {
         browser = await chromium.launch();
         page = await browser.newPage();
-        const filePath = `file://${__dirname}/../snake_game.html`;
+        const filePath = `http://localhost:3000/snake_game.html`;
         await page.goto(filePath);
 
         // Expose functions from snake_game.js to the test environment
