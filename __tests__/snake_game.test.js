@@ -1,8 +1,19 @@
 import { test, expect } from '@playwright/test';
+import fs from 'fs';
+import path from 'path';
 
 test.describe('Snake Game Unit Tests', () => {
+  let htmlContent;
+
+  test.beforeAll(async () => {
+    // Read the HTML content from snake_game.html
+    const filePath = path.resolve(__dirname, '../snake_game.html');
+    htmlContent = fs.readFileSync(filePath, 'utf-8');
+  });
+
   test.beforeEach(async ({ page }) => {
-    await page.goto('snake_game.html'); // Adjust the path if necessary
+    // Set the content of the page to the HTML content
+    await page.setContent(htmlContent);
     await page.evaluate(() => {
       // Reset game state before each test
       window.snake = [{ x: 5, y: 5 }, { x: 4, y: 5 }, { x: 3, y: 5 }];
