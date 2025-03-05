@@ -134,27 +134,27 @@ describe('Snake Game Integration Tests', () => {
       score: 100,
       level: 1
     };
-
-    // Send player data to the game via WebSocket
-    await page.evaluate((player) => {
-      window.otherPlayers = {};
-      window.otherPlayers[player.id] = player;
-      window.socket.send(JSON.stringify({
-        type: 'state',
-        id: player.id,
-        players: { [player.id]: player },
-        score: player.score
-      }));
-    }, testPlayer);
-
+   // Send player data to the game via WebSocket
+   await page.evaluate(async (player) => {
+     window.socket.send(JSON.stringify({
+       type: 'state',
+       players: { [player.id]: player },
+       foods: [],
+       score: player.score
+     }));
+   }, testPlayer);
+ 
     // Wait for a short time to allow the game to process the update
-    await page.waitForTimeout(500);
-
+    await page.waitForTimeout(200);
+ 
     // Verify that the player data has been updated in the game
-    const otherPlayers = await page.evaluate(() => window.otherPlayers);
-    expect(otherPlayers['test-id']).toBeDefined();
-    expect(otherPlayers['test-id'].score).toBe(100);
-    expect(otherPlayers['test-id'].snake[0].x).toBe(10);
+    const snakeX = await page.evaluate(() => {
+      if (window.players['test-id'] && window.players['test-id'].snake.length > 0) {
+        return window.players['test-id'].snake[0].x;
+      }
+      return null;
+    });
+    expect(snakeX).toBe(10);
   });
 
   test('should log WebSocket connection established', async () => {
@@ -203,14 +203,14 @@ describe('Snake Game Integration Tests', () => {
 
     // Wait for the power-up to be applied
     await page.waitForTimeout(500);
-
+ 
     // Verify that the game speed has increased
-    const speedMultiplierBefore = await page.evaluate(() => window.baseGameSpeed / window.gameSpeed);
+    const gameSpeedBefore = await page.evaluate(() => window.gameSpeed);
     await page.waitForTimeout(1500); // Wait for power-up effect and expiration
-    const speedMultiplierAfter = await page.evaluate(() => window.baseGameSpeed / window.gameSpeed);
-
+    const gameSpeedAfter = await page.evaluate(() => window.gameSpeed);
+ 
     // Expect the game speed to be faster after applying the powerup
-    expect(speedMultiplierBefore).toBeLessThan(speedMultiplierAfter);
+    expect(gameSpeedBefore).toBeGreaterThan(gameSpeedAfter);
 
   });
 });
