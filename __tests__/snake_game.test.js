@@ -40,13 +40,6 @@ describe('Snake Game Integration Tests', () => {
 
     // Wait for WebSocket to connect before running tests
     await page.waitForEvent('websocket', { timeout: 3000 });
-    await page.evaluate(() => {
-      return new Promise(resolve => {
-        window.socket.addEventListener('message', function(event) {
-          if (JSON.parse(event.data).type === 'state') resolve();
-        });
-      });
-    });
   });
 
   afterAll(async () => {
@@ -55,31 +48,52 @@ describe('Snake Game Integration Tests', () => {
     wss.close();
   });
 
+  beforeEach(async () => {
+    consoleMessages = []; // Clear console messages before each test
+    await page.evaluate(() => {
+      // Reset game state before each test
+      window.snake = [
+        { x: 5, y: 5 },
+        { x: 4, y: 5 },
+        { x: 3, y: 5 }
+      ];
+      window.direction = 'right';
+      window.nextDirection = 'right';
+      window.score = 0;
+      window.level = 1;
+      window.gameRunning = false;
+      window.foods = [];
+      window.activePowerUp = null;
+    });
+    await page.click('#start-btn');
+  });
+
   test('should display the start screen', async () => {
     const startScreen = await page.$('#start-screen');
     expect(await startScreen.isVisible()).toBe(true);
   });
 
   test('should start the game when start button is clicked', async () => {
-    await page.click('#start-btn');
     const gameCanvas = await page.$('#game-canvas');
     expect(await gameCanvas.isVisible()).toBe(true);
+    expect(await page.evaluate(() => window.gameRunning)).toBe(true);
   });
 
   test('should move snake in response to arrow keys', async () => {
     await page.keyboard.press('ArrowUp');
-    const direction = await page.evaluate(() => window.direction);
-    expect(direction).toBe('up');
+    expect(await page.evaluate(() => window.direction)).toBe('up');
   });
 
   test('should increase score when food is eaten', async () => {
-    // Start the game
-    await page.click('#start-btn');
+    // Mock food position to be next to the snake
+    await page.evaluate(() => {
+      window.foods = [{ x: 6, y: 5, color: 'red', createdAt: Date.now(), lifetime: 5000 }];
+    });
 
     // Get initial score
     let initialScore = await page.evaluate(() => window.score);
 
-    // Move the snake towards a food.
+    // Move the snake towards the food.
     await page.keyboard.press('ArrowRight');
 
     // Wait for the score to increase
@@ -90,14 +104,10 @@ describe('Snake Game Integration Tests', () => {
   });
 
   test('should end game on wall collision', async () => {
-    // Start the game
-    await page.click('#start-btn');
-
     // Move the snake to the left until it collides with the wall
     await page.keyboard.press('ArrowLeft');
     for (let i = 0; i < 10; i++) {
       await page.keyboard.press('ArrowLeft');
-      await page.waitForTimeout(200); // Wait for the snake to move
     }
 
     // Wait for the game to end
@@ -108,9 +118,6 @@ describe('Snake Game Integration Tests', () => {
   });
 
   test('should end game on self collision', async () => {
-    // Start the game
-    await page.click('#start-btn');
-
     // Make the snake long enough to collide with itself
     await page.evaluate(() => {
       window.snake = [
@@ -129,28 +136,25 @@ describe('Snake Game Integration Tests', () => {
   });
 
   test('should handle WebSocket player updates and draw other players', async () => {
-    // Start the game
-    await page.click('#start-btn');
-
     const testPlayer = {
       id: 'test-id',
       snake: [{ x: 10, y: 10 }],
       score: 100,
       level: 1
     };
-   // Send player data to the game via WebSocket
-   await page.evaluate(async (player) => {
-     window.socket.send(JSON.stringify({
-       type: 'state',
-       players: { [player.id]: player },
-       foods: [],
-       score: player.score
-     }));
-   }, testPlayer);
- 
+    // Send player data to the game via WebSocket
+    await page.evaluate(async (player) => {
+      window.socket.send(JSON.stringify({
+        type: 'state',
+        players: { [player.id]: player },
+        foods: [],
+        score: player.score
+      }));
+    }, testPlayer);
+
     // Wait for a short time to allow the game to process the update
     await page.waitForTimeout(200);
- 
+
     // Verify that the player data has been updated in the game
     const snakeX = await page.evaluate(() => {
       if (window.players['test-id'] && window.players['test-id'].snake.length > 0) {
@@ -182,16 +186,12 @@ describe('Snake Game Integration Tests', () => {
   });
 
   test('should apply speed boost power-up effect', async () => {
-    // Start the game
-    await page.click('#start-btn');
-
-    // Evaluate to set up a speed boost power-up
+    // Mock the food array to include a speed_boost power-up
     await page.evaluate(() => {
-      // Mock the food array to include a speed_boost power-up
       window.foods = [
         {
-          x: 1,
-          y: 1,
+          x: 6,
+          y: 5,
           color: 'red',
           powerUp: true,
           type: 'speed_boost',
@@ -201,20 +201,26 @@ describe('Snake Game Integration Tests', () => {
       ];
     });
 
+    // Get initial game speed
+    const initialGameSpeed = await page.evaluate(() => window.gameSpeed);
+
     // Move the snake towards the food
-    await page.keyboard.press('ArrowRight');
     await page.keyboard.press('ArrowRight');
 
     // Wait for the power-up to be applied
-    await page.waitForTimeout(500);
- 
-    // Verify that the game speed has increased
-    const gameSpeedBefore = await page.evaluate(() => window.gameSpeed);
-    await page.waitForTimeout(1500); // Wait for power-up effect and expiration
-    const gameSpeedAfter = await page.evaluate(() => window.gameSpeed);
- 
-    // Expect the game speed to be faster after applying the powerup
-    expect(gameSpeedBefore).toBeGreaterThan(gameSpeedAfter);
+    await expect.poll(async () => await page.evaluate(() => window.activePowerUp && window.activePowerUp.type === 'speed_boost'), {
+      timeout: 1000,
+      intervals: [100]
+    }).toBe(true);
 
+    // Verify that the game speed has increased
+    const boostedGameSpeed = await page.evaluate(() => window.gameSpeed);
+    expect(boostedGameSpeed).toBeLessThan(initialGameSpeed);
+
+    // Wait for the power-up to expire
+    await page.waitForTimeout(2500);
+
+    // Verify that the game speed has returned to normal
+    expect(await page.evaluate(() => window.gameSpeed)).toBe(initialGameSpeed);
   });
 });
