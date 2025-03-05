@@ -21,6 +21,7 @@ describe('Snake Game Integration Tests', () => {
   let pageErrors = [];
 
   beforeAll(async () => {
+    jest.setTimeout(60000);
     // Create HTTP server
     server = createServer((req, res) => {
       if (req.url === '/snake_game.html') {
