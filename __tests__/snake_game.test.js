@@ -41,7 +41,11 @@ describe('Snake Game Integration Tests', () => {
     // Wait for WebSocket to connect before running tests
     await page.waitForEvent('websocket', { timeout: 3000 });
     await page.evaluate(() => {
-      return new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms for initial game state
+      return new Promise(resolve => {
+        window.socket.addEventListener('message', function(event) {
+          if (JSON.parse(event.data).type === 'state') resolve();
+        });
+      });
     });
   });
 
