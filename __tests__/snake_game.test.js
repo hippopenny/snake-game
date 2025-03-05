@@ -107,7 +107,7 @@ describe('Snake Game Integration Tests', () => {
     const players = await page.evaluate(() => window.players);
     expect(players['test-id']).toBeDefined();
     expect(players['test-id'].score).toBe(100);
-  });
+});
 
   test('should log WebSocket connection established', async () => {
     await page.waitForTimeout(1000);
