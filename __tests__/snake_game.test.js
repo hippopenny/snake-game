@@ -1,11 +1,11 @@
 import { chromium } from 'playwright';
 import '@playwright/test';
 import { createServer } from 'http';
-import { WebSocketServer } from 'ws';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { jest } from '@jest/globals';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,62 +15,31 @@ jest.setTimeout(30000); // Increase Jest timeout to 30 seconds
 describe('Snake Game Integration Tests', () => {
   let browser;
   let page;
-  let server;
   let consoleMessages = [];
   let pageErrors = [];
+  let httpServer;
 
   beforeAll(async () => {
-    jest.setTimeout(60000);
-    
-    try {
-      server = createServer((req, res) => {
-        console.log(`Request received: ${req.url}`);
-        const filePath = req.url === '/' ? '/snake_game.html' : req.url;
-        
-        if (filePath.includes('snake_game.html') || filePath.includes('snake_game.js')) {
-          const fullPath = path.join(__dirname, '..', filePath);
-          console.log(`Serving file: ${fullPath}`);
-          
-          if (!fs.existsSync(fullPath)) {
-            console.error(`File not found: ${fullPath}`);
-            res.writeHead(404);
-            res.end();
-            return;
-          }
-  
-          const contentType = filePath.endsWith('.html') ? 'text/html' : 'application/javascript';
-          res.writeHead(200, { 'Content-Type': contentType });
-          fs.createReadStream(fullPath).pipe(res);
-        } else {
-          res.writeHead(404);
-          res.end();
-        }
-      }).listen(3000, () => console.log('Server started on port 3000'));
-  
-    
-      browser = await chromium.launch({ 
-        headless: false,
-        args: ['--no-sandbox']
-      });
-      console.log('Browser launched');
-  
-      page = await browser.newPage();
-      console.log('Page created');
-  
-      await page.goto('http://localhost:3000/snake_game.html', {
-        waitUntil: 'networkidle',
-        timeout: 30000
-      });
-      console.log('Page loaded');
-    } catch (error) {
-      console.error('Setup failed:', error);
-      throw error;
-    }
+    // Start HTTP server for static files on port 3000
+    httpServer = createServer((req, res) => {
+      const filePath = req.url === '/' ? '/snake_game.html' : req.url;
+      if (filePath.includes('snake_game.html') || filePath.includes('snake_game.js')) {
+        const fullPath = path.join(__dirname, '..', filePath);
+        const contentType = filePath.endsWith('.html') ? 'text/html' : 'application/javascript';
+        res.writeHead(200, { 'Content-Type': contentType });
+        fs.createReadStream(fullPath).pipe(res);
+      }
+    }).listen(3000);
+
+
+    browser = await chromium.launch({ headless: false });
+    page = await browser.newPage();
+    await page.goto('http://localhost:3000/snake_game.html');
   });
 
   afterAll(async () => {
     await browser.close();
-    server.close();
+    httpServer.close();
   });
 
   beforeEach(async () => {
