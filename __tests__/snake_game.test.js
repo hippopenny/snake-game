@@ -76,9 +76,8 @@ describe('Snake Game Tests', () => {
     const gameRunning = await page.evaluate(() => window.gameRunning);
     expect(gameRunning).toBe(true);
   });
-
+ 
   test('should move snake in response to arrow keys', async () => {
-    await page.click('#start-btn');
     await page.keyboard.press('ArrowRight');
     await page.waitForTimeout(250);
     
