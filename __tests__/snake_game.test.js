@@ -39,7 +39,10 @@ describe('Snake Game Integration Tests', () => {
     await page.goto('http://localhost:3000/snake_game.html');
 
     // Wait for WebSocket to connect before running tests
-    await page.waitForEvent('websocket');
+    await page.waitForEvent('websocket', { timeout: 3000 });
+    await page.evaluate(() => {
+      return new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms for initial game state
+    });
   });
 
   afterAll(async () => {
@@ -159,15 +162,14 @@ describe('Snake Game Integration Tests', () => {
   });
 
   test('should log WebSocket error', async () => {
-    // Simulate WebSocket error and capture console.error messages
+    // Simulate WebSocket error
     await page.evaluate(() => {
-      console.error('WebSocket error:', 'Simulated WebSocket error');
+      window.socket.onerror({ message: 'Simulated WebSocket error' });
     });
-
     const expectedMessage = 'WebSocket error: Simulated WebSocket error';
     await expect.poll(() => consoleMessages.some(msg => msg.includes(expectedMessage)), {
       timeout: 1000,
-      intervals: [100]
+      intervals: [200]
     }).toBe(true);
   });
 
@@ -178,18 +180,20 @@ describe('Snake Game Integration Tests', () => {
     // Evaluate to set up a speed boost power-up
     await page.evaluate(() => {
       // Mock the food array to include a speed_boost power-up
-      window.foods = [{
-        x: 1,
-        y: 1,
-        color: 'red',
-        powerUp: true,
-        type: 'speed_boost',
-        createdAt: Date.now(),
-        lifetime: 5000
-      }];
+      window.foods = [
+        {
+          x: 1,
+          y: 1,
+          color: 'red',
+          powerUp: true,
+          type: 'speed_boost',
+          createdAt: Date.now(),
+          lifetime: 2000 // Short lifetime for testing
+        }
+      ];
     });
 
-    // Move the snake towards the food to consume the power-up
+    // Move the snake towards the food
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('ArrowRight');
 
@@ -197,11 +201,12 @@ describe('Snake Game Integration Tests', () => {
     await page.waitForTimeout(500);
 
     // Verify that the game speed has increased
-    const initialGameSpeed = await page.evaluate(() => window.gameSpeed);
-    await page.waitForTimeout(500);
-    const boostedGameSpeed = await page.evaluate(() => window.gameSpeed);
+    const speedMultiplierBefore = await page.evaluate(() => window.baseGameSpeed / window.gameSpeed);
+    await page.waitForTimeout(1500); // Wait for power-up effect and expiration
+    const speedMultiplierAfter = await page.evaluate(() => window.baseGameSpeed / window.gameSpeed);
 
     // Expect the game speed to be faster after applying the powerup
-    expect(boostedGameSpeed).toBeLessThan(initialGameSpeed);
+    expect(speedMultiplierBefore).toBeLessThan(speedMultiplierAfter);
+
   });
 });
