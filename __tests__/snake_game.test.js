@@ -31,7 +31,7 @@ describe('Snake Game Integration Tests', () => {
       }
     }).listen(3000, () => {
       console.log('HTTP server listening on port 3000');
-    });
+    }).setTimeout(5000);
 
     // Create WebSocket server
     wss = new WebSocketServer({ server });
@@ -56,11 +56,13 @@ describe('Snake Game Integration Tests', () => {
       });
     });
 
+    // Check for page errors before waiting for WebSocket
+    if (pageErrors.length > 0) {
+      throw new Error(`Page errors: ${pageErrors.join('\n')}`);
+    }
+
     // Wait for WebSocket to connect before running tests
-    await page.waitForFunction(() => {
-      console.log('WebSocket state:', window.socket ? window.socket.readyState : 'No socket');
-      return window.socket && window.socket.readyState === WebSocket.OPEN;
-    }, { timeout: 10000 });
+    await page.waitForFunction(() => window.socket && window.socket.readyState === WebSocket.OPEN, { timeout: 10000 });
   });
 
   afterAll(async () => {
