@@ -1,17 +1,5 @@
 {
-  "type": "module",
-  "scripts": {
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest --verbose --testTimeout=60000 --detectOpenHandles"
-  },
   "dependencies": {
     "ws": "^8.18.1"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.50.1",
-    "jest": "^29.0.0",
-    "jest-environment-jsdom": "^29.7.0",
-    "jest-playwright-preset": "^4.0.0",
-    "mock-socket": "^9.3.1",
-    "playwright": "^1.30.0"
   }
 }

@@ -21,6 +21,60 @@ const MAX_HUNGER = 100;
 const HUNGER_WARNING_THRESHOLD = 40; // Increased from 30 to give earlier warning
 let hungerClockVisible = true;
 
+// Animation and interpolation variables
+let animationProgress = 1; // For interpolation
+const INTERPOLATION_STEPS = 12; // Increased for even smoother transitions
+let prevSnakePositions = []; // For storing previous positions
+let animationFrameId = null; // Track animation frame for proper cancellation
+
+// High-performance rendering variables
+let lastFrameTime = 0;
+const FIXED_FRAME_RATE = 60; // Render at 60fps for smooth movement
+const FRAME_INTERVAL = 1000 / FIXED_FRAME_RATE; // ~16.7ms between frames
+let frameAccumulator = 0;
+let interpolationAlpha = 0; // Current interpolation factor
+
+// Parallax background layers
+const BACKGROUND_LAYERS = [
+    { color: '#0d0d2a', speed: 0.05, elements: 150, size: [1, 3], type: 'star' },
+    { color: '#1a1a4f', speed: 0.1, elements: 80, size: [2, 4], type: 'star' },
+    { color: '#7251b5', speed: 0.15, elements: 40, size: [3, 6], type: 'nebula' },
+    { color: '#34346e', speed: 0.2, elements: 15, size: [80, 120], type: 'cloud' }
+];
+let backgroundElements = [];
+
+// Wall configuration
+let WALLS = []; // Changed to let so it can be updated from server
+const SAFE_ZONE_RADIUS = 50; // Safe zone radius in cells
+const WALL_COLOR = '#444';
+
+// Safe zone for new players
+let safeZoneActive = false;
+let safeZoneExpiry = 0;
+const SAFE_ZONE_DURATION = 7000; // Safe zone protection lasts 7 seconds
+
+// Add easing function for smoother animations
+function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+// Camera system for large map
+const GRID_SIZE = 400; // Increased from 200 to 400 for an even larger game world
+const CELL_SIZE = 15; // Increased from 10 to 15 for larger, more visually appealing snakes and food
+const VIEWPORT_WIDTH = 500; // Visible width in pixels
+const VIEWPORT_HEIGHT = 500; // Visible height in pixels
+const CAMERA_DEADZONE_X = 0.6; // Deadzone width as percentage of viewport width (60%)
+const CAMERA_DEADZONE_Y = 0.6; // Deadzone height as percentage of viewport height (60%)
+
+// Camera object to track position
+let camera = {
+    x: 0,
+    y: 0,
+    targetX: 0,
+    targetY: 0,
+    smoothFactor: 0.1 // Controls how smooth the camera follows (0.1 = 10% movement toward target per frame)
+};
+
 // Power-up related variables
 let activePowerUp = null;
 const POWER_UP_EFFECTS = {
@@ -316,6 +370,9 @@ socket.onmessage = (event) => {
         if (data.foods) {
             foods = data.foods;
         }
+        if (data.walls) {
+            WALLS = data.walls; // Update walls from server
+        }
         // Check if our player has a power-up from the server
         if (players[playerId] && players[playerId].activePowerUp) {
             activePowerUp = players[playerId].activePowerUp;
@@ -343,15 +400,91 @@ socket.onerror = (error) => {
 socket.onclose = (event) => {
     console.log('Disconnected from server:', event.code, event.reason);
     
+    // Add connection lost indicator
+    const connectionLostIndicator = document.createElement('div');
+    connectionLostIndicator.id = 'connection-lost';
+    connectionLostIndicator.style.position = 'fixed';
+    connectionLostIndicator.style.top = '50%';
+    connectionLostIndicator.style.left = '50%';
+    connectionLostIndicator.style.transform = 'translate(-50%, -50%)';
+    connectionLostIndicator.style.backgroundColor = 'rgba(244, 67, 54, 0.95)';
+    connectionLostIndicator.style.color = 'white';
+    connectionLostIndicator.style.padding = '20px 30px';
+    connectionLostIndicator.style.borderRadius = '10px';
+    connectionLostIndicator.style.fontWeight = 'bold';
+    connectionLostIndicator.style.fontSize = '24px';
+    connectionLostIndicator.style.zIndex = '2000';
+    connectionLostIndicator.style.boxShadow = '0 0 20px rgba(0, 0, 0, 0.7)';
+    connectionLostIndicator.style.border = '2px solid white';
+    connectionLostIndicator.textContent = 'CONNECTION LOST. Attempting to reconnect...';
+    document.body.appendChild(connectionLostIndicator);
+    
+    // Save current game state for reconnection
+    const savedSnake = [...snake];
+    const savedScore = score;
+    const savedLevel = level;
+    
     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS && gameRunning) {
         console.log(`Attempting to reconnect (${reconnectAttempts + 1}/${MAX_RECONNECT_ATTEMPTS})...`);
+        
+        // Add visual reconnection indicator
+        const reconnectingMessage = document.createElement('div');
+        reconnectingMessage.id = 'reconnecting-message';
+        reconnectingMessage.style.position = 'absolute';
+        reconnectingMessage.style.top = '50%';
+        reconnectingMessage.style.left = '50%';
+        reconnectingMessage.style.transform = 'translate(-50%, -50%)';
+        reconnectingMessage.style.background = 'rgba(0, 0, 0, 0.8)';
+        reconnectingMessage.style.color = '#4CAF50';
+        reconnectingMessage.style.padding = '20px';
+        reconnectingMessage.style.borderRadius = '10px';
+        reconnectingMessage.style.zIndex = '2000';
+        reconnectingMessage.style.fontWeight = 'bold';
+        reconnectingMessage.style.fontSize = '18px';
+        reconnectingMessage.style.boxShadow = '0 0 20px rgba(76, 175, 80, 0.5)';
+        reconnectingMessage.textContent = `Reconnecting (${reconnectAttempts + 1}/${MAX_RECONNECT_ATTEMPTS})...`;
+        document.body.appendChild(reconnectingMessage);
+        
         setTimeout(() => {
             reconnectAttempts++;
             // Create a new WebSocket connection
             const newSocket = new WebSocket('ws://127.0.0.1:8080');
             
             // Re-attach event handlers
-            newSocket.onopen = socket.onopen;
+            newSocket.onopen = () => {
+                console.log("WebSocket reconnected. Player ID:", playerId);
+                
+                // Remove reconnection message if it exists
+                const reconnectMessage = document.getElementById('reconnecting-message');
+                if (reconnectMessage) {
+                    document.body.removeChild(reconnectMessage);
+                }
+                
+                // Remove connection lost indicator if it exists
+                if (document.getElementById('connection-lost')) {
+                    document.body.removeChild(document.getElementById('connection-lost'));
+                }
+                
+                // Restore player state immediately after reconnection
+                if (gameRunning && savedSnake.length > 0) {
+                    // Send the saved state to restore the snake
+                    const playerState = {
+                        type: 'update',
+                        id: playerId,
+                        snake: savedSnake,
+                        score: savedScore,
+                        level: savedLevel,
+                        activePowerUp: activePowerUp
+                    };
+                    setTimeout(() => {
+                        newSocket.send(JSON.stringify(playerState));
+                    }, 100);
+                }
+                
+                // Reset reconnect attempts on successful connection
+                reconnectAttempts = 0;
+            };
+            
             newSocket.onmessage = socket.onmessage;
             newSocket.onerror = socket.onerror;
             newSocket.onclose = socket.onclose;
@@ -360,60 +493,105 @@ socket.onclose = (event) => {
             socket = newSocket;
         }, RECONNECT_DELAY);
     } else if (gameRunning) {
+        // Remove any existing reconnection message
+        const reconnectMessage = document.getElementById('reconnecting-message');
+        if (reconnectMessage) {
+            document.body.removeChild(reconnectMessage);
+        }
+        
         alert("Lost connection to server. Please refresh the page to reconnect.");
     }
 };
 
-const GRID_SIZE = 50;
-let CELL_SIZE = 10; // Size of each cell in pixels
+// Camera update function with deadzone for smoother gameplay
+function updateCamera(alpha = 1) {
+    if (!snake.length) return;
+    
+    // Get snake head position
+    const head = snake[0];
+    let headX = head.x;
+    let headY = head.y;
+    
+    // Use interpolated position for perfect synchronization
+    if (prevSnakePositions.length > 0) {
+        const eased = easeInOutCubic(alpha);
+        headX = prevSnakePositions[0].x + (head.x - prevSnakePositions[0].x) * eased;
+        headY = prevSnakePositions[0].y + (head.y - prevSnakePositions[0].y) * eased;
+    }
+    
+    // Convert snake position to pixel coordinates
+    const snakePxX = headX * CELL_SIZE + CELL_SIZE / 2;
+    const snakePxY = headY * CELL_SIZE + CELL_SIZE / 2;
+    
+    // Calculate snake position relative to the viewport center
+    const snakeViewportX = snakePxX - (camera.x + VIEWPORT_WIDTH / 2);
+    const snakeViewportY = snakePxY - (camera.y + VIEWPORT_HEIGHT / 2);
+    
+    // Define deadzone as percentage of viewport dimensions
+    const deadzoneWidth = VIEWPORT_WIDTH * CAMERA_DEADZONE_X;
+    const deadzoneHeight = VIEWPORT_HEIGHT * CAMERA_DEADZONE_Y;
+    
+    // Target camera position (only calculate new position if outside deadzone)
+    let targetX = camera.x;
+    let targetY = camera.y;
+    
+    // Check if snake is outside horizontal deadzone
+    if (Math.abs(snakeViewportX) > deadzoneWidth / 2) {
+        // Calculate how far outside the deadzone we are
+        const excessX = Math.abs(snakeViewportX) - deadzoneWidth / 2;
+        // Move in the appropriate direction
+        targetX = camera.x + Math.sign(snakeViewportX) * excessX;
+    }
+    
+    // Check if snake is outside vertical deadzone
+    if (Math.abs(snakeViewportY) > deadzoneHeight / 2) {
+        // Calculate how far outside the deadzone we are
+        const excessY = Math.abs(snakeViewportY) - deadzoneHeight / 2;
+        // Move in the appropriate direction
+        targetY = camera.y + Math.sign(snakeViewportY) * excessY;
+    }
+    
+    // Apply smooth interpolation for camera movement
+    const smoothFactor = 0.15;
+    camera.x += (targetX - camera.x) * smoothFactor;
+    camera.y += (targetY - camera.y) * smoothFactor;
+    
+    // Clamp camera to game bounds
+    camera.x = Math.max(0, Math.min(camera.x, GRID_SIZE * CELL_SIZE - VIEWPORT_WIDTH));
+    camera.y = Math.max(0, Math.min(camera.y, GRID_SIZE * CELL_SIZE - VIEWPORT_HEIGHT));
+}
 
 // Set up the game canvas
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
 
-// Adjust the canvas size based on screen size
-function getAvailableScreenSize() {
-    const screenWidth = window.innerWidth;
-    const screenHeight = window.innerHeight;
-    
-    // Subtract space for UI elements if needed
-    const availableWidth = screenWidth - 40; // Adjust as needed
-    const availableHeight = screenHeight - 200; // Adjust as needed for UI elements
-    
-    return { width: availableWidth, height: availableHeight };
-}
-
-function adjustCanvasSize() {
-    const { width, height } = getAvailableScreenSize();
-    
-    // Calculate the maximum size that maintains the aspect ratio
-    const maxGridSize = Math.min(width, height);
-    
-    // Set the canvas size
-    canvas.width = maxGridSize;
-    canvas.height = maxGridSize;
-    
-    // Adjust the cell size based on the new canvas size
-    CELL_SIZE = Math.floor(maxGridSize / GRID_SIZE);
-    
-    // Update the canvas style to ensure it fits the screen
-    canvas.style.width = `${maxGridSize}px`;
-    canvas.style.height = `${maxGridSize}px`;
-}
+// Set canvas size based on viewport dimensions
+canvas.width = VIEWPORT_WIDTH;
+canvas.height = VIEWPORT_HEIGHT;
 
 // Initialize leaderboard when the document is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    adjustCanvasSize();
+    // Initialize mini leaderboard
     
     // Initialize heat map
     initHeatMap();
 });
 
 function initGame() {
+    // Cancel any existing animation frame to avoid duplicate animation loops
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+    
+    // Start the snake at a reasonable position in the larger map
+    const centerX = Math.floor(GRID_SIZE / 2);
+    const centerY = Math.floor(GRID_SIZE / 2);
+    
     snake = [
-        {x: 5, y: 5},
-        {x: 4, y: 5},
-        {x: 3, y: 5}
+        {x: centerX, y: centerY},
+        {x: centerX - 1, y: centerY},
+        {x: centerX - 2, y: centerY}
     ];
     direction = 'right';
     nextDirection = 'right';
@@ -426,17 +604,38 @@ function initGame() {
     heartContainer.style.display = 'flex';
     powerUpIndicator.style.display = 'none';
     
+    // Initialize camera to focus on snake head
+    camera.x = snake[0].x * CELL_SIZE - VIEWPORT_WIDTH / 2;
+    camera.y = snake[0].y * CELL_SIZE - VIEWPORT_HEIGHT / 2;
+    camera.targetX = camera.x;
+    camera.targetY = camera.y;
+    
+    // Ensure we have a valid snake before starting
+    if (!snake || snake.length === 0) {
+        snake = [
+            {x: centerX, y: centerY},
+            {x: centerX - 1, y: centerY},
+            {x: centerX - 2, y: centerY}
+        ];
+    }
+    
     // Reset heat map
     initHeatMap();
+    
+    // Initialize parallax background elements
+    initBackgroundElements();
+    
+    // Walls are now managed by the server
+    
+    // Activate safe zone for new player
+    activateSafeZone();
+    
+    // Spawn starting food around player
+    spawnStartingFood();
     
     updateScoreAndLevel();
     updateSpeedDisplay();
     updateHungerBar(); // Initialize hunger bar
-    
-    // Hide leaderboard by default
-    if (bestScoresVisible) {
-        toggleBestScores();
-    }
     
     gameOverScreen.style.display = 'none';
     levelUpScreen.style.display = 'none';
@@ -447,47 +646,97 @@ function initGame() {
     gameLoop = setInterval(gameStep, gameSpeed);
     gameRunning = true;
     
-    // Start the game loop
-    requestAnimationFrame(draw);
+    // Start the rendering loop separately with proper timing initialization
+    lastFrameTime = performance.now();
+    frameAccumulator = 0;
+    interpolationAlpha = 0;
+    
+    // Store animation frame ID for proper cancellation later
+    animationFrameId = requestAnimationFrame(renderFrame);
 }
 
-function draw() {
-    // Clear the canvas
-    ctx.fillStyle = '#111';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+function renderFrame(timestamp) {
+    if (!gameRunning) return;
     
-    // Draw grid lines
-    ctx.strokeStyle = '#222';
-    ctx.lineWidth = 0.5;
+    // Store animation frame ID so it can be properly cancelled if needed
+    animationFrameId = requestAnimationFrame(renderFrame);
     
-    // Draw vertical grid lines
-    for (let x = 0; x <= canvas.width; x += CELL_SIZE) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
-    }
+    // Calculate delta time since last frame
+    const deltaTime = timestamp - lastFrameTime;
+    lastFrameTime = timestamp;
     
-    // Draw horizontal grid lines
-    for (let y = 0; y <= canvas.height; y += CELL_SIZE) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-    }
+    // Accumulate time but cap maximum delta to prevent extreme jumps
+    // This prevents the snake from disappearing when tab is inactive
+    const maxDelta = 50; // Maximum milliseconds to process in a single frame
+    frameAccumulator = (frameAccumulator + Math.min(deltaTime, maxDelta));
     
-    // Draw foods
+    // Calculate interpolation factor between 0 and 1
+    // This should be a percentage of how far we are between moves
+    interpolationAlpha = Math.min(1, frameAccumulator / gameSpeed);
+    
+    // Draw with interpolation factor
+    draw(interpolationAlpha);
+}
+
+function draw(alpha = 1) {
+    // Update camera position with interpolation factor
+    updateCamera(alpha);
+    
+    // Draw enhanced background with parallax
+    drawEnhancedBackground();
+    
+    // Save the canvas state before applying transformations
+    ctx.save();
+    
+    // Apply camera transformation
+    ctx.translate(-Math.floor(camera.x), -Math.floor(camera.y));
+    
+    // Calculate visible grid range
+    const startX = Math.floor(camera.x / CELL_SIZE);
+    const startY = Math.floor(camera.y / CELL_SIZE);
+    const endX = startX + Math.ceil(VIEWPORT_WIDTH / CELL_SIZE) + 1;
+    const endY = startY + Math.ceil(VIEWPORT_HEIGHT / CELL_SIZE) + 1;
+    
+    // Grid lines removed for smoother visuals
+    
+    // Draw foods (only those in view)
     foods.forEach(food => {
+        const foodX = food.x * CELL_SIZE;
+        const foodY = food.y * CELL_SIZE;
+        
+        // Skip if food is outside viewport
+        if (foodX + CELL_SIZE < camera.x || foodX > camera.x + VIEWPORT_WIDTH ||
+            foodY + CELL_SIZE < camera.y || foodY > camera.y + VIEWPORT_HEIGHT) {
+            return;
+        }
+        
         drawFood(food);
     });
     
     // Draw player's snake
     drawSnake(snake, true);
     
-    // Draw other players' snakes
+    // Draw other players' snakes (only those in view)
     for (const id in players) {
         if (id !== playerId && players[id].snake) {
-            drawSnake(players[id].snake, false);
+            // Check if any part of the snake is visible
+            const otherSnake = players[id].snake;
+            let isVisible = false;
+            
+            for (const segment of otherSnake) {
+                const segX = segment.x * CELL_SIZE;
+                const segY = segment.y * CELL_SIZE;
+                
+                if (!(segX + CELL_SIZE < camera.x || segX > camera.x + VIEWPORT_WIDTH ||
+                      segY + CELL_SIZE < camera.y || segY > camera.y + VIEWPORT_HEIGHT)) {
+                    isVisible = true;
+                    break;
+                }
+            }
+            
+            if (isVisible) {
+                drawSnake(otherSnake, false);
+            }
         }
     }
     
@@ -499,6 +748,17 @@ function draw() {
     // Draw particles on top of everything
     updateAndDrawParticles();
     
+    // Draw walls
+    drawWalls();
+    
+    // Draw safe zone if active
+    if (safeZoneActive && Date.now() < safeZoneExpiry) {
+        drawSafeZone();
+    }
+    
+    // Restore canvas state
+    ctx.restore();
+    
     // Update minimap and mini leaderboard
     if (minimapVisible) {
         updateMinimap();
@@ -507,8 +767,8 @@ function draw() {
         updateBestScores();
     }
     
-    if (gameRunning) {
-        requestAnimationFrame(draw);
+    if (gameRunning && !animationFrameId) {
+        // We don't need to request a new frame here as it's handled by renderFrame
     }
 }
 
@@ -618,6 +878,55 @@ function drawFood(food) {
 
 /* Enhanced drawSnake function with improved power-up visual effects */
 function drawSnake(snakeBody, isCurrentPlayer) {
+    // Do not attempt to draw an empty snake
+    if (!snakeBody || snakeBody.length === 0) {
+        console.error("Attempted to draw empty snake");
+        return;
+    }
+    
+    // Apply interpolation for smoother movement
+    let positionsToRender = snakeBody;
+    
+    // Ensure previous positions exist before trying to interpolate
+    if (isCurrentPlayer && prevSnakePositions && prevSnakePositions.length > 0) {
+        // Use cubic easing for smoother animation
+        const eased = easeInOutCubic(interpolationAlpha);
+        
+        // Create completely interpolated snake for smoother rendering
+        positionsToRender = snakeBody.map((segment, i) => {
+            if (i >= prevSnakePositions.length) return segment;
+            
+            return {
+                x: prevSnakePositions[i].x + (segment.x - prevSnakePositions[i].x) * eased,
+                y: prevSnakePositions[i].y + (segment.y - prevSnakePositions[i].y) * eased
+            };
+        });
+    }
+    
+    // Add motion trail effect
+    if (isCurrentPlayer && snakeBody.length > 2) {
+        // Draw ghosted trail segments
+        for (let i = snakeBody.length - 1; i >= 1; i--) {
+            const segment = snakeBody[i];
+            const x = segment.x * CELL_SIZE;
+            const y = segment.y * CELL_SIZE;
+            
+            const trailOpacity = 0.15 - (i / snakeBody.length) * 0.1;
+            
+            // Draw ghost trail
+            ctx.fillStyle = `rgba(255, 255, 255, ${trailOpacity})`;
+            ctx.beginPath();
+            ctx.arc(
+                x + CELL_SIZE / 2,
+                y + CELL_SIZE / 2,
+                CELL_SIZE / 3 * (1 - i / snakeBody.length * 0.5),
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+        }
+    }
+    
     // Determine if this snake has an active power-up
     let powerUp = null;
     
@@ -664,7 +973,7 @@ function drawSnake(snakeBody, isCurrentPlayer) {
     }
     
     // Draw snake segments with enhanced power-up effects
-    snakeBody.forEach((segment, index) => {
+    positionsToRender.forEach((segment, index) => {
         const x = segment.x * CELL_SIZE;
         const y = segment.y * CELL_SIZE;
         
@@ -1248,6 +1557,9 @@ function updateHeatMap() {
 }
 
 function moveSnake() {
+    // Store previous positions for interpolation
+    prevSnakePositions = JSON.parse(JSON.stringify(snake));
+    
     const head = {x: snake[0].x, y: snake[0].y};
     
     switch (direction) {
@@ -1266,33 +1578,62 @@ function moveSnake() {
     }
     
     snake.unshift(head);
+    
+    // Reset interpolation at the start of a new movement cycle
+    frameAccumulator = 0;
+    interpolationAlpha = 0;
 }
 
 function checkCollisions() {
-    const head = snake[0];
-    
-    // If invincibility is active, skip collision detection
-    if (activePowerUp && activePowerUp.type === 'invincibility') {
+    // Ensure snake has a valid head before checking collisions
+    if (!snake || snake.length === 0) {
+        console.error("Snake has no segments in checkCollisions");
         return false;
     }
     
+    const head = snake[0];
+    
+    // If invincibility power-up or safe zone is active, skip collision detection
+    if ((activePowerUp && activePowerUp.type === 'invincibility') || 
+        (safeZoneActive && Date.now() < safeZoneExpiry)) {
+        return false;
+    }
+    
+    // Ensure head has valid coordinates
+    if (head.x === undefined || head.y === undefined) {
+        console.error("Snake head has invalid coordinates");
+        return false;
+    }
+    
+    // Check wall collisions
     if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE) {
         return true;
     }
     
+    // Check wall object collisions
+    for (let i = 0; i < WALLS.length; i++) {
+        if (head.x === WALLS[i].x && head.y === WALLS[i].y) {
+            return true;
+        }
+    }
+    
+    // Check self-collision
     for (let i = 1; i < snake.length; i++) {
         if (head.x === snake[i].x && head.y === snake[i].y) {
             return true;
         }
     }
     
-    for (const id in players) {
-        if (id !== playerId) {
-            const otherSnake = players[id].snake;
-            if (otherSnake) {
-                for (let i = 0; i < otherSnake.length; i++) {
-                    if (head.x === otherSnake[i].x && head.y === otherSnake[i].y) {
-                        return true;
+    // Check collision with other players (except in safe zone)
+    if (!safeZoneActive || Date.now() >= safeZoneExpiry) {
+        for (const id in players) {
+            if (id !== playerId) {
+                const otherSnake = players[id].snake;
+                if (otherSnake) {
+                    for (let i = 0; i < otherSnake.length; i++) {
+                        if (head.x === otherSnake[i].x && head.y === otherSnake[i].y) {
+                            return true;
+                        }
                     }
                 }
             }
@@ -1301,6 +1642,8 @@ function checkCollisions() {
     
     return false;
 }
+
+// Power-up countdown bar is now defined earlier in the file
 
 function cleanupGame() {
     // Remove temporary UI elements
@@ -1318,9 +1661,6 @@ function cleanupGame() {
     // Clear particles
     particles.length = 0;
     
-    // Clear particles
-    particles.length = 0;
-    
     // Reset power-up related elements
     powerUpIndicator.style.display = 'none';
     powerUpStatus.style.display = 'none';
@@ -1328,7 +1668,18 @@ function cleanupGame() {
 }
 
 function gameOver(reason = 'collision') {
-    clearInterval(gameLoop);
+    // Cancel animation frame first to stop rendering
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+    
+    // Clear game interval
+    if (gameLoop) {
+        clearInterval(gameLoop);
+        gameLoop = null;
+    }
+    
     gameRunning = false;
     
     // Clean up game resources
@@ -1360,6 +1711,12 @@ function gameOver(reason = 'collision') {
     
     finalScoreDisplay.textContent = `Score: ${score} (Best: ${highestScore})`;
     finalLevelDisplay.textContent = `Level: ${level}`;
+    gameOverScreen.style.display = 'block';
+    
+    // Store high scores locally
+    if (score > localStorage.getItem('snake_highest_score') || !localStorage.getItem('snake_highest_score')) {
+        localStorage.setItem('snake_highest_score', score);
+    }
     
     if (socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({
@@ -1391,6 +1748,482 @@ function shakeScreen(intensity, duration) {
     }
     
     requestAnimationFrame(shake);
+}
+
+function initBackgroundElements() {
+    backgroundElements = [];
+    
+    BACKGROUND_LAYERS.forEach(layer => {
+        for (let i = 0; i < layer.elements; i++) {
+            const element = {
+                x: Math.random() * (GRID_SIZE * CELL_SIZE * 1.5) - (GRID_SIZE * CELL_SIZE * 0.25),
+                y: Math.random() * (GRID_SIZE * CELL_SIZE * 1.5) - (GRID_SIZE * CELL_SIZE * 0.25),
+                size: Math.random() * (layer.size[1] - layer.size[0]) + layer.size[0],
+                color: layer.color,
+                speed: layer.speed,
+                type: layer.type,
+                opacity: Math.random() * 0.5 + 0.5,
+                rotation: Math.random() * Math.PI * 2
+            };
+            backgroundElements.push(element);
+        }
+    });
+}
+
+function drawEnhancedBackground() {
+    // Base dark gradient background
+    const gradient = ctx.createRadialGradient(
+        canvas.width / 2, canvas.height / 2, 0,
+        canvas.width / 2, canvas.height / 2, canvas.width
+    );
+    gradient.addColorStop(0, '#0f0f1a');
+    gradient.addColorStop(1, '#060614');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Add subtle pulsing to background
+    const pulseIntensity = 0.03 * Math.sin(Date.now() / 3000);
+    
+    // Draw background elements with enhanced parallax effect
+    backgroundElements.forEach(element => {
+        // Calculate parallax position based on camera movement with enhanced effect
+        const parallaxX = element.x - (camera.x * (element.speed * (1 + pulseIntensity)));
+        const parallaxY = element.y - (camera.y * (element.speed * (1 + pulseIntensity)));
+        
+        // Skip if not in viewport
+        if (parallaxX + element.size < 0 || parallaxX > canvas.width ||
+            parallaxY + element.size < 0 || parallaxY > canvas.height) {
+            return;
+        }
+        
+        ctx.save();
+        
+        // Draw based on element type with enhanced effects
+        switch(element.type) {
+            case 'star':
+                // Add pulsing to stars
+                const starPulse = 1 + 0.2 * Math.sin(Date.now() / 1000 + element.x * element.y);
+                const starSize = element.size * starPulse;
+                
+                ctx.fillStyle = `rgba(${hexToRgb(element.color)}, ${element.opacity})`;
+                ctx.beginPath();
+                ctx.arc(parallaxX, parallaxY, starSize, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Add glow to brighter stars
+                if (element.size > 2) {
+                    ctx.shadowColor = element.color;
+                    ctx.shadowBlur = starSize * 2;
+                    ctx.beginPath();
+                    ctx.arc(parallaxX, parallaxY, starSize * 0.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+                break;
+                
+            case 'nebula':
+                // Create a more dynamic nebula effect
+                const nebulaGrad = ctx.createRadialGradient(
+                    parallaxX, parallaxY, 0,
+                    parallaxX, parallaxY, element.size
+                );
+                nebulaGrad.addColorStop(0, `rgba(${hexToRgb(element.color)}, ${element.opacity * (1 + pulseIntensity)})`);
+                nebulaGrad.addColorStop(1, 'rgba(0,0,0,0)');
+                    
+                ctx.fillStyle = nebulaGrad;
+                ctx.beginPath();
+                ctx.arc(parallaxX, parallaxY, element.size * (1 + pulseIntensity), 0, Math.PI * 2);
+                ctx.fill();
+                break;
+                
+            case 'cloud':
+                ctx.translate(parallaxX, parallaxY);
+                // Add slow rotation to clouds
+                const cloudRotation = element.rotation + (Date.now() / 30000);
+                ctx.rotate(cloudRotation);
+                ctx.fillStyle = `rgba(${hexToRgb(element.color)}, ${element.opacity * 0.3})`;
+                
+                // Draw cloud shape
+                ctx.beginPath();
+                for (let i = 0; i < 3; i++) {
+                    ctx.ellipse(
+                        (i - 1) * element.size * 0.3, 
+                        Math.sin(i + Date.now()/5000) * element.size * 0.1, 
+                        element.size * 0.4, 
+                        element.size * 0.2, 
+                        0, 0, Math.PI * 2
+                    );
+                }
+                ctx.fill();
+                break;
+        }
+        
+        ctx.restore();
+    });
+    
+    // Add enhanced grid pattern that shifts with camera
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+    ctx.lineWidth = 1;
+    
+    const gridStep = 100;
+    const offsetX = -camera.x * 0.1 % gridStep;
+    const offsetY = -camera.y * 0.1 % gridStep;
+    
+    // Create hexagonal grid pattern instead of square
+    const hexHeight = gridStep;
+    const hexWidth = gridStep * 0.866; // cos(30°) * 2 * height
+    
+    for (let y = -hexHeight; y < canvas.height + hexHeight; y += hexHeight * 0.75) {
+        const rowOffset = Math.floor(y / (hexHeight * 0.75)) % 2 === 0 ? 0 : hexWidth * 0.5;
+        for (let x = -hexWidth; x < canvas.width + hexWidth; x += hexWidth) {
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle = 2 * Math.PI / 6 * i;
+                const hx = x + rowOffset + offsetX + hexWidth * 0.5 * Math.cos(angle);
+                const hy = y + offsetY + hexHeight * 0.5 * Math.sin(angle);
+                if (i === 0) {
+                    ctx.moveTo(hx, hy);
+                } else {
+                    ctx.lineTo(hx, hy);
+                }
+            }
+            ctx.closePath();
+            ctx.stroke();
+        }
+    }
+}
+
+// generateWalls function removed - walls are now managed by the server
+
+// Wall formation functions removed - now handled by the server
+
+function drawWalls() {
+    // Only draw walls that are in viewport
+    for (const wall of WALLS) {
+        const wallX = wall.x * CELL_SIZE;
+        const wallY = wall.y * CELL_SIZE;
+        
+        // Skip if outside viewport
+        if (wallX + CELL_SIZE < camera.x || wallX > camera.x + VIEWPORT_WIDTH ||
+            wallY + CELL_SIZE < camera.y || wallY > camera.y + VIEWPORT_HEIGHT) {
+            continue;
+        }
+        
+        // Draw wall with 3D effect
+        ctx.fillStyle = WALL_COLOR;
+        ctx.fillRect(wallX, wallY, CELL_SIZE, CELL_SIZE);
+        
+        // Add highlights
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.fillRect(wallX, wallY, CELL_SIZE, CELL_SIZE / 4);
+        ctx.fillRect(wallX, wallY, CELL_SIZE / 4, CELL_SIZE);
+        
+        // Add shadows
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.fillRect(wallX, wallY + CELL_SIZE - CELL_SIZE / 4, CELL_SIZE, CELL_SIZE / 4);
+        ctx.fillRect(wallX + CELL_SIZE - CELL_SIZE / 4, wallY, CELL_SIZE / 4, CELL_SIZE);
+    }
+}
+
+function activateSafeZone() {
+    safeZoneActive = true;
+    safeZoneExpiry = Date.now() + SAFE_ZONE_DURATION * 1.5; // Increased duration by 50%
+    
+    // Create visual indicator that safe zone is active
+    const indicator = document.createElement('div');
+    indicator.className = 'safe-zone-indicator temp-game-element';
+    indicator.textContent = 'SAFE ZONE ACTIVE';
+    indicator.style.position = 'absolute';
+    indicator.style.top = '100px';
+    indicator.style.left = '50%';
+    indicator.style.transform = 'translateX(-50%)';
+    indicator.style.padding = '10px 20px';
+    indicator.style.backgroundColor = 'rgba(76, 175, 80, 0.8)';
+    indicator.style.color = 'white';
+    indicator.style.borderRadius = '5px';
+    indicator.style.fontWeight = 'bold';
+    indicator.style.boxShadow = '0 0 10px rgba(76, 175, 80, 0.7)';
+    indicator.style.zIndex = '1000';
+    document.body.appendChild(indicator);
+    
+    // Remove after a few seconds
+    setTimeout(() => {
+        if (document.body.contains(indicator)) {
+            document.body.removeChild(indicator);
+        }
+    }, 4000);
+}
+
+function spawnStartingFood() {
+    // Spawn extra food near the starting area for new players
+    const centerX = Math.floor(GRID_SIZE / 2);
+    const centerY = Math.floor(GRID_SIZE / 2);
+    
+    // Send request to server to create more food in starting area (increased from 8 to 15)
+    for (let i = 0; i < 15; i++) {
+        // Create food in multiple concentric spiral patterns for better distribution
+        const angle = (i / 15) * Math.PI * 2;
+        
+        // Alternate between inner and outer food
+        let distance;
+        if (i % 2 === 0) {
+            distance = 3 + (i / 2); // Closer food (3-10 cells from center)
+        } else {
+            distance = 10 + (i / 2); // Farther food (10-17 cells from center)
+        }
+        
+        const x = Math.floor(centerX + Math.cos(angle) * distance);
+        const y = Math.floor(centerY + Math.sin(angle) * distance);
+        
+        // Request food creation at this position
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+                type: 'requestFood',
+                x: x,
+                y: y,
+                safeZoneFood: true // Flag for server to prioritize this food
+            }));
+        }
+    }
+    
+    // Add higher value foods including power-ups slightly further away as incentive
+    for (let i = 0; i < 8; i++) { // Increased from 4 to 8
+        const angle = (i / 8) * Math.PI * 2;
+        const distance = 20 + Math.random() * 5; // 20-25 cells away
+        
+        const x = Math.floor(centerX + Math.cos(angle) * distance);
+        const y = Math.floor(centerY + Math.sin(angle) * distance);
+        
+        // Request special food creation
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+                type: 'requestFood',
+                x: x,
+                y: y,
+                specialFood: true, // Flag for server to create higher value food
+                points: i % 3 === 0 ? 50 : 20, // Alternate between 50 and 20 points
+                powerUp: i % 4 === 0 // Every 4th special food is a power-up
+            }));
+        }
+    }
+}
+
+function drawSafeZone() {
+    const centerX = Math.floor(GRID_SIZE / 2);
+    const centerY = Math.floor(GRID_SIZE / 2);
+    const remainingTime = (safeZoneExpiry - Date.now()) / SAFE_ZONE_DURATION;
+    
+    if (remainingTime <= 0) {
+        safeZoneActive = false;
+        return;
+    }
+    
+    // Draw enhanced safe zone with multiple visual effects
+    
+    // 1. Draw pulsing ground effect
+    const groundRadius = SAFE_ZONE_RADIUS * CELL_SIZE;
+    const groundGradient = ctx.createRadialGradient(
+        centerX * CELL_SIZE + CELL_SIZE/2,
+        centerY * CELL_SIZE + CELL_SIZE/2,
+        0,
+        centerX * CELL_SIZE + CELL_SIZE/2,
+        centerY * CELL_SIZE + CELL_SIZE/2,
+        groundRadius
+    );
+    
+    // Create a colorful, cosmic-like ground effect
+    const pulseSpeed = 300;
+    const pulse = 0.3 + 0.7 * Math.sin(Date.now() / pulseSpeed);
+    
+    groundGradient.addColorStop(0, `rgba(50, 200, 100, ${0.15 * remainingTime * pulse})`);
+    groundGradient.addColorStop(0.3, `rgba(76, 175, 120, ${0.12 * remainingTime * pulse})`);
+    groundGradient.addColorStop(0.6, `rgba(100, 160, 140, ${0.1 * remainingTime * pulse})`);
+    groundGradient.addColorStop(1, 'rgba(76, 175, 80, 0)');
+    
+    ctx.beginPath();
+    ctx.arc(
+        centerX * CELL_SIZE + CELL_SIZE/2,
+        centerY * CELL_SIZE + CELL_SIZE/2,
+        groundRadius,
+        0,
+        Math.PI * 2
+    );
+    ctx.fillStyle = groundGradient;
+    ctx.fill();
+    
+    // 2. Draw multiple layers of circular effects
+    for (let i = 0; i < 5; i++) { // Increased from 3 to 5 layers
+        const pulseSpeed = 300 + i * 100;
+        const pulse = 0.3 + 0.7 * Math.sin(Date.now() / pulseSpeed);
+        const radius = (SAFE_ZONE_RADIUS - i * 2) * CELL_SIZE;
+        
+        ctx.beginPath();
+        ctx.arc(
+            centerX * CELL_SIZE + CELL_SIZE/2,
+            centerY * CELL_SIZE + CELL_SIZE/2,
+            radius * (0.98 + 0.02 * pulse),
+            0,
+            Math.PI * 2
+        );
+        
+        const opacity = (0.2 - i * 0.03) * remainingTime * pulse;
+        
+        // Different color for each layer to create rainbow effect
+        const hue = (120 + i * 30) % 360; // Green to blue range
+        const gradient = ctx.createRadialGradient(
+            centerX * CELL_SIZE + CELL_SIZE/2,
+            centerY * CELL_SIZE + CELL_SIZE/2,
+            0,
+            centerX * CELL_SIZE + CELL_SIZE/2,
+            centerY * CELL_SIZE + CELL_SIZE/2,
+            radius
+        );
+        gradient.addColorStop(0, `hsla(${hue}, 80%, 60%, ${opacity * 0.3})`);
+        gradient.addColorStop(0.7, `hsla(${hue}, 80%, 50%, ${opacity * 0.2})`);
+        gradient.addColorStop(1, `hsla(${hue}, 80%, 40%, 0)`);
+        
+        ctx.fillStyle = gradient;
+        ctx.fill();
+    }
+    
+    // 3. Draw animated spinning border
+    const time = Date.now() / 1000;
+    const spinSpeed = time * 30; // Faster spin
+    
+    // Main border
+    ctx.beginPath();
+    ctx.arc(
+        centerX * CELL_SIZE + CELL_SIZE/2,
+        centerY * CELL_SIZE + CELL_SIZE/2,
+        SAFE_ZONE_RADIUS * CELL_SIZE,
+        0,
+        Math.PI * 2
+    );
+    ctx.setLineDash([8, 12]);
+    ctx.lineDashOffset = spinSpeed;
+    ctx.strokeStyle = `rgba(76, 235, 80, ${0.5 * remainingTime + 0.5 * Math.sin(time * 3)})`;
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    
+    // Secondary border (spinning the opposite direction)
+    ctx.beginPath();
+    ctx.arc(
+        centerX * CELL_SIZE + CELL_SIZE/2,
+        centerY * CELL_SIZE + CELL_SIZE/2,
+        SAFE_ZONE_RADIUS * CELL_SIZE * 0.95,
+        0,
+        Math.PI * 2
+    );
+    ctx.setLineDash([6, 10]);
+    ctx.lineDashOffset = -spinSpeed * 0.7;
+    ctx.strokeStyle = `rgba(100, 255, 130, ${0.4 * remainingTime + 0.3 * Math.sin(time * 2.5)})`;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    
+    // Reset line dash
+    ctx.setLineDash([]);
+    
+    // 4. Add celestial-like particles orbiting the safe zone
+    const particleCount = 12;
+    for (let i = 0; i < particleCount; i++) {
+        const angle = (i / particleCount) * Math.PI * 2 + time * (i % 3 + 1);
+        const distance = SAFE_ZONE_RADIUS * CELL_SIZE * (0.9 + 0.2 * Math.sin(time * 2 + i));
+        
+        const x = centerX * CELL_SIZE + CELL_SIZE/2 + Math.cos(angle) * distance;
+        const y = centerY * CELL_SIZE + CELL_SIZE/2 + Math.sin(angle) * distance;
+        
+        const particleSize = 3 + 2 * Math.sin(time * 3 + i * 2);
+        
+        // Draw glowing particle
+        ctx.beginPath();
+        ctx.arc(x, y, particleSize, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(150, 255, 150, ${0.7 * remainingTime})`;
+        ctx.fill();
+        
+        // Add glow effect
+        ctx.shadowColor = 'rgba(76, 255, 80, 0.8)';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(x, y, particleSize * 0.6, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(200, 255, 200, 0.8)';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        
+        // Connect with glowing lines to center
+        ctx.beginPath();
+        ctx.moveTo(centerX * CELL_SIZE + CELL_SIZE/2, centerY * CELL_SIZE + CELL_SIZE/2);
+        ctx.lineTo(x, y);
+        ctx.strokeStyle = `rgba(100, 255, 100, ${0.15 * remainingTime})`;
+        ctx.lineWidth = 1 + Math.sin(time + i) * 0.5;
+        ctx.stroke();
+    }
+    
+    // 5. Add text indicators with improved styling
+    // Time remaining
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.8 * remainingTime + 0.2 * Math.sin(time * 3)})`;
+    ctx.font = 'bold 24px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 5;
+    ctx.fillText(
+        `SAFE ZONE: ${Math.ceil(remainingTime * SAFE_ZONE_DURATION / 1000)}s`,
+        centerX * CELL_SIZE + CELL_SIZE/2,
+        centerY * CELL_SIZE - SAFE_ZONE_RADIUS * CELL_SIZE * 0.5
+    );
+    
+    // Draw 'SAFE HAVEN' text in a stylish way
+    ctx.font = 'bold 32px Arial';
+    ctx.fillStyle = `rgba(150, 255, 180, ${0.7 * remainingTime + 0.3 * Math.sin(time * 2)})`;
+    ctx.fillText(
+        'SAFE HAVEN',
+        centerX * CELL_SIZE + CELL_SIZE/2,
+        centerY * CELL_SIZE
+    );
+    
+    // Additional text
+    ctx.font = 'bold 18px Arial';
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.7 * remainingTime + 0.2 * Math.sin(time * 3 + Math.PI)})`;
+    ctx.fillText(
+        'COLLISION FREE ZONE',
+        centerX * CELL_SIZE + CELL_SIZE/2,
+        centerY * CELL_SIZE + CELL_SIZE * 5
+    );
+    
+    ctx.shadowBlur = 0;
+    
+    // Draw a decorative compass-like design in the center
+    const compassRadius = SAFE_ZONE_RADIUS * CELL_SIZE * 0.2;
+    
+    // Draw compass circle
+    ctx.beginPath();
+    ctx.arc(
+        centerX * CELL_SIZE + CELL_SIZE/2,
+        centerY * CELL_SIZE + CELL_SIZE/2,
+        compassRadius,
+        0,
+        Math.PI * 2
+    );
+    ctx.strokeStyle = `rgba(150, 255, 150, ${0.5 * remainingTime})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Draw compass directions
+    const directions = 8;
+    for (let i = 0; i < directions; i++) {
+        const angle = (i / directions) * Math.PI * 2;
+        const x1 = centerX * CELL_SIZE + CELL_SIZE/2 + Math.cos(angle) * compassRadius * 0.7;
+        const y1 = centerY * CELL_SIZE + CELL_SIZE/2 + Math.sin(angle) * compassRadius * 0.7;
+        const x2 = centerX * CELL_SIZE + CELL_SIZE/2 + Math.cos(angle) * compassRadius * 1.3;
+        const y2 = centerY * CELL_SIZE + CELL_SIZE/2 + Math.sin(angle) * compassRadius * 1.3;
+        
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.strokeStyle = `rgba(200, 255, 200, ${0.6 * remainingTime})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
 }
 
 function drawMagnetField() {
@@ -1580,61 +2413,133 @@ function updateBestScores() {
 function updateMinimap() {
     minimapCtx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
     
-    const cellSize = minimapCanvas.width / GRID_SIZE;
+    // Add a dark background for better visibility
+    minimapCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    minimapCtx.fillRect(0, 0, minimapCanvas.width, minimapCanvas.height);
     
-    // Draw heat map first (as the background)
-    for (let x = 0; x < GRID_SIZE; x++) {
-        for (let y = 0; y < GRID_SIZE; y++) {
+    // Improved scale for the larger grid (was minimapCanvas.width / GRID_SIZE)
+    const minimapScale = minimapCanvas.width / GRID_SIZE; // This creates very small pixels with GRID_SIZE of 400
+    
+    // Draw borders
+    minimapCtx.strokeStyle = '#444';
+    minimapCtx.lineWidth = 1;
+    minimapCtx.strokeRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+    
+    // Draw heat map with improved visibility
+    for (let x = 0; x < GRID_SIZE; x += 4) { // Skip more cells for performance and better visibility
+        for (let y = 0; y < GRID_SIZE; y += 4) {
             if (heatMap[x][y] > 0) {
-                // Calculate heat color (from blue to red based on intensity)
                 const intensity = Math.min(1, heatMap[x][y] / HEAT_MAX);
                 const r = Math.floor(255 * intensity);
                 const g = Math.floor(100 * (1 - intensity));
                 const b = Math.floor(255 * (1 - intensity));
-                const alpha = Math.min(0.7, 0.2 + intensity * 0.5);
+                const alpha = Math.min(0.8, 0.3 + intensity * 0.5); // Increased alpha for better visibility
                 
                 minimapCtx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
                 minimapCtx.fillRect(
-                    x * cellSize,
-                    y * cellSize,
-                    cellSize,
-                    cellSize
+                    x * minimapScale,
+                    y * minimapScale,
+                    minimapScale * 4, // Make dots bigger
+                    minimapScale * 4
                 );
             }
         }
     }
     
-    // Draw players on top of heat map
+    // Draw players with larger dots for visibility
     for (const id in players) {
         const player = players[id];
         if (!player.snake || player.snake.length === 0) continue;
         
         const isCurrentPlayer = id === playerId;
+        const head = player.snake[0];
         
-        player.snake.forEach((segment, index) => {
-            minimapCtx.fillStyle = isCurrentPlayer 
-                ? (index === 0 ? '#4CAF50' : '#8BC34A') 
-                : (index === 0 ? '#3F51B5' : '#7986CB');
-            
-            minimapCtx.fillRect(
-                segment.x * cellSize,
-                segment.y * cellSize,
-                cellSize,
-                cellSize
-            );
-        });
+        // Just draw the head with a larger dot for visibility
+        minimapCtx.fillStyle = isCurrentPlayer ? '#4CAF50' : '#3F51B5';
+        
+        // Enlarged player indicators
+        minimapCtx.beginPath();
+        minimapCtx.arc(
+            head.x * minimapScale,
+            head.y * minimapScale,
+            isCurrentPlayer ? 3 : 2, // Fixed size regardless of scale
+            0,
+            Math.PI * 2
+        );
+        minimapCtx.fill();
     }
     
-    // Draw foods
+    // Draw foods with better visibility
     foods.forEach(food => {
+        // Make power-up foods more visible
+        const isPowerUp = food.powerUp !== undefined;
+        const dotSize = isPowerUp ? 2 : 1;
+        
         minimapCtx.fillStyle = food.color || '#FF5722';
-        minimapCtx.fillRect(
-            food.x * cellSize,
-            food.y * cellSize,
-            cellSize,
-            cellSize
+        minimapCtx.beginPath();
+        minimapCtx.arc(
+            food.x * minimapScale,
+            food.y * minimapScale,
+            dotSize, // Fixed size dots
+            0,
+            Math.PI * 2
         );
+        minimapCtx.fill();
+        
+        // Add glow effect to power-up foods
+        if (isPowerUp) {
+            minimapCtx.strokeStyle = food.color;
+            minimapCtx.lineWidth = 1;
+            minimapCtx.beginPath();
+            minimapCtx.arc(
+                food.x * minimapScale,
+                food.y * minimapScale,
+                3,
+                0,
+                Math.PI * 2
+            );
+            minimapCtx.stroke();
+        }
     });
+    
+    // Draw viewport rectangle with improved visibility
+    minimapCtx.strokeStyle = '#FFFFFF';
+    minimapCtx.lineWidth = 2; // Increased from 1 for better visibility
+    minimapCtx.strokeRect(
+        (camera.x / CELL_SIZE) * minimapScale,
+        (camera.y / CELL_SIZE) * minimapScale,
+        (VIEWPORT_WIDTH / CELL_SIZE) * minimapScale,
+        (VIEWPORT_HEIGHT / CELL_SIZE) * minimapScale
+    );
+    
+    // Add "you are here" indicator
+    if (snake.length > 0) {
+        const head = snake[0];
+        minimapCtx.fillStyle = '#4CAF50';
+        minimapCtx.beginPath();
+        minimapCtx.arc(
+            head.x * minimapScale,
+            head.y * minimapScale,
+            4, // Larger indicator for player
+            0,
+            Math.PI * 2
+        );
+        minimapCtx.fill();
+        
+        // Add pulsing effect
+        minimapCtx.strokeStyle = 'rgba(76, 175, 80, 0.7)';
+        minimapCtx.lineWidth = 1;
+        const pulseSize = 4 + Math.sin(Date.now() / 200) * 2;
+        minimapCtx.beginPath();
+        minimapCtx.arc(
+            head.x * minimapScale,
+            head.y * minimapScale,
+            pulseSize,
+            0, 
+            Math.PI * 2
+        );
+        minimapCtx.stroke();
+    }
 }
 
 function updatePlayersCount() {
@@ -1743,6 +2648,38 @@ function updatePowerUpIndicator() {
         clearInterval(gameLoop);
         gameLoop = setInterval(gameStep, boostedSpeed);
     }
+}
+
+// Add the missing updatePowerUpStatus function
+function updatePowerUpStatus() {
+    if (!activePowerUp) {
+        powerUpStatus.style.display = 'none';
+        powerUpCountdownContainer.style.display = 'none';
+        return;
+    }
+    
+    const timeLeft = Math.ceil((activePowerUp.expiresAt - Date.now()) / 1000);
+    
+    // Update countdown bar width based on remaining time percentage
+    const totalDuration = 10000; // 10 seconds standard duration
+    const percentLeft = ((activePowerUp.expiresAt - Date.now()) / totalDuration) * 100;
+    powerUpCountdownBar.style.width = `${Math.max(0, percentLeft)}%`;
+    
+    // Change countdown bar color based on power-up type
+    switch (activePowerUp.type) {
+        case 'speed_boost':
+            powerUpCountdownBar.style.backgroundColor = POWER_UP_EFFECTS.speed_boost.visualEffect;
+            break;
+        case 'invincibility':
+            powerUpCountdownBar.style.backgroundColor = POWER_UP_EFFECTS.invincibility.visualEffect;
+            break;
+        case 'magnet':
+            powerUpCountdownBar.style.backgroundColor = POWER_UP_EFFECTS.magnet.visualEffect;
+            break;
+    }
+    
+    // Show countdown container
+    powerUpCountdownContainer.style.display = 'block';
 }
 
 // Apply magnet effect to attract nearby food
@@ -2022,7 +2959,7 @@ document.addEventListener('keydown', function(e) {
         return;
     }
     
-    // Toggle leaderboard with 'L' key
+    // Toggle mini leaderboard with 'L' key
     if (e.key === 'l' || e.key === 'L') {
         toggleBestScores();
         return;
@@ -2110,42 +3047,64 @@ powerUpCountdownBar.style.width = '100%';
 powerUpCountdownBar.style.transition = 'width 0.1s linear';
 powerUpCountdownContainer.appendChild(powerUpCountdownBar);
 
+// Mobile controls
+const mobileControlsContainer = document.createElement('div');
+mobileControlsContainer.id = 'mobile-controls';
+mobileControlsContainer.style.position = 'absolute';
+mobileControlsContainer.style.bottom = '30px';
+mobileControlsContainer.style.right = '20px';
+mobileControlsContainer.style.left = 'auto';
+mobileControlsContainer.style.width = '180px';
+mobileControlsContainer.style.height = '180px';
+mobileControlsContainer.style.display = 'none'; // Hidden by default, will show on touch devices
+mobileControlsContainer.style.zIndex = '1001';
+document.body.appendChild(mobileControlsContainer);
 
-// Create a joystick container
-const joystickContainer = document.createElement('div');
-joystickContainer.id = 'joystick-container';
-joystickContainer.style.position = 'absolute';
-joystickContainer.style.bottom = '20px';
-joystickContainer.style.right = '20px';  // Position 20px from the right
-joystickContainer.style.width = '150px';
-joystickContainer.style.height = '150px';
-joystickContainer.style.zIndex = '1001';
-document.body.appendChild(joystickContainer);
+// Create D-pad buttons
+const directions = [
+    { id: 'up', symbol: '▲', x: 50, y: 0 },
+    { id: 'right', symbol: '▶', x: 100, y: 50 },
+    { id: 'down', symbol: '▼', x: 50, y: 100 },
+    { id: 'left', symbol: '◀', x: 0, y: 50 }
+];
 
-// Initialize the joystick
-const joystick = nipplejs.create({
-    zone: joystickContainer,
-    mode: 'static',
-    position: { left: '50%', bottom: '50%' },
-    color: 'green',
-    size: 100
-});
-
-// Map joystick movements to snake direction
-joystick.on('dir:up', () => {
-    if (direction !== 'down') nextDirection = 'up';
-});
-
-joystick.on('dir:down', () => {
-    if (direction !== 'up') nextDirection = 'down';
-});
-
-joystick.on('dir:left', () => {
-    if (direction !== 'right') nextDirection = 'left';
-});
-
-joystick.on('dir:right', () => {
-    if (direction !== 'left') nextDirection = 'right';
+directions.forEach(dir => {
+    const button = document.createElement('div');
+    button.id = `mobile-${dir.id}`;
+    button.className = 'mobile-control-button';
+    button.innerHTML = dir.symbol;
+    button.style.position = 'absolute';
+    button.style.left = `${dir.x}px`;
+    button.style.top = `${dir.y}px`;
+    button.style.width = '60px';
+    button.style.height = '60px';
+    button.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+    button.style.color = 'white';
+    button.style.borderRadius = '50%';
+    button.style.display = 'flex';
+    button.style.justifyContent = 'center';
+    button.style.alignItems = 'center';
+    button.style.fontSize = '28px';
+    button.style.fontWeight = 'bold';
+    button.style.cursor = 'pointer';
+    button.style.userSelect = 'none';
+    button.style.border = '2px solid rgba(255, 255, 255, 0.3)';
+    button.style.boxShadow = '0 0 10px rgba(255, 255, 255, 0.2)';
+    button.style.boxShadow = '0 0 10px rgba(255, 255, 255, 0.2)';
+    
+    // Add touch event listeners
+    button.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        button.style.backgroundColor = 'rgba(76, 175, 80, 0.7)';
+        handleMobileControl(dir.id);
+    });
+    
+    button.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        button.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+    });
+    
+    mobileControlsContainer.appendChild(button);
 });
 
 // Create mobile menu buttons container
@@ -2160,8 +3119,9 @@ document.body.appendChild(mobileMenuContainer);
 
 // Create mobile menu buttons
 const menuButtons = [
-    // { id: 'minimap', symbol: 'M', title: 'Toggle Minimap' },
-    // { id: 'leaderboard', symbol: 'L', title: 'Toggle Leaderboard' }
+    { id: 'minimap', symbol: 'M', title: 'Toggle Minimap' },
+    { id: 'leaderboard', symbol: 'L', title: 'Toggle Leaderboard' },
+    { id: 'settings', symbol: '⚙️', title: 'Game Settings' }
 ];
 
 menuButtons.forEach((btn, index) => {
@@ -2170,15 +3130,15 @@ menuButtons.forEach((btn, index) => {
     button.className = 'mobile-menu-button';
     button.innerHTML = btn.symbol;
     button.title = btn.title;
-    button.style.width = '50px';
-    button.style.height = '50px';
-    button.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+    button.style.width = '60px';
+    button.style.height = '60px';
+    button.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
     button.style.color = 'white';
     button.style.borderRadius = '50%';
     button.style.display = 'flex';
     button.style.justifyContent = 'center';
     button.style.alignItems = 'center';
-    button.style.fontSize = '20px';
+    button.style.fontSize = '28px';
     button.style.fontWeight = 'bold';
     button.style.marginBottom = '10px';
     button.style.cursor = 'pointer';
@@ -2229,6 +3189,9 @@ function handleMobileMenuButton(buttonId) {
         case 'leaderboard':
             toggleBestScores();
             break;
+        case 'settings':
+            openSettingsMenu();
+            break;
     }
 }
 
@@ -2239,12 +3202,284 @@ function detectTouchDevice() {
                           navigator.msMaxTouchPoints > 0;
     
     if (isTouchDevice) {
-        joystickContainer.style.display = 'block'; // Ensure the joystick is visible
+        mobileControlsContainer.style.display = 'block';
         mobileMenuContainer.style.display = 'flex';
         mobileMenuContainer.style.flexDirection = 'column';
+        
+        // Add swipe controls for additional input method
+        setupSwipeControls();
     }
 }
 
+// Setup swipe controls for the game area
+    
+function setupSwipeControls() {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchEndX = 0;
+    let touchEndY = 0;
+    let lastSwipeTime = 0;
+    // Get saved swipe sensitivity or use default
+    let swipeSensitivity = parseFloat(localStorage.getItem('snake_swipe_sensitivity') || "1.0");
+    const minSwipeDistance = 20 * (2 - swipeSensitivity); // Higher sensitivity = lower threshold
+    const swipeCooldown = 100; // Milliseconds between swipes
+    
+    // Track swipe during movement to better detect intent
+    let isTracking = false;
+    let currentDx = 0;
+    let currentDy = 0;
+    
+    // Apply swipe controls to the entire document to catch edge swipes
+    document.addEventListener('touchstart', function(e) {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+        isTracking = true;
+        currentDx = 0;
+        currentDy = 0;
+    }, { passive: false });
+    
+    document.addEventListener('touchmove', function(e) {
+        if (!isTracking || !gameRunning) return;
+        
+        const touchX = e.changedTouches[0].screenX;
+        const touchY = e.changedTouches[0].screenY;
+        currentDx = touchX - touchStartX;
+        currentDy = touchY - touchStartY;
+        
+        // Prevent scrolling during gameplay
+        if (gameRunning) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+    
+    document.addEventListener('touchend', function(e) {
+        if (!isTracking) return;
+        isTracking = false;
+        
+        // Get current timestamp to check cooldown
+        const now = Date.now();
+        if (now - lastSwipeTime < swipeCooldown) return;
+        
+        touchEndX = e.changedTouches[0].screenX;
+        touchEndY = e.changedTouches[0].screenY;
+        
+        // Calculate horizontal and vertical distances
+        const dx = touchEndX - touchStartX;
+        const dy = touchEndY - touchStartY;
+        const absDx = Math.abs(dx);
+        const absDy = Math.abs(dy);
+        
+        // Ensure minimum distance for intentional swipe
+        if (Math.max(absDx, absDy) < minSwipeDistance) return;
+        
+        let newDirection = null;
+        
+        // Use a simpler and more forgiving approach: check which absolute distance is greater
+        if (absDx > absDy) {
+            // Horizontal swipe is dominant
+            newDirection = dx > 0 ? 'right' : 'left';
+        } else {
+            // Vertical swipe is dominant
+            newDirection = dy > 0 ? 'down' : 'up';
+        }
+        
+        // Only trigger if new direction is valid (not directly opposite current direction)
+        if ((newDirection === 'left' && direction !== 'right') ||
+            (newDirection === 'right' && direction !== 'left') ||
+            (newDirection === 'up' && direction !== 'down') ||
+            (newDirection === 'down' && direction !== 'up')) {
+            
+            nextDirection = newDirection;
+            lastSwipeTime = now;
+            
+            // Give immediate visual feedback
+            const flashIndicator = document.createElement('div');
+            flashIndicator.className = 'temp-game-element';
+            flashIndicator.style.cssText = `
+                position: fixed;
+                width: 80px;
+                height: 80px;
+                background-color: rgba(76, 175, 80, 0.3);
+                border-radius: 50%;
+                pointer-events: none;
+                z-index: 2000;
+                opacity: 0.7;
+                transform: translate(-50%, -50%);
+                box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+                left: ${touchEndX}px;
+                top: ${touchEndY}px;
+                transition: opacity 0.3s ease, transform 0.3s ease;
+            `;
+            document.body.appendChild(flashIndicator);
+            
+            // Show directional indicator
+            showSwipeDirectionIndicator(newDirection, touchEndX, touchEndY);
+            
+            // Trigger scale animation
+            setTimeout(() => {
+                flashIndicator.style.opacity = '0';
+                flashIndicator.style.transform = 'translate(-50%, -50%) scale(1.5)';
+            }, 10);
+            
+            // Remove after animation
+            setTimeout(() => {
+                if (document.body.contains(flashIndicator)) {
+                    document.body.removeChild(flashIndicator);
+                }
+            }, 300);
+        }
+    }, { passive: false });
+    
+    // Cancel tracking if touch is canceled
+    document.addEventListener('touchcancel', function() {
+        isTracking = false;
+    }, { passive: true });
+    
+    // Show a directional indicator to give feedback about the swipe direction
+    function showSwipeDirectionIndicator(direction, x, y) {
+        const indicator = document.createElement('div');
+        indicator.className = 'temp-game-element swipe-direction-indicator';
+        
+        // Set the arrow character based on direction
+        let arrow = '↑';
+        if (direction === 'down') arrow = '↓';
+        if (direction === 'left') arrow = '←';
+        if (direction === 'right') arrow = '→';
+        
+        indicator.style.cssText = `
+            position: fixed;
+            left: ${x}px;
+            top: ${y}px;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            background-color: rgba(76, 175, 80, 0.7);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            z-index: 2001;
+            opacity: 0;
+            transition: opacity 0.1s ease-out, transform 0.2s ease-out;
+            animation: swipe-${direction}-anim 0.5s ease-out forwards;
+        `;
+        
+        indicator.textContent = arrow;
+        document.body.appendChild(indicator);
+        
+        setTimeout(() => {
+            indicator.style.opacity = '1';
+        }, 10);
+        
+        setTimeout(() => {
+            if (document.body.contains(indicator)) {
+                document.body.removeChild(indicator);
+            }
+        }, 500);
+    }
+}
+
+// Create settings menu
+const settingsMenu = document.createElement('div');
+settingsMenu.id = 'settings-menu';
+settingsMenu.style.position = 'fixed';
+settingsMenu.style.top = '50%';
+settingsMenu.style.left = '50%';
+settingsMenu.style.transform = 'translate(-50%, -50%)';
+settingsMenu.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
+settingsMenu.style.padding = '20px';
+settingsMenu.style.borderRadius = '10px';
+settingsMenu.style.zIndex = '2000';
+settingsMenu.style.color = 'white';
+settingsMenu.style.fontFamily = 'Arial, sans-serif';
+settingsMenu.style.width = '300px';
+settingsMenu.style.boxShadow = '0 0 20px rgba(0, 0, 0, 0.5)';
+settingsMenu.style.border = '2px solid #4CAF50';
+settingsMenu.style.display = 'none';
+document.body.appendChild(settingsMenu);
+
+// Add settings content
+settingsMenu.innerHTML = `
+    <h2 style="text-align: center; margin-top: 0; color: #4CAF50;">Game Settings</h2>
+    <div style="margin: 15px 0;">
+        <label for="swipe-sensitivity" style="display: block; margin-bottom: 5px;">
+            Swipe Sensitivity: <span id="sensitivity-value">1.0</span>
+        </label>
+        <input type="range" id="swipe-sensitivity" min="0.5" max="1.5" step="0.1" value="1.0" 
+               style="width: 100%; accent-color: #4CAF50;">
+        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 5px;">
+            <span>Less sensitive</span>
+            <span>More sensitive</span>
+        </div>
+    </div>
+    <button id="save-settings" style="display: block; width: 100%; padding: 10px; margin-top: 15px; 
+                                     background-color: #4CAF50; color: white; border: none; 
+                                     border-radius: 5px; cursor: pointer;">
+        Save Settings
+    </button>
+    <button id="close-settings" style="display: block; width: 100%; padding: 10px; margin-top: 10px; 
+                                      background-color: #555; color: white; border: none; 
+                                      border-radius: 5px; cursor: pointer;">
+        Close
+    </button>
+`;
+
+// Initialize settings
+function initSettings() {
+    // Load saved swipe sensitivity
+    const savedSensitivity = localStorage.getItem('snake_swipe_sensitivity') || "1.0";
+    document.getElementById('swipe-sensitivity').value = savedSensitivity;
+    document.getElementById('sensitivity-value').textContent = savedSensitivity;
+    
+    // Update sensitivity label when slider changes
+    document.getElementById('swipe-sensitivity').addEventListener('input', function() {
+        document.getElementById('sensitivity-value').textContent = this.value;
+    });
+    
+    // Save settings
+    document.getElementById('save-settings').addEventListener('click', function() {
+        const sensitivity = document.getElementById('swipe-sensitivity').value;
+        localStorage.setItem('snake_swipe_sensitivity', sensitivity);
+        
+        // Apply changes immediately
+        swipeSensitivity = parseFloat(sensitivity);
+        
+        // Close settings menu
+        settingsMenu.style.display = 'none';
+        
+        // Show confirmation
+        const confirmation = document.createElement('div');
+        confirmation.textContent = 'Settings saved!';
+        confirmation.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(76, 175, 80, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 2000;
+            font-family: Arial, sans-serif;
+        `;
+        document.body.appendChild(confirmation);
+        setTimeout(() => document.body.removeChild(confirmation), 2000);
+    });
+    
+    // Close settings menu
+    document.getElementById('close-settings').addEventListener('click', function() {
+        settingsMenu.style.display = 'none';
+    });
+}
+
+// Open settings menu function
+function openSettingsMenu() {
+    settingsMenu.style.display = 'block';
+}
 
 // Add CSS for mobile controls
 const mobileControlsStyle = document.createElement('style');
@@ -2359,6 +3594,7 @@ document.head.appendChild(mobileControlsStyle);
 // Call the detection function when the document is loaded
 document.addEventListener('DOMContentLoaded', () => {
     detectTouchDevice();
+    initSettings();
 });
 
 function getPowerUpIcon(type) {
@@ -2369,88 +3605,4 @@ function getPowerUpIcon(type) {
         default: return '✨';
     }
 }
-
-function updatePowerUpStatus() {
-    if (!powerUpCountdownContainer) {
-        console.error('Power-up countdown container not initialized');
-        return;
-    }
-    
-    if (!activePowerUp) {
-        powerUpStatus.style.display = 'none';
-        powerUpCountdownContainer.style.display = 'none';
-        return;
-    }
-
-    const timeLeft = Math.ceil((activePowerUp.expiresAt - Date.now())
-    / 1000);
-       let powerUpName = '';
-       let powerUpColor = '';
-    
-    switch (activePowerUp.type) {
-        case 'speed_boost':
-            powerUpName = 'SPEED BOOST';
-            powerUpColor = POWER_UP_EFFECTS.speed_boost.visualEffect;
-            break;
-        case 'invincibility':
-            powerUpName = 'INVINCIBILITY';
-            powerUpColor = POWER_UP_EFFECTS.invincibility.visualEffect;
-            break;
-        case 'magnet':
-            powerUpName = 'FOOD MAGNET';
-            powerUpColor = POWER_UP_EFFECTS.magnet.visualEffect;
-            break;
-    }
-    
-    powerUpStatus.innerHTML = `
-        <div style="display: flex; align-items: center; justify-content: center;">
-            <span style="color:${powerUpColor}; font-size:22px;">${getPowerUpIcon(activePowerUp.type)} ${powerUpName}</span>
-        </div>
-        <div style="text-align: center; margin-top: 5px;">
-            <span style="color:#FF5722; font-size:28px; font-weight: bold;">${timeLeft}s</span>
-        </div>
-    `;
-    
-    powerUpStatus.style.borderColor = powerUpColor;
-    powerUpStatus.style.boxShadow = `0 0 15px ${powerUpColor}`;
-    powerUpStatus.style.display = 'block';
-    
-    // Update countdown bar
-    const totalDuration = activePowerUp.duration;
-    const elapsed = Date.now() - (activePowerUp.expiresAt - totalDuration);
-    const remainingPercentage = Math.max(0, Math.min(100, ((totalDuration - elapsed) / totalDuration) * 100));
-    
-    powerUpCountdownContainer.style.display = 'block';
-    powerUpCountdownBar.style.width = `${remainingPercentage}%`;
-    powerUpCountdownBar.style.backgroundColor = powerUpColor;
-    
-    if (timeLeft <= 3) {
-        powerUpStatus.style.animation = 'power-up-pulse 0.5s infinite alternate';
-        powerUpCountdownBar.style.animation = 'countdown-pulse 0.5s infinite alternate';
-        if (!document.getElementById('power-up-pulse-style')) {
-            const style = document.createElement('style');
-            style.id = 'power-up-pulse-style';
-            style.textContent = `
-                @keyframes power-up-pulse {
-                    from { transform: translateX(-50%) scale(1); }
-                    to { transform: translateX(-50%) scale(1.15); }
-                }
-                @keyframes countdown-pulse {
-                    from { opacity: 0.7; }
-                    to { opacity: 1; }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-    } else {
-        powerUpStatus.style.animation = '';
-        powerUpCountdownBar.style.animation = '';
-    }
-}
-window.addEventListener('resize', adjustCanvasSize);
-
-window.moveSnake = moveSnake;
-window.checkCollisions = checkCollisions;
-window.updateScoreAndLevel = updateScoreAndLevel;
-window.deactivatePowerUp = deactivatePowerUp;
-window.gameOver = gameOver;
+// Add a new maze-like structure
