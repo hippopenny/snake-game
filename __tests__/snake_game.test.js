@@ -61,6 +61,12 @@ describe('Snake Game Tests', () => {
   });
 
   describe('Keyboard Controls', () => {
+    beforeEach(async () => {
+      // Start the game
+      await page.click('#start-btn');
+      await page.waitForTimeout(500); // Wait for game to initialize
+    });
+
     it('should change direction with arrow keys', async () => {
       await page.focus('#game-canvas'); // Ensure canvas is focused
 
@@ -129,6 +135,7 @@ describe('Snake Game Tests', () => {
       if (mobilePage && !mobilePage.isClosed()) {
         await mobilePage.close();
       }
+      consoleMessages = [];
     });
 
     it('should change direction with joystick controls', async () => {
@@ -157,19 +164,19 @@ describe('Snake Game Tests', () => {
         await mobilePage.waitForTimeout(300);
       }
 
-      await simulateJoystickTouch('up');
+      await await simulateJoystickTouch('up');
       expect(consoleMessages).toContain('direction: up');
       consoleMessages = [];
 
-      await simulateJoystickTouch('down');
+      await await simulateJoystickTouch('down');
       expect(consoleMessages).toContain('direction: down');
       consoleMessages = [];
 
-      await simulateJoystickTouch('left');
+      await await simulateJoystickTouch('left');
       expect(consoleMessages).toContain('direction: left');
       consoleMessages = [];
 
-      await simulateJoystickTouch('right');
+      await await simulateJoystickTouch('right');
       expect(consoleMessages).toContain('direction: right');
     });
   });
