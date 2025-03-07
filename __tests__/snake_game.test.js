@@ -121,6 +121,11 @@ describe('Snake Game Tests', () => {
       // Start the game
       await mobilePage.click('#start-btn');
       await mobilePage.waitForTimeout(500); // Wait for game to initialize
+
+      // Take a screenshot to verify the joystick is visible
+      await mobilePage.screenshot({ path: 'joystick.png' });
+      const joystick = await mobilePage.$('#joystick-container');
+      expect(joystick).toBeTruthy();
     });
 
     afterEach(async () => {
