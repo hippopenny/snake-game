@@ -59,4 +59,109 @@ describe('Snake Game Tests', () => {
     }
   });
 
+  describe('Keyboard Controls', () => {
+    it('should change direction with arrow keys', async () => {
+      await page.focus('#game-canvas'); // Ensure canvas is focused
+
+      // Initial direction (right)
+      await page.keyboard.press('ArrowUp');
+      await page.waitForTimeout(300);
+      expect(consoleMessages).toContain('direction: up');
+      consoleMessages = [];
+
+      await page.keyboard.press('ArrowDown');
+      await page.waitForTimeout(300);
+      expect(consoleMessages).toContain('direction: down');
+      consoleMessages = [];
+
+      await page.keyboard.press('ArrowLeft');
+      await page.waitForTimeout(300);
+      expect(consoleMessages).toContain('direction: left');
+      consoleMessages = [];
+
+      await page.keyboard.press('ArrowRight');
+      await page.waitForTimeout(300);
+      expect(consoleMessages).toContain('direction: right');
+    });
+
+    it('should change direction with WASD keys', async () => {
+      await page.focus('#game-canvas'); // Ensure canvas is focused
+
+      // Initial direction (right)
+      await page.keyboard.press('KeyW');
+      await page.waitForTimeout(300);
+      expect(consoleMessages).toContain('direction: up');
+      consoleMessages = [];
+
+      await page.keyboard.press('KeyS');
+      await page.waitForTimeout(300);
+      expect(consoleMessages).toContain('direction: down');
+      consoleMessages = [];
+
+      await page.keyboard.press('KeyA');
+      await page.waitForTimeout(300);
+      expect(consoleMessages).toContain('direction: left');
+      consoleMessages = [];
+
+      await page.keyboard.press('KeyD');
+      await page.waitForTimeout(300);
+      expect(consoleMessages).toContain('direction: right');
+    });
+  });
+
+  describe('Mobile Joystick Controls', () => {
+    let mobilePage;
+
+    beforeEach(async () => {
+      mobilePage = await browser.newPage({ ...devices['iPhone 13'] });
+      mobilePage.on('console', msg => {
+        consoleMessages.push(msg.text());
+      });
+      await mobilePage.goto('http://localhost:3000/snake_game.html');
+    });
+
+    afterEach(async () => {
+      if (mobilePage && !mobilePage.isClosed()) {
+        await mobilePage.close();
+      }
+    });
+
+    it('should change direction with joystick controls', async () => {
+      // Function to simulate touch events on the joystick
+      async function simulateJoystickTouch(direction) {
+        const joystickContainer = await mobilePage.$('#joystick-container');
+        const boundingBox = await joystickContainer.boundingBox();
+        const centerX = boundingBox.x + boundingBox.width / 2;
+        const centerY = boundingBox.y + boundingBox.height / 2;
+
+        let targetX = centerX;
+        let targetY = centerY;
+
+        switch (direction) {
+          case 'up': targetY = boundingBox.y; break;
+          case 'down': targetY = boundingBox.y + boundingBox.height; break;
+          case 'left': targetX = boundingBox.x; break;
+          case 'right': targetX = boundingBox.x + boundingBox.width; break;
+        }
+
+        await mobilePage.touchscreen.tap(targetX, targetY);
+        await mobilePage.waitForTimeout(300);
+      }
+
+      await simulateJoystickTouch('up');
+      expect(consoleMessages).toContain('direction: up');
+      consoleMessages = [];
+
+      await simulateJoystickTouch('down');
+      expect(consoleMessages).toContain('direction: down');
+      consoleMessages = [];
+
+      await simulateJoystickTouch('left');
+      expect(consoleMessages).toContain('direction: left');
+      consoleMessages = [];
+
+      await simulateJoystickTouch('right');
+      expect(consoleMessages).toContain('direction: right');
+    });
+  });
 });
