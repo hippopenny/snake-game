@@ -2087,31 +2087,6 @@ function drawMagnetOrbits(x, y) {
     }
 }
 
-// Create power-up countdown bar
-const powerUpCountdownContainer = document.createElement('div');
-powerUpCountdownContainer.id = 'power-up-countdown-container';
-powerUpCountdownContainer.style.position = 'absolute';
-powerUpCountdownContainer.style.top = '90px';
-powerUpCountdownContainer.style.left = '50%';
-powerUpCountdownContainer.style.transform = 'translateX(-50%)';
-powerUpCountdownContainer.style.width = '200px';
-powerUpCountdownContainer.style.height = '15px';
-powerUpCountdownContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-powerUpCountdownContainer.style.borderRadius = '10px';
-powerUpCountdownContainer.style.overflow = 'hidden';
-powerUpCountdownContainer.style.display = 'none';
-powerUpCountdownContainer.style.zIndex = '1000';
-document.body.appendChild(joystickContainer);
-
-// Initialize the joystick
-const joystick = nipplejs.create({
-    zone: joystickContainer,
-    mode: 'static',
-    position: { left: '50%', bottom: '50%' },
-    color: 'green',
-    size: 100
-});
-
 const powerUpCountdownBar = document.createElement('div');
 powerUpCountdownBar.id = 'power-up-countdown-bar';
 powerUpCountdownBar.style.height = '100%';
@@ -2129,6 +2104,7 @@ joystickContainer.style.right = '20px';  // Position 20px from the right
 joystickContainer.style.width = '150px';
 joystickContainer.style.height = '150px';
 joystickContainer.style.zIndex = '1001';
+joystickContainer.style.display = 'none'; // Hide by default
 document.body.appendChild(joystickContainer);
 
 // Initialize the joystick
@@ -2263,14 +2239,9 @@ mobileControlsStyle.textContent = `
             touch-action: none;
         }
         
-        .mobile-control-button:active,
         .mobile-menu-button:active {
             transform: scale(0.95);
             background-color: rgba(76, 175, 80, 0.7) !important;
-        }
-        
-        #mobile-controls {
-            opacity: 0.8;
         }
         
         #mobile-menu {
@@ -2297,70 +2268,6 @@ mobileControlsStyle.textContent = `
             font-size: 16px;
             padding: 5px 10px;
         }
-    }
-`;
-mobileControlsStyle.textContent += `
-    .swipe-indicator {
-        transition: transform 0.15s ease-out, width 0.15s ease-out, height 0.15s ease-out, background-color 0.15s ease-out;
-    }
-    
-    .swipe-path {
-        transition: opacity 0.3s ease-out, height 0.15s ease-out, background-color 0.15s ease-out;
-    }
-    
-    .swipe-effect {
-        animation: swipe-feedback 0.7s forwards;
-    }
-    
-    @keyframes swipe-feedback {
-        0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.8; }
-        50% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; }
-        100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
-    }
-    
-    @keyframes swipe-ripple {
-        0% { transform: scale(0); opacity: 0.8; }
-        100% { transform: scale(1.5); opacity: 0; }
-    }
-    
-    .swipe-up-anim {
-        animation: swipe-up 0.6s ease-out forwards;
-    }
-    
-    .swipe-down-anim {
-        animation: swipe-down 0.6s ease-out forwards;
-    }
-    
-    .swipe-left-anim {
-        animation: swipe-left 0.6s ease-out forwards;
-    }
-    
-    .swipe-right-anim {
-        animation: swipe-right 0.6s ease-out forwards;
-    }
-    
-    @keyframes swipe-up {
-        0% { transform: translateY(30px) scale(0.5); opacity: 0; }
-        50% { transform: translateY(-10px) scale(1.2); opacity: 1; }
-        100% { transform: translateY(-50px) scale(0.8); opacity: 0; }
-    }
-    
-    @keyframes swipe-down {
-        0% { transform: translateY(-30px) scale(0.5); opacity: 0; }
-        50% { transform: translateY(10px) scale(1.2); opacity: 1; }
-        100% { transform: translateY(50px) scale(0.8); opacity: 0; }
-    }
-    
-    @keyframes swipe-left {
-        0% { transform: translateX(30px) scale(0.5); opacity: 0; }
-        50% { transform: translateX(-10px) scale(1.2); opacity: 1; }
-        100% { transform: translateX(-50px) scale(0.8); opacity: 0; }
-    }
-    
-    @keyframes swipe-right {
-        0% { transform: translateX(-30px) scale(0.5); opacity: 0; }
-        50% { transform: translateX(10px) scale(1.2); opacity: 1; }
-        100% { transform: translateX(50px) scale(0.8); opacity: 0; }
     }
 `;
 document.head.appendChild(mobileControlsStyle);

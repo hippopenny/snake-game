@@ -3075,21 +3075,6 @@ joystick.on('dir:right', () => {
     if (direction !== 'left') nextDirection = 'right';
 });
 
-// Mobile controls
-const mobileControlsContainer = document.createElement('div');
-mobileControlsContainer.id = 'mobile-controls';
-mobileControlsContainer.style.position = 'absolute';
-mobileControlsContainer.style.bottom = '30px';
-mobileControlsContainer.style.right = '20px';
-mobileControlsContainer.style.left = 'auto';
-mobileControlsContainer.style.width = '180px';
-mobileControlsContainer.style.height = '180px';
-mobileControlsContainer.style.display = 'none'; // Hidden by default, will show on touch devices
-mobileControlsContainer.style.zIndex = '1001';
-document.body.appendChild(mobileControlsContainer);
-
-// Create D-pad buttons
-
 // Create mobile menu buttons container
 const mobileMenuContainer = document.createElement('div');
 mobileMenuContainer.id = 'mobile-menu';
