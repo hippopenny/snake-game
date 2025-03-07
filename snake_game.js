@@ -3188,11 +3188,12 @@ function detectTouchDevice() {
             zone: joystickContainer,
             mode: 'static',
             position: { left: '50%', bottom: '50%' },
-            color: 'green',
-            size: 100
+            color: 'rgba(0, 128, 0, 0.5)', // More transparent green
+            size: 100,
+            dynamicPage: true // Make it responsive
         });
 
-        // Debounce function
+         // Debounce function
         function debounce(func, delay) {
             let timeout;
             return function(...args) {
