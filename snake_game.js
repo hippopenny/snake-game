@@ -1565,15 +1565,19 @@ function moveSnake() {
     switch (direction) {
         case 'up':
             head.y -= 1;
+            console.log('direction: up');
             break;
         case 'down':
             head.y += 1;
+            console.log('direction: down');
             break;
         case 'left':
             head.x -= 1;
+            console.log('direction: left');
             break;
         case 'right':
             head.x += 1;
+            console.log('direction: right');
             break;
     }
     
