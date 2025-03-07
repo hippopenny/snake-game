@@ -62,6 +62,7 @@ describe('Snake Game Tests', () => {
 
   describe('Keyboard Controls', () => {
     beforeEach(async () => {
+      consoleMessages = [];
       // Start the game
       await page.click('#start-btn');
       await page.waitForTimeout(500); // Wait for game to initialize
@@ -69,6 +70,7 @@ describe('Snake Game Tests', () => {
 
     it('should change direction with arrow keys', async () => {
       await page.focus('#game-canvas'); // Ensure canvas is focused
+      
 
       // Initial direction (right)
       await page.keyboard.press('ArrowUp');
@@ -93,6 +95,8 @@ describe('Snake Game Tests', () => {
 
     it('should change direction with WASD keys', async () => {
       await page.focus('#game-canvas'); // Ensure canvas is focused
+      await page.click('#start-btn');
+      await page.waitForTimeout(500);
 
       // Initial direction (right)
       await page.keyboard.press('KeyW');
@@ -120,6 +124,7 @@ describe('Snake Game Tests', () => {
     let mobilePage;
 
     beforeEach(async () => {
+      consoleMessages = [];
       mobilePage = await browser.newPage({ ...devices['iPhone 13'] });
       mobilePage.on('console', msg => {
         consoleMessages.push(msg.text());
@@ -139,10 +144,6 @@ describe('Snake Game Tests', () => {
     });
 
     it('should change direction with joystick controls', async () => {
-      // Start the game
-      await mobilePage.click('#start-btn');
-      await mobilePage.waitForTimeout(500);
-
       // Function to simulate touch events on the joystick
       async function simulateJoystickTouch(direction) {
         const joystickContainer = await mobilePage.$('#joystick-container');
@@ -164,19 +165,19 @@ describe('Snake Game Tests', () => {
         await mobilePage.waitForTimeout(300);
       }
 
-      await await simulateJoystickTouch('up');
+      await simulateJoystickTouch('up');
       expect(consoleMessages).toContain('direction: up');
       consoleMessages = [];
 
-      await await simulateJoystickTouch('down');
+      await simulateJoystickTouch('down');
       expect(consoleMessages).toContain('direction: down');
       consoleMessages = [];
 
-      await await simulateJoystickTouch('left');
+      await simulateJoystickTouch('left');
       expect(consoleMessages).toContain('direction: left');
       consoleMessages = [];
 
-      await await simulateJoystickTouch('right');
+      await simulateJoystickTouch('right');
       expect(consoleMessages).toContain('direction: right');
     });
   });

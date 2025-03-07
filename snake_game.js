@@ -3041,6 +3041,26 @@ powerUpCountdownContainer.style.zIndex = '1000';
 document.body.appendChild(powerUpCountdownContainer);
 
 // Create mobile menu buttons container
+const powerUpCountdownBar = document.createElement('div');
+powerUpCountdownBar.id = 'power-up-countdown-bar';
+powerUpCountdownBar.style.height = '100%';
+powerUpCountdownBar.style.width = '100%';
+powerUpCountdownBar.style.transition = 'width 0.1s linear';
+powerUpCountdownContainer.appendChild(powerUpCountdownBar);
+
+// Create a joystick container
+const joystickContainer = document.createElement('div');
+joystickContainer.id = 'joystick-container';
+joystickContainer.style.position = 'absolute';
+joystickContainer.style.bottom = '20px';
+joystickContainer.style.right = '20px';  // Position 20px from the right
+joystickContainer.style.width = '150px';
+joystickContainer.style.height = '150px';
+joystickContainer.style.zIndex = '1001';
+joystickContainer.style.display = 'none'; // Hide by default
+document.body.appendChild(joystickContainer);
+
+// Create mobile menu buttons container
 const mobileMenuContainer = document.createElement('div');
 mobileMenuContainer.id = 'mobile-menu';
 mobileMenuContainer.style.position = 'absolute';
@@ -3110,29 +3130,17 @@ function handleMobileMenuButton(buttonId) {
 
 // Detect if device is touch-enabled and show mobile controls
 function detectTouchDevice() {
-    const isTouchDevice = 'ontouchstart' in window || 
-                          navigator.maxTouchPoints > 0 ||
-                          navigator.msMaxTouchPoints > 0;
-    
+    const isTouchDevice = 'ontouchstart' in window ||
+        navigator.maxTouchPoints > 0 ||
+        navigator.msMaxTouchPoints > 0;
+
     if (isTouchDevice) {
         joystickContainer.style.display = 'block'; // Ensure the joystick is visible
         mobileMenuContainer.style.display = 'flex';
         mobileMenuContainer.style.flexDirection = 'column';
 
-        // Create a joystick container
-        const joystickContainer = document.createElement('div');
-        joystickContainer.id = 'joystick-container';
-        joystickContainer.style.position = 'absolute';
-        joystickContainer.style.bottom = '20px';
-        joystickContainer.style.right = '20px';  // Position 20px from the right
-        joystickContainer.style.width = '150px';
-        joystickContainer.style.height = '150px';
-        joystickContainer.style.zIndex = '1001';
-        joystickContainer.style.display = 'block'; // Make visible by default for testing
-        document.body.appendChild(joystickContainer);
-
         // Initialize the joystick
-        const joystick = nipplejs.create({
+        window.joystick = nipplejs.create({
             zone: joystickContainer,
             mode: 'static',
             position: { left: '50%', bottom: '50%' },
@@ -3141,19 +3149,19 @@ function detectTouchDevice() {
         });
 
         // Map joystick movements to snake direction
-        joystick.on('dir:up', () => {
+        window.joystick.on('dir:up', () => {
             if (direction !== 'down') nextDirection = 'up';
         });
 
-        joystick.on('dir:down', () => {
+        window.joystick.on('dir:down', () => {
             if (direction !== 'up') nextDirection = 'down';
         });
 
-        joystick.on('dir:left', () => {
+        window.joystick.on('dir:left', () => {
             if (direction !== 'right') nextDirection = 'left';
         });
 
-        joystick.on('dir:right', () => {
+        window.joystick.on('dir:right', () => {
             if (direction !== 'left') nextDirection = 'right';
         });
     }
