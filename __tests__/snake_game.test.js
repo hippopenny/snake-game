@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { chromium } from 'playwright';
+import { chromium, devices } from 'playwright';
 import { createServer } from 'http';
 import fs from 'fs';
 import path from 'path';
