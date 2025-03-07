@@ -160,18 +160,22 @@ describe('Snake Game Tests', () => {
       }
 
       await simulateJoystickTouch('up');
+      await mobilePage.waitForFunction(() => consoleMessages.includes('direction: up'));
       expect(consoleMessages).toContain('direction: up');
       consoleMessages = [];
 
       await simulateJoystickTouch('down');
+      await mobilePage.waitForFunction(() => consoleMessages.includes('direction: down'));
       expect(consoleMessages).toContain('direction: down');
       consoleMessages = [];
 
       await simulateJoystickTouch('left');
+      await mobilePage.waitForFunction(() => consoleMessages.includes('direction: left'));
       expect(consoleMessages).toContain('direction: left');
       consoleMessages = [];
 
       await simulateJoystickTouch('right');
+      await mobilePage.waitForFunction(() => consoleMessages.includes('direction: right'));
       expect(consoleMessages).toContain('direction: right');
     });
   });
