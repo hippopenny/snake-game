@@ -3188,7 +3188,7 @@ function detectTouchDevice() {
             zone: joystickContainer,
             mode: 'static',
             position: { left: '50%', bottom: '50%' },
-            color: 'rgba(0, 128, 0, 0.5)', // More transparent green
+            color: 'rgba(0, 255, 0, 0.5)', // More transparent green
             size: 100,
             dynamicPage: true // Make it responsive
         });
