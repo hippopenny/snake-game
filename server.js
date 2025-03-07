@@ -1,6 +1,6 @@
-const WebSocket = require('ws');
+import { WebSocket, WebSocketServer } from 'ws';
 
-const wss = new WebSocket.Server({ port: 8080 });
+const wss = new WebSocketServer({ port: 8080 });
 
 // Connection health tracking
 const clientHeartbeats = new Map();
