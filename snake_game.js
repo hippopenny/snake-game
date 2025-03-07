@@ -220,6 +220,39 @@ function initHeatMap() {
     }
 }
 
+function initJoystick() {
+    if (!joystick && detectTouchDevice()) {
+        const options = {
+            zone: joystickContainer,
+            mode: 'static',
+            position: { right: '75px', bottom: '75px' },
+            color: 'green',
+            size: 100
+        };
+        
+        joystick = nipplejs.create(options);
+
+        joystick.on('dir:up', () => {
+            if (direction !== 'down') nextDirection = 'up';
+        });
+
+        joystick.on('dir:down', () => {
+            if (direction !== 'up') nextDirection = 'down';
+        });
+
+        joystick.on('dir:left', () => {
+            if (direction !== 'right') nextDirection = 'left';
+        });
+
+        joystick.on('dir:right', () => {
+            if (direction !== 'left') nextDirection = 'right';
+        });
+        
+        // Show the container when joystick is initialized
+        joystickContainer.style.display = 'block';
+    }
+}
+
 // Create meters container to hold both meters
 const metersContainer = document.createElement('div');
 metersContainer.id = 'meters-container';
@@ -653,6 +686,7 @@ function initGame() {
     
     // Store animation frame ID for proper cancellation later
     animationFrameId = requestAnimationFrame(renderFrame);
+    initJoystick(); // Add this line
 }
 
 function renderFrame(timestamp) {
@@ -1669,6 +1703,12 @@ function cleanupGame() {
     powerUpIndicator.style.display = 'none';
     powerUpStatus.style.display = 'none';
     powerUpCountdownContainer.style.display = 'none';
+    
+    if (joystick) {
+        joystick.destroy();
+        joystick = null;
+        joystickContainer.style.display = 'none';
+    }
 }
 
 function gameOver(reason = 'collision') {
@@ -3076,9 +3116,9 @@ document.body.appendChild(mobileMenuContainer);
 
 // Create mobile menu buttons
 const menuButtons = [
-    { id: 'minimap', symbol: 'M', title: 'Toggle Minimap' },
-    { id: 'leaderboard', symbol: 'L', title: 'Toggle Leaderboard' },
-    { id: 'settings', symbol: '⚙️', title: 'Game Settings' }
+    // { id: 'minimap', symbol: 'M', title: 'Toggle Minimap' },
+    // { id: 'leaderboard', symbol: 'L', title: 'Toggle Leaderboard' },
+    // { id: 'settings', symbol: '⚙️', title: 'Game Settings' }
 ];
 
 menuButtons.forEach((btn, index) => {
@@ -3105,7 +3145,7 @@ menuButtons.forEach((btn, index) => {
     // Add touch event listeners
     button.addEventListener('touchstart', (e) => {
         e.preventDefault();
-        button.style.backgroundColor = 'rgba(76, 175, 80, 0.7)';
+        button.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
         handleMobileMenuButton(btn.id);
     });
     
@@ -3126,9 +3166,9 @@ function handleMobileMenuButton(buttonId) {
         case 'leaderboard':
             toggleBestScores();
             break;
-        case 'settings':
-            openSettingsMenu();
-            break;
+        // case 'settings':
+        //     openSettingsMenu();
+        //     break;
     }
 }
 
@@ -3202,50 +3242,50 @@ function setNextDirection(newDirection) {
     }
 }
 
-// Create settings menu
-const settingsMenu = document.createElement('div');
-settingsMenu.id = 'settings-menu';
-settingsMenu.style.position = 'fixed';
-settingsMenu.style.top = '50%';
-settingsMenu.style.left = '50%';
-settingsMenu.style.transform = 'translate(-50%, -50%)';
-settingsMenu.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
-settingsMenu.style.padding = '20px';
-settingsMenu.style.borderRadius = '10px';
-settingsMenu.style.zIndex = '2000';
-settingsMenu.style.color = 'white';
-settingsMenu.style.fontFamily = 'Arial, sans-serif';
-settingsMenu.style.width = '300px';
-settingsMenu.style.boxShadow = '0 0 20px rgba(0, 0, 0, 0.5)';
-settingsMenu.style.border = '2px solid #4CAF50';
-settingsMenu.style.display = 'none';
-document.body.appendChild(settingsMenu);
+// // Create settings menu
+// const settingsMenu = document.createElement('div');
+// settingsMenu.id = 'settings-menu';
+// settingsMenu.style.position = 'fixed';
+// settingsMenu.style.top = '50%';
+// settingsMenu.style.left = '50%';
+// settingsMenu.style.transform = 'translate(-50%, -50%)';
+// settingsMenu.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
+// settingsMenu.style.padding = '20px';
+// settingsMenu.style.borderRadius = '10px';
+// settingsMenu.style.zIndex = '2000';
+// settingsMenu.style.color = 'white';
+// settingsMenu.style.fontFamily = 'Arial, sans-serif';
+// settingsMenu.style.width = '300px';
+// settingsMenu.style.boxShadow = '0 0 20px rgba(0, 0, 0, 0.5)';
+// settingsMenu.style.border = '2px solid #4CAF50';
+// settingsMenu.style.display = 'none';
+// document.body.appendChild(settingsMenu);
 
 // Add settings content
-settingsMenu.innerHTML = `
-    <h2 style="text-align: center; margin-top: 0; color: #4CAF50;">Game Settings</h2>
-    <div style="margin: 15px 0;">
-        <label for="swipe-sensitivity" style="display: block; margin-bottom: 5px;">
-            Swipe Sensitivity: <span id="sensitivity-value">1.0</span>
-        </label>
-        <input type="range" id="swipe-sensitivity" min="0.5" max="1.5" step="0.1" value="1.0" 
-               style="width: 100%; accent-color: #4CAF50;">
-        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 5px;">
-            <span>Less sensitive</span>
-            <span>More sensitive</span>
-        </div>
-    </div>
-    <button id="save-settings" style="display: block; width: 100%; padding: 10px; margin-top: 15px; 
-                                     background-color: #4CAF50; color: white; border: none; 
-                                     border-radius: 5px; cursor: pointer;">
-        Save Settings
-    </button>
-    <button id="close-settings" style="display: block; width: 100%; padding: 10px; margin-top: 10px; 
-                                      background-color: #555; color: white; border: none; 
-                                      border-radius: 5px; cursor: pointer;">
-        Close
-    </button>
-`;
+// settingsMenu.innerHTML = `
+//     <h2 style="text-align: center; margin-top: 0; color: #4CAF50;">Game Settings</h2>
+//     <div style="margin: 15px 0;">
+//         <label for="swipe-sensitivity" style="display: block; margin-bottom: 5px;">
+//             Swipe Sensitivity: <span id="sensitivity-value">1.0</span>
+//         </label>
+//         <input type="range" id="swipe-sensitivity" min="0.5" max="1.5" step="0.1" value="1.0" 
+//                style="width: 100%; accent-color: #4CAF50;">
+//         <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 5px;">
+//             <span>Less sensitive</span>
+//             <span>More sensitive</span>
+//         </div>
+//     </div>
+//     <button id="save-settings" style="display: block; width: 100%; padding: 10px; margin-top: 15px; 
+//                                      background-color: #4CAF50; color: white; border: none; 
+//                                      border-radius: 5px; cursor: pointer;">
+//         Save Settings
+//     </button>
+//     <button id="close-settings" style="display: block; width: 100%; padding: 10px; margin-top: 10px; 
+//                                       background-color: #555; color: white; border: none; 
+//                                       border-radius: 5px; cursor: pointer;">
+//         Close
+//     </button>
+// `;
 
 // Initialize settings
 function initSettings() {
@@ -3296,9 +3336,9 @@ function initSettings() {
 }
 
 // Open settings menu function
-function openSettingsMenu() {
-    settingsMenu.style.display = 'block';
-}
+// function openSettingsMenu() {
+//     settingsMenu.style.display = 'block';
+// }
 
 // Add CSS for mobile controls
 const mobileControlsStyle = document.createElement('style');
