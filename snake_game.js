@@ -3152,21 +3152,41 @@ function detectTouchDevice() {
             size: 100
         });
 
+        // Debounce function
+        function debounce(func, delay) {
+            let timeout;
+            return function(...args) {
+                const context = this;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(context, args), delay);
+            }
+        }
+
         // Map joystick movements to snake direction
+        const setDirection = debounce((newDirection) => {
+            if (direction !== newDirection &&
+                ((newDirection === 'up' && direction !== 'down') ||
+                 (newDirection === 'down' && direction !== 'up') ||
+                 (newDirection === 'left' && direction !== 'right') ||
+                 (newDirection === 'right' && direction !== 'left'))) {
+                nextDirection = newDirection;
+            }
+        }, 100);
+
         window.joystick.on('dir:up', () => {
-            if (direction !== 'down') nextDirection = 'up';
+            setDirection('up');
         });
 
         window.joystick.on('dir:down', () => {
-            if (direction !== 'up') nextDirection = 'down';
+            setDirection('down');
         });
 
         window.joystick.on('dir:left', () => {
-            if (direction !== 'right') nextDirection = 'left';
+            setDirection('left');
         });
 
         window.joystick.on('dir:right', () => {
-            if (direction !== 'left') nextDirection = 'right';
+            setDirection('right');
         });
     }
 }

@@ -75,13 +75,13 @@ describe('Snake Game Tests', () => {
       // Initial direction (right)
       await page.keyboard.press('ArrowUp');
       await page.waitForTimeout(300);
-      expect(consoleMessages).toContain('direction: up');
       consoleMessages = [];
+      expect(consoleMessages).toContain('direction: up');
 
       await page.keyboard.press('ArrowDown');
       await page.waitForTimeout(300);
-      expect(consoleMessages).toContain('direction: down');
       consoleMessages = [];
+      expect(consoleMessages).toContain('direction: down');
 
       await page.keyboard.press('ArrowLeft');
       await page.waitForTimeout(300);
@@ -102,17 +102,14 @@ describe('Snake Game Tests', () => {
       await page.keyboard.press('KeyW');
       await page.waitForTimeout(300);
       expect(consoleMessages).toContain('direction: up');
-      consoleMessages = [];
 
       await page.keyboard.press('KeyS');
       await page.waitForTimeout(300);
       expect(consoleMessages).toContain('direction: down');
-      consoleMessages = [];
 
       await page.keyboard.press('KeyA');
       await page.waitForTimeout(300);
       expect(consoleMessages).toContain('direction: left');
-      consoleMessages = [];
 
       await page.keyboard.press('KeyD');
       await page.waitForTimeout(300);
