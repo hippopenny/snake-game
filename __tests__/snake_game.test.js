@@ -86,7 +86,6 @@ describe('Snake Game Tests', () => {
       await page.keyboard.press('ArrowLeft');
       await page.waitForTimeout(300);
       expect(consoleMessages).toContain('direction: left');
-      consoleMessages = [];
 
       await page.keyboard.press('ArrowRight');
       await page.waitForTimeout(300);
@@ -95,8 +94,6 @@ describe('Snake Game Tests', () => {
 
     it('should change direction with WASD keys', async () => {
       await page.focus('#game-canvas'); // Ensure canvas is focused
-      await page.click('#start-btn');
-      await page.waitForTimeout(500);
 
       // Initial direction (right)
       await page.keyboard.press('KeyW');
