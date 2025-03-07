@@ -3040,42 +3040,6 @@ powerUpCountdownContainer.style.display = 'none';
 powerUpCountdownContainer.style.zIndex = '1000';
 document.body.appendChild(powerUpCountdownContainer);
 
-// Create a joystick container
-const joystickContainer = document.createElement('div');
-joystickContainer.id = 'joystick-container';
-joystickContainer.style.position = 'absolute';
-joystickContainer.style.bottom = '20px';
-joystickContainer.style.right = '20px';  // Position 20px from the right
-joystickContainer.style.width = '150px';
-joystickContainer.style.height = '150px';
-joystickContainer.style.zIndex = '1001';
-joystickContainer.style.display = 'block'; // Make visible by default for testing
-document.body.appendChild(joystickContainer);
-
-const powerUpCountdownBar = document.createElement('div');
-powerUpCountdownBar.id = 'power-up-countdown-bar';
-powerUpCountdownBar.style.height = '100%';
-powerUpCountdownBar.style.width = '100%';
-powerUpCountdownBar.style.transition = 'width 0.1s linear';
-powerUpCountdownContainer.appendChild(powerUpCountdownBar);
-
-// Map joystick movements to snake direction
-joystick.on('dir:up', () => {
-    if (direction !== 'down') nextDirection = 'up';
-});
-
-joystick.on('dir:down', () => {
-    if (direction !== 'up') nextDirection = 'down';
-});
-
-joystick.on('dir:left', () => {
-    if (direction !== 'right') nextDirection = 'left';
-});
-
-joystick.on('dir:right', () => {
-    if (direction !== 'left') nextDirection = 'right';
-});
-
 // Create mobile menu buttons container
 const mobileMenuContainer = document.createElement('div');
 mobileMenuContainer.id = 'mobile-menu';
