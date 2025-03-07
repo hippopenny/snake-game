@@ -3049,6 +3049,7 @@ joystickContainer.style.right = '20px';  // Position 20px from the right
 joystickContainer.style.width = '150px';
 joystickContainer.style.height = '150px';
 joystickContainer.style.zIndex = '1001';
+joystickContainer.style.display = 'block'; // Make visible by default for testing
 document.body.appendChild(joystickContainer);
 
 const powerUpCountdownBar = document.createElement('div');
