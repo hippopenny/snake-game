@@ -3128,26 +3128,6 @@ menuButtons.forEach((btn, index) => {
     mobileMenuContainer.appendChild(button);
 });
 
-// Function to handle mobile control input
-function handleMobileControl(direction) {
-    if (!gameRunning) return;
-    
-    switch (direction) {
-        case 'up':
-            if (nextDirection !== 'down') nextDirection = 'up';
-            break;
-        case 'down':
-            if (nextDirection !== 'up') nextDirection = 'down';
-            break;
-        case 'left':
-            if (nextDirection !== 'right') nextDirection = 'left';
-            break;
-        case 'right':
-            if (nextDirection !== 'left') nextDirection = 'right';
-            break;
-    }
-}
-
 // Function to handle mobile menu buttons
 function handleMobileMenuButton(buttonId) {
     switch (buttonId) {
