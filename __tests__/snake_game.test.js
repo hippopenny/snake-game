@@ -118,6 +118,10 @@ describe('Snake Game Tests', () => {
         consoleMessages.push(msg.text());
       });
       await mobilePage.goto('http://localhost:3000/snake_game.html');
+
+      // Start the game
+      await mobilePage.click('#start-btn');
+      await mobilePage.waitForTimeout(500); // Wait for game to initialize
     });
 
     afterEach(async () => {
@@ -127,6 +131,10 @@ describe('Snake Game Tests', () => {
     });
 
     it('should change direction with joystick controls', async () => {
+      // Start the game
+      await mobilePage.click('#start-btn');
+      await mobilePage.waitForTimeout(500);
+
       // Function to simulate touch events on the joystick
       async function simulateJoystickTouch(direction) {
         const joystickContainer = await mobilePage.$('#joystick-container');
