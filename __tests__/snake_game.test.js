@@ -61,6 +61,7 @@ describe('Snake Game Tests', () => {
   });
 
   describe('Keyboard Controls', () => {
+    let consoleMessages = [];
     beforeEach(async () => {
       consoleMessages = [];
       // Start the game
@@ -116,10 +117,9 @@ describe('Snake Game Tests', () => {
 
   describe('Mobile Joystick Controls', () => {
     let mobilePage;
-    let consoleMessages = [];
 
     beforeEach(async () => {
-      consoleMessages = [];
+      let consoleMessages = [];
       mobilePage = await browser.newPage({ ...devices['iPhone 13'] });
       mobilePage.on('console', msg => {
         consoleMessages.push(msg.text());
