@@ -158,19 +158,19 @@ describe('Snake Game Tests', () => {
       }
 
       await simulateJoystickTouch('up');
-      await mobilePage.waitForFunction((messages) => messages.includes('direction: up'), { messages: consoleMessages });
+      await mobilePage.waitForFunction((messages) => messages.includes('direction: up'), consoleMessages);
       expect(consoleMessages).toContain('direction: up');
 
       await simulateJoystickTouch('left');
-      await mobilePage.waitForFunction((messages) => messages.includes('direction: left'), { messages: consoleMessages });
+      await mobilePage.waitForFunction((messages) => messages.includes('direction: left'), consoleMessages);
       expect(consoleMessages).toContain('direction: left');
 
       await simulateJoystickTouch('down');
-      await mobilePage.waitForFunction((messages) => messages.includes('direction: down'), { messages: consoleMessages });
+      await mobilePage.waitForFunction((messages) => messages.includes('direction: down'), consoleMessages);
       expect(consoleMessages).toContain('direction: down');
 
       await simulateJoystickTouch('right');
-      await mobilePage.waitForFunction((messages) => messages.includes('direction: right'), { messages: consoleMessages });
+      await mobilePage.waitForFunction((messages) => messages.includes('direction: right'), consoleMessages);
       expect(consoleMessages).toContain('direction: right');
     });
   });
