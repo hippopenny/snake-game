@@ -3061,51 +3061,6 @@ mobileControlsContainer.style.zIndex = '1001';
 document.body.appendChild(mobileControlsContainer);
 
 // Create D-pad buttons
-const directions = [
-    { id: 'up', symbol: '▲', x: 50, y: 0 },
-    { id: 'right', symbol: '▶', x: 100, y: 50 },
-    { id: 'down', symbol: '▼', x: 50, y: 100 },
-    { id: 'left', symbol: '◀', x: 0, y: 50 }
-];
-
-directions.forEach(dir => {
-    const button = document.createElement('div');
-    button.id = `mobile-${dir.id}`;
-    button.className = 'mobile-control-button';
-    button.innerHTML = dir.symbol;
-    button.style.position = 'absolute';
-    button.style.left = `${dir.x}px`;
-    button.style.top = `${dir.y}px`;
-    button.style.width = '60px';
-    button.style.height = '60px';
-    button.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
-    button.style.color = 'white';
-    button.style.borderRadius = '50%';
-    button.style.display = 'flex';
-    button.style.justifyContent = 'center';
-    button.style.alignItems = 'center';
-    button.style.fontSize = '28px';
-    button.style.fontWeight = 'bold';
-    button.style.cursor = 'pointer';
-    button.style.userSelect = 'none';
-    button.style.border = '2px solid rgba(255, 255, 255, 0.3)';
-    button.style.boxShadow = '0 0 10px rgba(255, 255, 255, 0.2)';
-    button.style.boxShadow = '0 0 10px rgba(255, 255, 255, 0.2)';
-    
-    // Add touch event listeners
-    button.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        button.style.backgroundColor = 'rgba(76, 175, 80, 0.7)';
-        handleMobileControl(dir.id);
-    });
-    
-    button.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        button.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-    });
-    
-    mobileControlsContainer.appendChild(button);
-});
 
 // Create mobile menu buttons container
 const mobileMenuContainer = document.createElement('div');
