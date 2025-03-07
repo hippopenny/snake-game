@@ -76,13 +76,13 @@ describe('Snake Game Tests', () => {
       await page.waitForTimeout(300);
       expect(consoleMessages).toContain('direction: up');
 
-      await page.keyboard.press('ArrowDown');
-      await page.waitForTimeout(300);
-      expect(consoleMessages).toContain('direction: down');
-
       await page.keyboard.press('ArrowLeft');
       await page.waitForTimeout(300);
       expect(consoleMessages).toContain('direction: left');
+
+      await page.keyboard.press('ArrowDown');
+      await page.waitForTimeout(300);
+      expect(consoleMessages).toContain('direction: down');
 
       await page.keyboard.press('ArrowRight');
       await page.waitForTimeout(300);
@@ -97,13 +97,13 @@ describe('Snake Game Tests', () => {
       await page.waitForTimeout(300);
       expect(consoleMessages).toContain('direction: up');
 
-      await page.keyboard.press('KeyS');
-      await page.waitForTimeout(300);
-      expect(consoleMessages).toContain('direction: down');
-
       await page.keyboard.press('KeyA');
       await page.waitForTimeout(300);
       expect(consoleMessages).toContain('direction: left');
+
+      await page.keyboard.press('KeyS');
+      await page.waitForTimeout(300);
+      expect(consoleMessages).toContain('direction: down');
 
       await page.keyboard.press('KeyD');
       await page.waitForTimeout(300);
@@ -146,8 +146,8 @@ describe('Snake Game Tests', () => {
 
         switch (direction) {
           case 'up': targetY = boundingBox.y; break;
-          case 'down': targetY = boundingBox.y + boundingBox.height; break;
           case 'left': targetX = boundingBox.x; break;
+          case 'down': targetY = boundingBox.y + boundingBox.height; break;
           case 'right': targetX = boundingBox.x + boundingBox.width; break;
         }
 
@@ -159,13 +159,13 @@ describe('Snake Game Tests', () => {
       await mobilePage.waitForFunction(() => consoleMessages.includes('direction: up'));
       expect(consoleMessages).toContain('direction: up');
 
-      await simulateJoystickTouch('down');
-      await mobilePage.waitForFunction(() => consoleMessages.includes('direction: down'));
-      expect(consoleMessages).toContain('direction: down');
-
       await simulateJoystickTouch('left');
       await mobilePage.waitForFunction(() => consoleMessages.includes('direction: left'));
       expect(consoleMessages).toContain('direction: left');
+
+      await simulateJoystickTouch('down');
+      await mobilePage.waitForFunction(() => consoleMessages.includes('direction: down'));
+      expect(consoleMessages).toContain('direction: down');
 
       await simulateJoystickTouch('right');
       await mobilePage.waitForFunction(() => consoleMessages.includes('direction: right'));
