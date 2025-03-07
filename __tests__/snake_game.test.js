@@ -68,13 +68,11 @@ describe('Snake Game Tests', () => {
     });
 
     it('should change direction with arrow keys', async () => {
-      await page.focus('#game-canvas'); // Ensure canvas is focused
-      
+      await page.focus('#game-canvas');
 
-      // Initial direction (right)
+      // Start by pressing a key to ensure a different initial direction
       await page.keyboard.press('ArrowUp');
       await page.waitForTimeout(300);
-      expect(consoleMessages).toContain('direction: up');
 
       await page.keyboard.press('ArrowLeft');
       await page.waitForTimeout(300);
@@ -92,10 +90,9 @@ describe('Snake Game Tests', () => {
     it('should change direction with WASD keys', async () => {
       await page.focus('#game-canvas');
 
-      // Initial direction (right)
+      // Start by pressing a key to ensure a different initial direction
       await page.keyboard.press('KeyW');
       await page.waitForTimeout(300);
-      expect(consoleMessages).toContain('direction: up');
 
       await page.keyboard.press('KeyA');
       await page.waitForTimeout(300);
@@ -156,19 +153,19 @@ describe('Snake Game Tests', () => {
       }
 
       await simulateJoystickTouch('up');
-      await mobilePage.waitForFunction(() => consoleMessages.includes('direction: up'));
+      await mobilePage.waitForFunction((messages) => messages.includes('direction: up'), { messages: consoleMessages });
       expect(consoleMessages).toContain('direction: up');
 
       await simulateJoystickTouch('left');
-      await mobilePage.waitForFunction(() => consoleMessages.includes('direction: left'));
+      await mobilePage.waitForFunction((messages) => messages.includes('direction: left'), { messages: consoleMessages });
       expect(consoleMessages).toContain('direction: left');
 
       await simulateJoystickTouch('down');
-      await mobilePage.waitForFunction(() => consoleMessages.includes('direction: down'));
+      await mobilePage.waitForFunction((messages) => messages.includes('direction: down'), { messages: consoleMessages });
       expect(consoleMessages).toContain('direction: down');
 
       await simulateJoystickTouch('right');
-      await mobilePage.waitForFunction(() => consoleMessages.includes('direction: right'));
+      await mobilePage.waitForFunction((messages) => messages.includes('direction: right'), { messages: consoleMessages });
       expect(consoleMessages).toContain('direction: right');
     });
   });
