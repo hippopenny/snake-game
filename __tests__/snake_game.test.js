@@ -48,6 +48,7 @@ describe('Snake Game Tests', () => {
     if (page && !page.isClosed()) {
       await page.close();
     }
+    consoleMessages = [];
   });
 
   afterAll(async () => {
