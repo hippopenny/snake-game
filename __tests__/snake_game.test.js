@@ -116,6 +116,7 @@ describe('Snake Game Tests', () => {
 
   describe('Mobile Joystick Controls', () => {
     let mobilePage;
+    let consoleMessages = [];
 
     beforeEach(async () => {
       consoleMessages = [];
