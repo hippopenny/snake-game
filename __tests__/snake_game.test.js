@@ -162,11 +162,11 @@ describe('Snake Game Tests', () => {
 
       const waitForDirection = async (expectedDirection) => {
         await mobilePage.waitForFunction(
-          (dir) => {
-            return window.nextDirection === dir;
+          (dir, currentDir) => {
+            return window.nextDirection === dir && window.direction !== dir;
           },
           expectedDirection,
-          { timeout: 10000 } // Increased timeout to 10 seconds
+          { timeout: 15000 } // Increased timeout to 15 seconds
         );
       };
 

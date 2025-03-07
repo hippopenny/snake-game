@@ -3174,20 +3174,31 @@ function detectTouchDevice() {
         }, 100);
 
         window.joystick.on('dir:up', () => {
-            setDirection('up');
+            setNextDirection('up');
         });
 
         window.joystick.on('dir:down', () => {
-            setDirection('down');
+            setNextDirection('down');
         });
 
         window.joystick.on('dir:left', () => {
-            setDirection('left');
+            setNextDirection('left');
         });
 
         window.joystick.on('dir:right', () => {
-            setDirection('right');
+            setNextDirection('right');
         });
+    }
+}
+
+// Function to set the next direction
+function setNextDirection(newDirection) {
+    if (direction !== newDirection &&
+        ((newDirection === 'up' && direction !== 'down') ||
+         (newDirection === 'down' && direction !== 'up') ||
+         (newDirection === 'left' && direction !== 'right') ||
+         (newDirection === 'right' && direction !== 'left'))) {
+        nextDirection = newDirection;
     }
 }
 
@@ -3401,8 +3412,17 @@ document.head.appendChild(mobileControlsStyle);
 
 // Call the detection function when the document is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    detectTouchDevice();
     initSettings();
+});
+
+// Call the detection function when the game starts
+startBtn.addEventListener('click', () => {
+    startScreen.style.display = 'none';
+    canvas.style.display = 'block';
+    if (!gameRunning) {
+        initGame();
+        detectTouchDevice(); // Initialize touch controls when the game starts
+    }
 });
 
 function getPowerUpIcon(type) {
