@@ -122,10 +122,12 @@ describe('Snake Game Tests', () => {
       await mobilePage.click('#start-btn');
       await mobilePage.waitForTimeout(500); // Wait for game to initialize
 
-      // Take a screenshot to verify the joystick is visible
-      await mobilePage.screenshot({ path: 'joystick.png' });
-      const joystick = await mobilePage.$('#joystick-container');
-      expect(joystick).toBeTruthy();
+      // Verify the joystick is visible by checking its display style
+      const joystickVisible = await mobilePage.evaluate(() => {
+        const joystickContainer = document.getElementById('joystick-container');
+        return joystickContainer && window.getComputedStyle(joystickContainer).display !== 'none';
+      });
+      expect(joystickVisible).toBeTruthy();
     });
 
     afterEach(async () => {
@@ -153,25 +155,36 @@ describe('Snake Game Tests', () => {
           case 'right': targetX = boundingBox.x + boundingBox.width; break;
         }
 
+        console.log(`Tapping ${direction} at ${targetX}, ${targetY}`);
         await mobilePage.touchscreen.tap(targetX, targetY);
         await mobilePage.waitForTimeout(300);
       }
 
+      const waitForDirection = async (expectedDirection) => {
+        await mobilePage.waitForFunction(
+          (dir) => {
+            return window.nextDirection === dir;
+          },
+          expectedDirection,
+          { timeout: 10000 } // Increased timeout to 10 seconds
+        );
+      };
+
       await simulateJoystickTouch('up');
-      await mobilePage.waitForFunction((messages) => messages.includes('direction: up'), consoleMessages);
-      expect(consoleMessages).toContain('direction: up');
+      await waitForDirection('up');
+      expect(await mobilePage.evaluate(() => window.nextDirection)).toBe('up');
 
       await simulateJoystickTouch('left');
-      await mobilePage.waitForFunction((messages) => messages.includes('direction: left'), consoleMessages);
-      expect(consoleMessages).toContain('direction: left');
+      await waitForDirection('left');
+      expect(await mobilePage.evaluate(() => window.nextDirection)).toBe('left');
 
       await simulateJoystickTouch('down');
-      await mobilePage.waitForFunction((messages) => messages.includes('direction: down'), consoleMessages);
-      expect(consoleMessages).toContain('direction: down');
+      await waitForDirection('down');
+      expect(await mobilePage.evaluate(() => window.nextDirection)).toBe('down');
 
       await simulateJoystickTouch('right');
-      await mobilePage.waitForFunction((messages) => messages.includes('direction: right'), consoleMessages);
-      expect(consoleMessages).toContain('direction: right');
+      await waitForDirection('right');
+      expect(await mobilePage.evaluate(() => window.nextDirection)).toBe('right');
     });
   });
 });
