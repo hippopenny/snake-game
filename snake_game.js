@@ -89,7 +89,7 @@ const POWER_UP_EFFECTS = {
     },
     magnet: {
         range: 12,
-        attractionStrength: 1.2,
+        attractionStrength: 2,
         visualEffect: '#FFEB3B'
     }
 };
@@ -3169,7 +3169,7 @@ function initJoystick() {
             lockX: false,
             lockY: false,
             frontPosition: { size: 30 },
-            threshold: 0.1
+            threshold: 0.01
         };
 
         window.joystick = nipplejs.create(options);
@@ -3194,7 +3194,7 @@ function initJoystick() {
                     (newDirection === 'right' && direction !== 'left'))) {
                 nextDirection = newDirection;
             }
-        }, 100);
+        }, 50);
 
         window.joystick.on('dir:up', () => {
             setNextDirection('up');
