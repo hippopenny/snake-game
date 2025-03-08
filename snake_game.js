@@ -3155,17 +3155,27 @@ function initJoystick() {
         mobileMenuContainer.style.display = 'flex';
         mobileMenuContainer.style.flexDirection = 'column';
 
-        // Initialize the joystick
-        window.joystick = nipplejs.create({
+        const options = {
             zone: joystickContainer,
             mode: 'static',
-            position: { left: '50%', bottom: '50%' },
-            color: 'rgba(0, 255, 0, 0.5)', // More transparent green
-            size: 100,
-            dynamicPage: true // Make it responsive
-        });
+            position: { right: '50%', bottom: '50%' },
+            size: Math.min(window.innerWidth * 0.3, 100),
+            color: 'rgba(0, 255, 0, 0.05)',
+            fadeTime: 100,
+            restJoystick: true,
+            restOpacity: 0.05,
+            maxOpacity: 0.05,
+            dynamicPage: true,
+            lockX: false,
+            lockY: false,
+            frontPosition: { size: 30 },
+            threshold: 0.1
+        };
 
-            // Debounce function
+        window.joystick = nipplejs.create(options);
+        
+
+        // Debounce function
         function debounce(func, delay) {
             let timeout;
             return function(...args) {
