@@ -11,6 +11,7 @@ let score = 0;
 let highestScore = 0;
 let level = 1;
 let gameLoop;
+let joystick = null;
 let minimapVisible = true;
 let bestScoresVisible = true;
 let bestScoresData = []; // Will store coordinates of highest scores
@@ -220,38 +221,7 @@ function initHeatMap() {
     }
 }
 
-function initJoystick() {
-    if (!joystick && detectTouchDevice()) {
-        const options = {
-            zone: joystickContainer,
-            mode: 'static',
-            position: { right: '75px', bottom: '75px' },
-            color: 'green',
-            size: 100
-        };
-        
-        joystick = nipplejs.create(options);
 
-        joystick.on('dir:up', () => {
-            if (direction !== 'down') nextDirection = 'up';
-        });
-
-        joystick.on('dir:down', () => {
-            if (direction !== 'up') nextDirection = 'down';
-        });
-
-        joystick.on('dir:left', () => {
-            if (direction !== 'right') nextDirection = 'left';
-        });
-
-        joystick.on('dir:right', () => {
-            if (direction !== 'left') nextDirection = 'right';
-        });
-        
-        // Show the container when joystick is initialized
-        joystickContainer.style.display = 'block';
-    }
-}
 
 // Create meters container to hold both meters
 const metersContainer = document.createElement('div');
@@ -686,7 +656,6 @@ function initGame() {
     
     // Store animation frame ID for proper cancellation later
     animationFrameId = requestAnimationFrame(renderFrame);
-    initJoystick(); // Add this line
 }
 
 function renderFrame(timestamp) {
@@ -1387,9 +1356,6 @@ function gameStep() {
     updateHeatMap();
     
     sendPlayerState();
-    
-    // Initialize mobile controls if needed
-    detectTouchDevice();
 }
 
 function showFoodEffect(food) {
@@ -3177,8 +3143,14 @@ function detectTouchDevice() {
     const isTouchDevice = 'ontouchstart' in window ||
         navigator.maxTouchPoints > 0 ||
         navigator.msMaxTouchPoints > 0;
-
     if (isTouchDevice) {
+        initJoystick();
+    }
+    return isTouchDevice;
+}
+
+function initJoystick() {
+    if (!joystick) {
         joystickContainer.style.display = 'block'; // Ensure the joystick is visible
         mobileMenuContainer.style.display = 'flex';
         mobileMenuContainer.style.flexDirection = 'column';
@@ -3193,7 +3165,7 @@ function detectTouchDevice() {
             dynamicPage: true // Make it responsive
         });
 
-         // Debounce function
+            // Debounce function
         function debounce(func, delay) {
             let timeout;
             return function(...args) {
@@ -3207,9 +3179,9 @@ function detectTouchDevice() {
         const setDirection = debounce((newDirection) => {
             if (direction !== newDirection &&
                 ((newDirection === 'up' && direction !== 'down') ||
-                 (newDirection === 'down' && direction !== 'up') ||
-                 (newDirection === 'left' && direction !== 'right') ||
-                 (newDirection === 'right' && direction !== 'left'))) {
+                    (newDirection === 'down' && direction !== 'up') ||
+                    (newDirection === 'left' && direction !== 'right') ||
+                    (newDirection === 'right' && direction !== 'left'))) {
                 nextDirection = newDirection;
             }
         }, 100);
@@ -3229,6 +3201,7 @@ function detectTouchDevice() {
         window.joystick.on('dir:right', () => {
             setNextDirection('right');
         });
+        
     }
 }
 
@@ -3242,219 +3215,6 @@ function setNextDirection(newDirection) {
         nextDirection = newDirection;
     }
 }
-
-// // Create settings menu
-// const settingsMenu = document.createElement('div');
-// settingsMenu.id = 'settings-menu';
-// settingsMenu.style.position = 'fixed';
-// settingsMenu.style.top = '50%';
-// settingsMenu.style.left = '50%';
-// settingsMenu.style.transform = 'translate(-50%, -50%)';
-// settingsMenu.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
-// settingsMenu.style.padding = '20px';
-// settingsMenu.style.borderRadius = '10px';
-// settingsMenu.style.zIndex = '2000';
-// settingsMenu.style.color = 'white';
-// settingsMenu.style.fontFamily = 'Arial, sans-serif';
-// settingsMenu.style.width = '300px';
-// settingsMenu.style.boxShadow = '0 0 20px rgba(0, 0, 0, 0.5)';
-// settingsMenu.style.border = '2px solid #4CAF50';
-// settingsMenu.style.display = 'none';
-// document.body.appendChild(settingsMenu);
-
-// Add settings content
-// settingsMenu.innerHTML = `
-//     <h2 style="text-align: center; margin-top: 0; color: #4CAF50;">Game Settings</h2>
-//     <div style="margin: 15px 0;">
-//         <label for="swipe-sensitivity" style="display: block; margin-bottom: 5px;">
-//             Swipe Sensitivity: <span id="sensitivity-value">1.0</span>
-//         </label>
-//         <input type="range" id="swipe-sensitivity" min="0.5" max="1.5" step="0.1" value="1.0" 
-//                style="width: 100%; accent-color: #4CAF50;">
-//         <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 5px;">
-//             <span>Less sensitive</span>
-//             <span>More sensitive</span>
-//         </div>
-//     </div>
-//     <button id="save-settings" style="display: block; width: 100%; padding: 10px; margin-top: 15px; 
-//                                      background-color: #4CAF50; color: white; border: none; 
-//                                      border-radius: 5px; cursor: pointer;">
-//         Save Settings
-//     </button>
-//     <button id="close-settings" style="display: block; width: 100%; padding: 10px; margin-top: 10px; 
-//                                       background-color: #555; color: white; border: none; 
-//                                       border-radius: 5px; cursor: pointer;">
-//         Close
-//     </button>
-// `;
-
-// Initialize settings
-function initSettings() {
-    // Load saved swipe sensitivity
-    const savedSensitivity = localStorage.getItem('snake_swipe_sensitivity') || "1.0";
-    document.getElementById('swipe-sensitivity').value = savedSensitivity;
-    document.getElementById('sensitivity-value').textContent = savedSensitivity;
-    
-    // Update sensitivity label when slider changes
-    document.getElementById('swipe-sensitivity').addEventListener('input', function() {
-        document.getElementById('sensitivity-value').textContent = this.value;
-    });
-    
-    // Save settings
-    document.getElementById('save-settings').addEventListener('click', function() {
-        const sensitivity = document.getElementById('swipe-sensitivity').value;
-        localStorage.setItem('snake_swipe_sensitivity', sensitivity);
-        
-        // Apply changes immediately
-        swipeSensitivity = parseFloat(sensitivity);
-        
-        // Close settings menu
-        settingsMenu.style.display = 'none';
-        
-        // Show confirmation
-        const confirmation = document.createElement('div');
-        confirmation.textContent = 'Settings saved!';
-        confirmation.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(76, 175, 80, 0.9);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
-            z-index: 2000;
-            font-family: Arial, sans-serif;
-        `;
-        document.body.appendChild(confirmation);
-        setTimeout(() => document.body.removeChild(confirmation), 2000);
-    });
-    
-    // Close settings menu
-    document.getElementById('close-settings').addEventListener('click', function() {
-        settingsMenu.style.display = 'none';
-    });
-}
-
-// Open settings menu function
-// function openSettingsMenu() {
-//     settingsMenu.style.display = 'block';
-// }
-
-// Add CSS for mobile controls
-const mobileControlsStyle = document.createElement('style');
-mobileControlsStyle.textContent = `
-    @media (max-width: 768px) {
-        #game-canvas {
-            touch-action: none;
-        }
-        
-        .mobile-control-button:active,
-        .mobile-menu-button:active {
-            transform: scale(0.95);
-            background-color: rgba(76, 175, 80, 0.7) !important;
-        }
-        
-        #mobile-controls {
-            opacity: 0.8;
-        }
-        
-        #mobile-menu {
-            opacity: 0.8;
-        }
-        
-        .game-container {
-            transform: scale(0.9);
-            transform-origin: top center;
-        }
-        
-        #leaderboard-container {
-            max-width: 90vw;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-        
-        #mini-leaderboard {
-            max-height: 120px;
-            overflow-y: auto;
-        }
-        
-        #power-up-status {
-            font-size: 16px;
-            padding: 5px 10px;
-        }
-    }
-`;
-mobileControlsStyle.textContent += `
-    .swipe-indicator {
-        transition: transform 0.15s ease-out, width 0.15s ease-out, height 0.15s ease-out, background-color 0.15s ease-out;
-    }
-    
-    .swipe-path {
-        transition: opacity 0.3s ease-out, height 0.15s ease-out, background-color 0.15s ease-out;
-    }
-    
-    .swipe-effect {
-        animation: swipe-feedback 0.7s forwards;
-    }
-    
-    @keyframes swipe-feedback {
-        0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.8; }
-        50% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; }
-        100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
-    }
-    
-    @keyframes swipe-ripple {
-        0% { transform: scale(0); opacity: 0.8; }
-        100% { transform: scale(1.5); opacity: 0; }
-    }
-    
-    .swipe-up-anim {
-        animation: swipe-up 0.6s ease-out forwards;
-    }
-    
-    .swipe-down-anim {
-        animation: swipe-down 0.6s ease-out forwards;
-    }
-    
-    .swipe-left-anim {
-        animation: swipe-left 0.6s ease-out forwards;
-    }
-    
-    .swipe-right-anim {
-        animation: swipe-right 0.6s ease-out forwards;
-    }
-    
-    @keyframes swipe-up {
-        0% { transform: translateY(30px) scale(0.5); opacity: 0; }
-        50% { transform: translateY(-10px) scale(1.2); opacity: 1; }
-        100% { transform: translateY(-50px) scale(0.8); opacity: 0; }
-    }
-    
-    @keyframes swipe-down {
-        0% { transform: translateY(-30px) scale(0.5); opacity: 0; }
-        50% { transform: translateY(10px) scale(1.2); opacity: 1; }
-        100% { transform: translateY(50px) scale(0.8); opacity: 0; }
-    }
-    
-    @keyframes swipe-left {
-        0% { transform: translateX(30px) scale(0.5); opacity: 0; }
-        50% { transform: translateX(-10px) scale(1.2); opacity: 1; }
-        100% { transform: translateX(-50px) scale(0.8); opacity: 0; }
-    }
-    
-    @keyframes swipe-right {
-        0% { transform: translateX(-30px) scale(0.5); opacity: 0; }
-        50% { transform: translateX(10px) scale(1.2); opacity: 1; }
-        100% { transform: translateX(50px) scale(0.8); opacity: 0; }
-    }
-`;
-document.head.appendChild(mobileControlsStyle);
-
-// Call the detection function when the document is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    initSettings();
-});
 
 // Call the detection function when the game starts
 startBtn.addEventListener('click', () => {
