@@ -1044,13 +1044,18 @@ function drawSnake(snakeBody, isCurrentPlayer) {
         return;
     }
     
-    // Find if this snake belongs to a dead player
+    // Find if this snake belongs to a dead player and get its final position
     let isDead = false;
+    let finalPosition = null;
     if (!isCurrentPlayer) {
         // Check if this snake belongs to a player marked as dead
         for (const id in players) {
             if (players[id].snake === snakeBody && players[id].dead) {
                 isDead = true;
+                // Get final position if available
+                if (players[id].finalPosition) {
+                    finalPosition = players[id].finalPosition;
+                }
                 break;
             }
         }
