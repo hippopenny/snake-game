@@ -10,6 +10,7 @@ let gameRunning = false;
 let score = 0;
 let highestScore = 0;
 let level = 1;
+let joystick = null;
 let gameLoop;
 let minimapVisible = true;
 let bestScoresVisible = true;
