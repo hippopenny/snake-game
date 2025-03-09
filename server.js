@@ -347,7 +347,7 @@ function broadcastGameState() {
 // Regularly broadcast game state to all clients
 setInterval(() => {
     broadcastGameState();
-}, 100);
+}, 50);
 
 // WebSocket ping/pong heartbeat to detect dead connections
 setInterval(() => {
