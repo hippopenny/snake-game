@@ -234,24 +234,6 @@ setInterval(() => {
     broadcastGameState();
 }, 100);
 
-ws.on('close', () => {
-    // Remove player if its connection ID matches
-    for (const playerId in players) {
-        if (players[playerId].connectionId === connectionId) {
-            console.log(`Player ${playerId} disconnected`);
-            delete players[playerId];
-            break;
-        }
-    }
-    // Clean up resources
-    const timeout = clientHeartbeats.get(ws);
-    if (timeout) clearTimeout(timeout);
-    clientHeartbeats.delete(ws);
-    clientMessageCounts.delete(ws);
-    clientMap.delete(ws);
-    console.log('Client disconnected, active connections:', clientMap.size);
-});
-
 
 // Update foods and broadcast game state
 setInterval(() => {
