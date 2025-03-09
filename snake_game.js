@@ -1344,6 +1344,15 @@ function gameStep() {
     // If speed boost is active, move the snake again immediately
     // This effectively doubles the speed of movement
     if (activePowerUp && activePowerUp.type === 'speed_boost') {
+        // Store whether we're going to eat food on this move
+        const willEatFood = foods.some(food => snake[0].x === food.x && snake[0].y === food.y);
+        
+        // Remove tail for the second movement unless food will be eaten
+        if (!willEatFood) {
+            snake.pop();
+        }
+        
+        // Make second movement 
         moveSnake();
     }
     
@@ -1398,6 +1407,9 @@ function gameStep() {
     if (!foodEaten) {
         // Only remove the tail if no food was eaten
         snake.pop();
+    } else {
+        // If food was eaten during speed boost, we don't need to grow twice
+        // The extra segment was already added by not removing the tail in the speed boost second move
     }
     
     // Update heat map with current snake position
