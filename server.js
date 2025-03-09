@@ -54,13 +54,24 @@ wss.on('connection', (ws) => {
             clearTimeout(timeout);
         }
     });
-    
+
     // Initialize rate limiting for this client
     clientMessageCounts.set(ws, { count: 0, lastReset: Date.now() });
-    
-    ws.on('message', (message) => {
-        // Apply rate limiting
-        const clientStats = clientMessageCounts.get(ws);
+
+    ws.on('message', message => {
+        try {
+            const data = JSON.parse(message);
+            switch (data.type) {
+                case 'update':
+                    updatePlayers(data.id, data.snake, data.score, data.level, data.activePowerUp, data.gameSpeed); // Include gameSpeed
+                    break;
+                // ... other cases
+            }
+        } catch (e) {
+            console.error("Failed to parse or process message:", e);
+        }
+    });
+});
         const now = Date.now();
         
         // Reset counter if window has passed
@@ -203,15 +214,44 @@ wss.on('connection', (ws) => {
                 const playerId = data.id;
                 console.log(`Player ${playerId} game over`);
                 delete players[playerId];
-            }
-        } catch (error) {
-            console.error('Error processing message:', error);
+function updatePlayers(id, snake, score, level, activePowerUp, gameSpeed) {
+    // Validate gameSpeed to prevent cheating
+    const MIN_GAME_SPEED = 0.5;  // Example minimum speed
+    const MAX_GAME_SPEED = 2.0;  // Example maximum speed
+    const validatedGameSpeed = Math.max(MIN_GAME_SPEED, Math.min(gameSpeed, MAX_GAME_SPEED));
+
+    players[id].snake = snake;
+    players[id].score = score;
+    players[id].level = level;
+    players[id].activePowerUp = activePowerUp;
+    players[id].gameSpeed = validatedGameSpeed;
+}
+
+wss.on('connection', (ws) => {
+    console.log('New connection established');
+
+    // Generate a unique connection ID for tracking this socket
+    const connectionId = Date.now().toString() + Math.floor(Math.random() * 1000);
+    clientMap.set(ws, connectionId);
+
+    // Set up heartbeat handling
+    ws.isAlive = true;
+    ws.on('pong', () => {
+        ws.isAlive = true;
+
+        // Clear the timeout for this client
+        const timeout = clientHeartbeats.get(ws);
+        if (timeout) {
+            clearTimeout(timeout);
         }
     });
 
-    ws.on('close', () => {
-        // Find and remove the disconnected player
-        const connectionId = clientMap.get(ws);
+    // Initialize rate limiting for this client
+    clientMessageCounts.set(ws, { count: 0, lastReset: Date.now() });
+
+    ws.on('message', (message) => {
+        // Apply rate limiting
+        const clientStats = clientMessageCounts.get(ws);
         for (const playerId in players) {
             if (players[playerId].connectionId === connectionId) {
                 console.log(`Player ${playerId} disconnected`);
@@ -316,9 +356,15 @@ function generateNewFood() {
 // Send game state to a specific client
 function sendGameState(ws) {
     if (ws.readyState === WebSocket.OPEN) {
-        const gameState = JSON.stringify({ 
-            type: 'state', 
-            players: players,
+        const gameState = JSON.stringify({
+            type: 'state',
+            players: Object.fromEntries(Object.entries(players).map(([id, player]) => [id, {
+                snake: player.snake,
+                score: player.score,
+                level: player.level,
+                activePowerUp: player.activePowerUp,
+                gameSpeed: player.gameSpeed
+            }])),
             foods: foods,  // Send the foods array instead of a single food
             walls: walls   // Also send walls to clients
         });
@@ -329,13 +375,19 @@ function sendGameState(ws) {
 // Broadcast game state to all clients
 function broadcastGameState() {
     if (wss.clients.size > 0) {
-        const gameState = JSON.stringify({ 
-            type: 'state', 
-            players: players,
+        const gameState = JSON.stringify({
+            type: 'state',
+            players: Object.fromEntries(Object.entries(players).map(([id, player]) => [id, {
+                snake: player.snake,
+                score: player.score,
+                level: player.level,
+                activePowerUp: player.activePowerUp,
+                gameSpeed: player.gameSpeed
+            }])),
             foods: foods,  // Send the foods array instead of a single food
             walls: walls   // Also send walls to clients
         });
-        
+
         wss.clients.forEach(client => {
             if (client.readyState === WebSocket.OPEN) {
                 client.send(gameState);
