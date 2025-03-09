@@ -11,6 +11,7 @@ let score = 0;
 let highestScore = 0;
 let level = 1;
 let gameLoop;
+let joystick = null;
 let minimapVisible = true;
 let bestScoresVisible = true;
 let bestScoresData = []; // Will store coordinates of highest scores
@@ -88,14 +89,14 @@ const POWER_UP_EFFECTS = {
     },
     magnet: {
         range: 12,
-        attractionStrength: 1.2,
+        attractionStrength: 2,
         visualEffect: '#FFEB3B'
     }
 };
 // Add this after the POWER_UP_EFFECTS constant
 // Particle system for visual effects
 const particles = [];
-const MAX_PARTICLES = 50;
+const MAX_PARTICLES = 20;
 
 // Function to create particles
 function createParticles(x, y, color, count, speed, size, lifetime) {
@@ -220,38 +221,7 @@ function initHeatMap() {
     }
 }
 
-function initJoystick() {
-    if (!joystick && detectTouchDevice()) {
-        const options = {
-            zone: joystickContainer,
-            mode: 'static',
-            position: { right: '75px', bottom: '75px' },
-            color: 'green',
-            size: 100
-        };
-        
-        joystick = nipplejs.create(options);
 
-        joystick.on('dir:up', () => {
-            if (direction !== 'down') nextDirection = 'up';
-        });
-
-        joystick.on('dir:down', () => {
-            if (direction !== 'up') nextDirection = 'down';
-        });
-
-        joystick.on('dir:left', () => {
-            if (direction !== 'right') nextDirection = 'left';
-        });
-
-        joystick.on('dir:right', () => {
-            if (direction !== 'left') nextDirection = 'right';
-        });
-        
-        // Show the container when joystick is initialized
-        joystickContainer.style.display = 'block';
-    }
-}
 
 // Create meters container to hold both meters
 const metersContainer = document.createElement('div');
@@ -399,7 +369,14 @@ socket.onopen = () => {
 socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
     if (data.type === 'state') {
-        players = data.players;
+        // players = data.players; //Original line
+        players = Object.fromEntries(Object.entries(data.players).map(([id, player]) => [id, {
+            snake: player.snake,
+            score: player.score,
+            level: player.level,
+            activePowerUp: player.activePowerUp,
+            gameSpeed: player.gameSpeed // Get gameSpeed here
+        }]));
         if (data.foods) {
             foods = data.foods;
         }
@@ -420,6 +397,24 @@ socket.onmessage = (event) => {
         }
     }
 };
+
+ws.on('close', () => {
+    // Remove player if its connection ID matches
+    for (const playerId in players) {
+        if (players[playerId].connectionId === connectionId) {
+            console.log(`Player ${playerId} disconnected`);
+            delete players[playerId];
+            break;
+        }
+    }
+    // Clean up resources
+    const timeout = clientHeartbeats.get(ws);
+    if (timeout) clearTimeout(timeout);
+    clientHeartbeats.delete(ws);
+    clientMessageCounts.delete(ws);
+    clientMap.delete(ws);
+    console.log('Client disconnected, active connections:', clientMap.size);
+});
 
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
@@ -686,7 +681,6 @@ function initGame() {
     
     // Store animation frame ID for proper cancellation later
     animationFrameId = requestAnimationFrame(renderFrame);
-    initJoystick(); // Add this line
 }
 
 function renderFrame(timestamp) {
@@ -1289,7 +1283,8 @@ function sendPlayerState() {
             snake: snake,
             score: score,
             level: level,
-            activePowerUp: activePowerUp
+            activePowerUp: activePowerUp,
+            gameSpeed: gameSpeed // Add gameSpeed here
         };
         socket.send(JSON.stringify(playerState));
     }
@@ -1387,9 +1382,6 @@ function gameStep() {
     updateHeatMap();
     
     sendPlayerState();
-    
-    // Initialize mobile controls if needed
-    detectTouchDevice();
 }
 
 function showFoodEffect(food) {
@@ -2605,6 +2597,7 @@ restartBtn.addEventListener('click', () => {
     initGame();
 });
 
+
 function checkPowerUpExpiration() {
     if (activePowerUp && Date.now() > activePowerUp.expiresAt) {
         deactivatePowerUp();
@@ -2692,6 +2685,31 @@ function updatePowerUpIndicator() {
         clearInterval(gameLoop);
         gameLoop = setInterval(gameStep, boostedSpeed);
     }
+}
+
+
+function applySpeedBoost() {
+    if (!activePowerUp || activePowerUp.type !== 'speed_boost') return;
+    
+    const boostedSpeed = Math.floor(gameSpeed / POWER_UP_EFFECTS.speed_boost.speedMultiplier);
+    
+    clearInterval(gameLoop);
+    gameLoop = setInterval(() => {
+        const predictedPosition = calculateNextPosition();
+        
+        // Send movement update
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+                type: 'movement',
+                id: playerId,
+                position: predictedPosition,
+                speed: boostedSpeed,
+                timestamp: Date.now()
+            }));
+        }
+        
+        gameStep();
+    }, boostedSpeed);
 }
 
 // Add the missing updatePowerUpStatus function
@@ -3177,20 +3195,37 @@ function detectTouchDevice() {
     const isTouchDevice = 'ontouchstart' in window ||
         navigator.maxTouchPoints > 0 ||
         navigator.msMaxTouchPoints > 0;
-
     if (isTouchDevice) {
+        initJoystick();
+    }
+    return isTouchDevice;
+}
+
+function initJoystick() {
+    if (!joystick) {
         joystickContainer.style.display = 'block'; // Ensure the joystick is visible
         mobileMenuContainer.style.display = 'flex';
         mobileMenuContainer.style.flexDirection = 'column';
 
-        // Initialize the joystick
-        window.joystick = nipplejs.create({
+        const options = {
             zone: joystickContainer,
             mode: 'static',
-            position: { left: '50%', bottom: '50%' },
-            color: 'green',
-            size: 100
-        });
+            position: { right: '50%', bottom: '50%' },
+            size: Math.min(window.innerWidth * 0.3, 100),
+            color: 'rgba(0, 255, 0, 0.05)',
+            fadeTime: 100,
+            restJoystick: true,
+            restOpacity: 0.05,
+            maxOpacity: 0.05,
+            dynamicPage: true,
+            lockX: false,
+            lockY: false,
+            frontPosition: { size: 30 },
+            threshold: 0.01
+        };
+
+        window.joystick = nipplejs.create(options);
+        
 
         // Debounce function
         function debounce(func, delay) {
@@ -3206,12 +3241,12 @@ function detectTouchDevice() {
         const setDirection = debounce((newDirection) => {
             if (direction !== newDirection &&
                 ((newDirection === 'up' && direction !== 'down') ||
-                 (newDirection === 'down' && direction !== 'up') ||
-                 (newDirection === 'left' && direction !== 'right') ||
-                 (newDirection === 'right' && direction !== 'left'))) {
+                    (newDirection === 'down' && direction !== 'up') ||
+                    (newDirection === 'left' && direction !== 'right') ||
+                    (newDirection === 'right' && direction !== 'left'))) {
                 nextDirection = newDirection;
             }
-        }, 100);
+        }, 50);
 
         window.joystick.on('dir:up', () => {
             setNextDirection('up');
@@ -3228,6 +3263,7 @@ function detectTouchDevice() {
         window.joystick.on('dir:right', () => {
             setNextDirection('right');
         });
+        
     }
 }
 
@@ -3241,219 +3277,6 @@ function setNextDirection(newDirection) {
         nextDirection = newDirection;
     }
 }
-
-// // Create settings menu
-// const settingsMenu = document.createElement('div');
-// settingsMenu.id = 'settings-menu';
-// settingsMenu.style.position = 'fixed';
-// settingsMenu.style.top = '50%';
-// settingsMenu.style.left = '50%';
-// settingsMenu.style.transform = 'translate(-50%, -50%)';
-// settingsMenu.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
-// settingsMenu.style.padding = '20px';
-// settingsMenu.style.borderRadius = '10px';
-// settingsMenu.style.zIndex = '2000';
-// settingsMenu.style.color = 'white';
-// settingsMenu.style.fontFamily = 'Arial, sans-serif';
-// settingsMenu.style.width = '300px';
-// settingsMenu.style.boxShadow = '0 0 20px rgba(0, 0, 0, 0.5)';
-// settingsMenu.style.border = '2px solid #4CAF50';
-// settingsMenu.style.display = 'none';
-// document.body.appendChild(settingsMenu);
-
-// Add settings content
-// settingsMenu.innerHTML = `
-//     <h2 style="text-align: center; margin-top: 0; color: #4CAF50;">Game Settings</h2>
-//     <div style="margin: 15px 0;">
-//         <label for="swipe-sensitivity" style="display: block; margin-bottom: 5px;">
-//             Swipe Sensitivity: <span id="sensitivity-value">1.0</span>
-//         </label>
-//         <input type="range" id="swipe-sensitivity" min="0.5" max="1.5" step="0.1" value="1.0" 
-//                style="width: 100%; accent-color: #4CAF50;">
-//         <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 5px;">
-//             <span>Less sensitive</span>
-//             <span>More sensitive</span>
-//         </div>
-//     </div>
-//     <button id="save-settings" style="display: block; width: 100%; padding: 10px; margin-top: 15px; 
-//                                      background-color: #4CAF50; color: white; border: none; 
-//                                      border-radius: 5px; cursor: pointer;">
-//         Save Settings
-//     </button>
-//     <button id="close-settings" style="display: block; width: 100%; padding: 10px; margin-top: 10px; 
-//                                       background-color: #555; color: white; border: none; 
-//                                       border-radius: 5px; cursor: pointer;">
-//         Close
-//     </button>
-// `;
-
-// Initialize settings
-function initSettings() {
-    // Load saved swipe sensitivity
-    const savedSensitivity = localStorage.getItem('snake_swipe_sensitivity') || "1.0";
-    document.getElementById('swipe-sensitivity').value = savedSensitivity;
-    document.getElementById('sensitivity-value').textContent = savedSensitivity;
-    
-    // Update sensitivity label when slider changes
-    document.getElementById('swipe-sensitivity').addEventListener('input', function() {
-        document.getElementById('sensitivity-value').textContent = this.value;
-    });
-    
-    // Save settings
-    document.getElementById('save-settings').addEventListener('click', function() {
-        const sensitivity = document.getElementById('swipe-sensitivity').value;
-        localStorage.setItem('snake_swipe_sensitivity', sensitivity);
-        
-        // Apply changes immediately
-        swipeSensitivity = parseFloat(sensitivity);
-        
-        // Close settings menu
-        settingsMenu.style.display = 'none';
-        
-        // Show confirmation
-        const confirmation = document.createElement('div');
-        confirmation.textContent = 'Settings saved!';
-        confirmation.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(76, 175, 80, 0.9);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
-            z-index: 2000;
-            font-family: Arial, sans-serif;
-        `;
-        document.body.appendChild(confirmation);
-        setTimeout(() => document.body.removeChild(confirmation), 2000);
-    });
-    
-    // Close settings menu
-    document.getElementById('close-settings').addEventListener('click', function() {
-        settingsMenu.style.display = 'none';
-    });
-}
-
-// Open settings menu function
-// function openSettingsMenu() {
-//     settingsMenu.style.display = 'block';
-// }
-
-// Add CSS for mobile controls
-const mobileControlsStyle = document.createElement('style');
-mobileControlsStyle.textContent = `
-    @media (max-width: 768px) {
-        #game-canvas {
-            touch-action: none;
-        }
-        
-        .mobile-control-button:active,
-        .mobile-menu-button:active {
-            transform: scale(0.95);
-            background-color: rgba(76, 175, 80, 0.7) !important;
-        }
-        
-        #mobile-controls {
-            opacity: 0.8;
-        }
-        
-        #mobile-menu {
-            opacity: 0.8;
-        }
-        
-        .game-container {
-            transform: scale(0.9);
-            transform-origin: top center;
-        }
-        
-        #leaderboard-container {
-            max-width: 90vw;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-        
-        #mini-leaderboard {
-            max-height: 120px;
-            overflow-y: auto;
-        }
-        
-        #power-up-status {
-            font-size: 16px;
-            padding: 5px 10px;
-        }
-    }
-`;
-mobileControlsStyle.textContent += `
-    .swipe-indicator {
-        transition: transform 0.15s ease-out, width 0.15s ease-out, height 0.15s ease-out, background-color 0.15s ease-out;
-    }
-    
-    .swipe-path {
-        transition: opacity 0.3s ease-out, height 0.15s ease-out, background-color 0.15s ease-out;
-    }
-    
-    .swipe-effect {
-        animation: swipe-feedback 0.7s forwards;
-    }
-    
-    @keyframes swipe-feedback {
-        0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.8; }
-        50% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; }
-        100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
-    }
-    
-    @keyframes swipe-ripple {
-        0% { transform: scale(0); opacity: 0.8; }
-        100% { transform: scale(1.5); opacity: 0; }
-    }
-    
-    .swipe-up-anim {
-        animation: swipe-up 0.6s ease-out forwards;
-    }
-    
-    .swipe-down-anim {
-        animation: swipe-down 0.6s ease-out forwards;
-    }
-    
-    .swipe-left-anim {
-        animation: swipe-left 0.6s ease-out forwards;
-    }
-    
-    .swipe-right-anim {
-        animation: swipe-right 0.6s ease-out forwards;
-    }
-    
-    @keyframes swipe-up {
-        0% { transform: translateY(30px) scale(0.5); opacity: 0; }
-        50% { transform: translateY(-10px) scale(1.2); opacity: 1; }
-        100% { transform: translateY(-50px) scale(0.8); opacity: 0; }
-    }
-    
-    @keyframes swipe-down {
-        0% { transform: translateY(-30px) scale(0.5); opacity: 0; }
-        50% { transform: translateY(10px) scale(1.2); opacity: 1; }
-        100% { transform: translateY(50px) scale(0.8); opacity: 0; }
-    }
-    
-    @keyframes swipe-left {
-        0% { transform: translateX(30px) scale(0.5); opacity: 0; }
-        50% { transform: translateX(-10px) scale(1.2); opacity: 1; }
-        100% { transform: translateX(-50px) scale(0.8); opacity: 0; }
-    }
-    
-    @keyframes swipe-right {
-        0% { transform: translateX(-30px) scale(0.5); opacity: 0; }
-        50% { transform: translateX(10px) scale(1.2); opacity: 1; }
-        100% { transform: translateX(50px) scale(0.8); opacity: 0; }
-    }
-`;
-document.head.appendChild(mobileControlsStyle);
-
-// Call the detection function when the document is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    initSettings();
-});
 
 // Call the detection function when the game starts
 startBtn.addEventListener('click', () => {
@@ -3473,4 +3296,275 @@ function getPowerUpIcon(type) {
         default: return '✨';
     }
 }
+
+function drawSnake(snakeBody, isCurrentPlayer) {
+    // Do not attempt to draw an empty snake
+    if (!snakeBody || snakeBody.length === 0) {
+        console.error("Attempted to draw empty snake");
+        return;
+    }
+    
+    // Apply interpolation for smoother movement
+    let positionsToRender = snakeBody;
+    
+    // Ensure previous positions exist before trying to interpolate
+    if (isCurrentPlayer && prevSnakePositions && prevSnakePositions.length > 0) {
+        // Use cubic easing for smoother animation
+        const eased = easeInOutCubic(interpolationAlpha);
+        
+        // Create completely interpolated snake for smoother rendering
+        positionsToRender = snakeBody.map((segment, i) => {
+            if (i >= prevSnakePositions.length) return segment;
+            
+            return {
+                x: prevSnakePositions[i].x + (segment.x - prevSnakePositions[i].x) * eased,
+                y: prevSnakePositions[i].y + (segment.y - prevSnakePositions[i].y) * eased
+            };
+        });
+    }
+    
+    // Add motion trail effect
+    if (isCurrentPlayer && snakeBody.length > 2) {
+        // Draw ghosted trail segments
+        for (let i = snakeBody.length - 1; i >= 1; i--) {
+            const segment = snakeBody[i];
+            const x = segment.x * CELL_SIZE;
+            const y = segment.y * CELL_SIZE;
+            
+            const trailOpacity = 0.15 - (i / snakeBody.length) * 0.1;
+            
+            // Draw ghost trail
+            ctx.fillStyle = `rgba(255, 255, 255, ${trailOpacity})`;
+            ctx.beginPath();
+            ctx.arc(
+                x + CELL_SIZE / 2,
+                y + CELL_SIZE / 2,
+                CELL_SIZE / 3 * (1 - i / snakeBody.length * 0.5),
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+        }
+    }
+    
+    // Determine if this snake has an active power-up
+    let powerUp = null;
+    
+    if (isCurrentPlayer) {
+        powerUp = activePowerUp;
+    } else {
+        // Find the player ID for this snake
+        for (const id in players) {
+            if (players[id].snake === snakeBody && players[id].activePowerUp) {
+                powerUp = players[id].activePowerUp;
+                break;
+            }
+        }
+    }
+    
+    // Base colors and styles
+    let headColor = isCurrentPlayer ? '#4CAF50' : '#3F51B5';
+    let bodyColor = isCurrentPlayer ? '#8BC34A' : '#7986CB';
+    
+    // Reset all effects flags
+    let glowEffect = false;
+    let trailEffect = false;
+    let particleEffect = false;
+    
+    // Only apply visual effects if a power-up is active
+    if (powerUp) {
+        switch(powerUp.type) {
+            case 'invincibility':
+                headColor = '#9C27B0';
+                bodyColor = '#CE93D8';
+                glowEffect = true;
+                break;
+            case 'speed_boost':
+                headColor = '#00BCD4';
+                bodyColor = '#80DEEA';
+                trailEffect = true;
+                break;
+            case 'magnet':
+                headColor = '#FFEB3B';
+                bodyColor = '#FFF59D';
+                particleEffect = true;
+                break;
+        }
+    }
+    
+    // Draw snake segments with enhanced power-up effects
+    positionsToRender.forEach((segment, index) => {
+        const x = segment.x * CELL_SIZE;
+        const y = segment.y * CELL_SIZE;
+        
+        // Apply enhanced glow effect if power-up is active
+        if (powerUp) {
+            ctx.shadowColor = powerUp.type === 'invincibility' ? '#9C27B0' : 
+                              powerUp.type === 'speed_boost' ? '#00BCD4' : 
+                              powerUp.type === 'magnet' ? '#FFEB3B' : 'transparent';
+            ctx.shadowBlur = 20;
+        }
+        
+        // Set fill style based on segment type
+        ctx.fillStyle = index === 0 ? headColor : bodyColor;
+        
+        // Determine pulsing effect scale
+        let pulseScale = 1;
+        if (powerUp) {
+            pulseScale = 1 + 0.15 * Math.sin(Date.now() / 150);
+        } else if (index === 0) {
+            pulseScale = 1 + 0.05 * Math.sin(Date.now() / 200);
+        }
+        
+        // Calculate dimensions for enhanced segment rendering
+        const size = CELL_SIZE * pulseScale;
+        const radius = index === 0 ? CELL_SIZE / 3 : CELL_SIZE / 4;
+        const centerX = x + CELL_SIZE / 2;
+        const centerY = y + CELL_SIZE / 2;
+        
+        ctx.beginPath();
+        ctx.moveTo(centerX - size/2 + radius, centerY - size/2);
+        ctx.lineTo(centerX + size/2 - radius, centerY - size/2);
+        ctx.quadraticCurveTo(centerX + size/2, centerY - size/2, centerX + size/2, centerY - size/2 + radius);
+        ctx.lineTo(centerX + size/2, centerY + size/2 - radius);
+        ctx.quadraticCurveTo(centerX + size/2, centerY + size/2, centerX + size/2 - radius, centerY + size/2);
+        ctx.lineTo(centerX - size/2 + radius, centerY + size/2);
+        ctx.quadraticCurveTo(centerX - size/2, centerY + size/2, centerX - size/2, centerY + size/2 - radius);
+        ctx.lineTo(centerX - size/2, centerY - size/2 + radius);
+        ctx.quadraticCurveTo(centerX - size/2, centerY - size/2, centerX - size/2 + radius, centerY - size/2);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Reset shadow effect after drawing segment
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        
+        // Add eyes and head decorations for the head segment
+        if (index === 0) {
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(x + CELL_SIZE * 0.7, y + CELL_SIZE * 0.3, CELL_SIZE * 0.15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(x + CELL_SIZE * 0.7, y + CELL_SIZE * 0.7, CELL_SIZE * 0.15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(x + CELL_SIZE * 0.75, y + CELL_SIZE * 0.3, CELL_SIZE * 0.07, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(x + CELL_SIZE * 0.75, y + CELL_SIZE * 0.7, CELL_SIZE * 0.07, 0, Math.PI * 2);
+            ctx.fill();
+            
+            if (powerUp) {
+                if (powerUp.type === 'invincibility') {
+                    ctx.fillStyle = '#FFD700';
+                    ctx.beginPath();
+                    ctx.moveTo(x + CELL_SIZE * 0.5, y - CELL_SIZE * 0.3);
+                    ctx.lineTo(x + CELL_SIZE * 0.2, y + CELL_SIZE * 0.2);
+                    ctx.lineTo(x + CELL_SIZE * 0.35, y);
+                    ctx.lineTo(x + CELL_SIZE * 0.5, y + CELL_SIZE * 0.2);
+                    ctx.lineTo(x + CELL_SIZE * 0.65, y);
+                    ctx.lineTo(x + CELL_SIZE * 0.8, y + CELL_SIZE * 0.2);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    ctx.strokeStyle = '#FFD700';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(x + CELL_SIZE/2, y + CELL_SIZE/2, CELL_SIZE * 1.0, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else if (powerUp.type === 'speed_boost') {
+                    ctx.fillStyle = '#FFFF00';
+                    ctx.beginPath();
+                    ctx.moveTo(x - CELL_SIZE * 0.2, y + CELL_SIZE * 0.2);
+                    ctx.lineTo(x + CELL_SIZE * 0.6, y + CELL_SIZE * 0.2);
+                    ctx.lineTo(x + CELL_SIZE * 0.3, y + CELL_SIZE * 0.8);
+                    ctx.lineTo(x + CELL_SIZE * 0.7, y + CELL_SIZE * 0.5);
+                    ctx.lineTo(x + CELL_SIZE * 0.4, y + CELL_SIZE * 0.5);
+                    ctx.lineTo(x + CELL_SIZE * 0.9, y - CELL_SIZE * 0.2);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    ctx.strokeStyle = '#FFFF00';
+                    ctx.lineWidth = 2;
+                    for (let i = 0; i < 3; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(x - CELL_SIZE * 0.3 - i * 5, y + CELL_SIZE * (0.3 + i * 0.2));
+                        ctx.lineTo(x - CELL_SIZE * 0.1 - i * 3, y + CELL_SIZE * (0.3 + i * 0.2));
+                        ctx.stroke();
+                    }
+                } else if (powerUp.type === 'magnet') {
+                    ctx.fillStyle = '#FF5722';
+                    ctx.beginPath();
+                    ctx.rect(x + CELL_SIZE * 0.3, y - CELL_SIZE * 0.2, CELL_SIZE * 0.4, CELL_SIZE * 0.3);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.rect(x + CELL_SIZE * 0.3, y + CELL_SIZE * 0.9, CELL_SIZE * 0.4, CELL_SIZE * 0.3);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.rect(x + CELL_SIZE * 0.4, y - CELL_SIZE * 0.2, CELL_SIZE * 0.2, CELL_SIZE * 1.4);
+                    ctx.fill();
+                }
+            }
+        }
+    });
+    
+    if (isCurrentPlayer && powerUp) {
+        if (trailEffect) {
+            for (let i = snakeBody.length - 1; i > 0; i--) {
+                const segment = snakeBody[i];
+                const x = segment.x * CELL_SIZE;
+                const y = segment.y * CELL_SIZE;
+                if (i % 2 === 0 || i % 3 === 0) {
+                    const opacity = 0.8 * (1 - i / snakeBody.length);
+                    ctx.fillStyle = `rgba(0, 188, 212, ${opacity})`;
+                    ctx.beginPath();
+                    ctx.moveTo(x - CELL_SIZE * 0.8, y + CELL_SIZE * 0.2);
+                    ctx.lineTo(x, y + CELL_SIZE * 0.5);
+                    ctx.lineTo(x - CELL_SIZE * 0.8, y + CELL_SIZE * 0.8);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    if (Math.random() < 0.3) {
+                        createParticles(segment.x, segment.y, '#00BCD4', 3, 2, 4, 500);
+                    }
+                }
+            }
+        } else if (glowEffect) {
+            if (Math.random() < 0.3) {
+                const head = snakeBody[0];
+                createParticles(head.x, head.y, '#9C27B0', 5, 1.5, 5, 800);
+            }
+            ctx.strokeStyle = 'rgba(156, 39, 176, 0.5)';
+            ctx.lineWidth = 4;
+            for (let i = 0; i < snakeBody.length; i += 3) {
+                const segment = snakeBody[i];
+                ctx.beginPath();
+                ctx.arc(segment.x * CELL_SIZE + CELL_SIZE/2, segment.y * CELL_SIZE + CELL_SIZE/2, CELL_SIZE * 1.2, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+        
+        if (particleEffect) {
+            drawMagnetOrbits(snakeBody[0].x, snakeBody[0].y);
+            ctx.strokeStyle = 'rgba(255, 235, 59, 0.6)';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < snakeBody.length; i += 4) {
+                const segment = snakeBody[i];
+                const x = segment.x * CELL_SIZE + CELL_SIZE/2;
+                const y = segment.y * CELL_SIZE + CELL_SIZE/2;
+                for (let j = 0; j < 4; j++) {
+                    const angle = (j / 4) * Math.PI * 2 + Date.now() / 1000;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x + Math.cos(angle) * CELL_SIZE * 1.5, y + Math.sin(angle) * CELL_SIZE * 1.5);
+                    ctx.stroke();
+                }
+            }
+        }
+    }
+}
+
 // Add a new maze-like structure

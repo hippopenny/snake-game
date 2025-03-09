@@ -1,4 +1,4 @@
-import { WebSocket, WebSocketServer } from 'ws';
+import WebSocket, { WebSocketServer } from 'ws';
 
 const wss = new WebSocketServer({ port: 8080 });
 
@@ -14,6 +14,64 @@ const clientMessageCounts = new Map(); // Track message counts per client
 
 // Game state
 let players = {};
+
+wss.on('connection', (ws) => {
+    // Connection health tracking
+    ws.isAlive = true;
+    ws.on('pong', () => ws.isAlive = true);
+
+    // Initialize client message count
+    clientMessageCounts.set(ws, { count: 0, lastReset: Date.now() });
+
+    ws.on('message', (message) => {
+        // Rate limiting code:
+        const clientStats = clientMessageCounts.get(ws);
+        const now = Date.now();
+        if (now - clientStats.lastReset > MESSAGE_TRACKING_WINDOW) {
+          clientStats.count = 0;
+          clientStats.lastReset = now;
+        }
+        clientStats.count++;
+        if (clientStats.count > MESSAGE_RATE_LIMIT) {
+          console.log(`Rate limit exceeded for client ${connectionId}`);
+          return; // Silently drop the message
+        }
+
+        // Now parse and process the message
+        try {
+            const data = JSON.parse(message);
+            switch (data.type) {
+                case 'update':
+                    updatePlayers(data.id, data.snake, data.score, data.level, data.activePowerUp, data.gameSpeed);
+                    break;
+                // ... handle other cases
+            }
+        } catch (e) {
+            console.error("Failed to parse or process message:", e);
+        }
+    });
+
+    // Send initial game state to the new client
+    sendGameState(ws);
+
+    ws.on('close', () => {
+        // Remove player if its connection ID matches
+        for (const playerId in players) {
+            if (players[playerId].connectionId === connectionId) {
+                console.log(`Player ${playerId} disconnected`);
+                delete players[playerId];
+                break;
+            }
+        }
+        // Clean up resources
+        const timeout = clientHeartbeats.get(ws);
+        if (timeout) clearTimeout(timeout);
+        clientHeartbeats.delete(ws);
+        clientMessageCounts.delete(ws);
+        clientMap.delete(ws);
+        console.log('Client disconnected, active connections:', clientMap.size);
+    });
+});
 let foods = [];
 let walls = []; // Store wall positions
 const BASE_FOOD_DENSITY = 0.001; // Reduced from 0.0025
@@ -36,205 +94,20 @@ const FOOD_TYPES = [
 // Track connected clients to handle disconnections properly
 const clientMap = new Map();
 
-wss.on('connection', (ws) => {
-    console.log('New connection established');
-    
-    // Generate a unique connection ID for tracking this socket
-    const connectionId = Date.now().toString() + Math.floor(Math.random() * 1000);
-    clientMap.set(ws, connectionId);
-    
-    // Set up heartbeat handling
-    ws.isAlive = true;
-    ws.on('pong', () => {
-        ws.isAlive = true;
-        
-        // Clear the timeout for this client
-        const timeout = clientHeartbeats.get(ws);
-        if (timeout) {
-            clearTimeout(timeout);
-        }
-    });
-    
-    // Initialize rate limiting for this client
-    clientMessageCounts.set(ws, { count: 0, lastReset: Date.now() });
-    
-    ws.on('message', (message) => {
-        // Apply rate limiting
-        const clientStats = clientMessageCounts.get(ws);
-        const now = Date.now();
-        
-        // Reset counter if window has passed
-        if (now - clientStats.lastReset > MESSAGE_TRACKING_WINDOW) {
-            clientStats.count = 0;
-            clientStats.lastReset = now;
-        }
-        
-        // Increment message count
-        clientStats.count++;
-        
-        // Check if rate limit exceeded
-        if (clientStats.count > MESSAGE_RATE_LIMIT) {
-            console.log(`Rate limit exceeded for client ${connectionId}`);
-            return; // Silently drop the message
-        }
-        
-        try {
-            const data = JSON.parse(message);
-            
-            if (data.type === 'update') {
-                const playerId = data.id;
-                
-                // New player joined
-                if (!players[playerId]) {
-                    console.log(`New player joined with ID: ${playerId}`);
-                }
-                
-                // Update player data
-                players[playerId] = {
-                    id: playerId,
-                    snake: data.snake,
-                    score: data.score,
-                    level: data.level,
-                    lastUpdate: Date.now(),
-                    connectionId: clientMap.get(ws),
-                    activePowerUp: data.activePowerUp
-                };
-                
-                // Check for collisions with other players
-                const head = data.snake[0];
-                if (head) {
-                    checkPlayerCollisions(playerId, head);
-                }
-            } else if (data.type === 'foodEaten') {
-                const playerId = data.id;
-                const foodIndex = data.foodIndex;
-                
-                if (foodIndex >= 0 && foodIndex < foods.length) {
-                    const eatenFood = foods[foodIndex];
-                    foods.splice(foodIndex, 1);
-                    console.log(`Food eaten by player ${playerId}`);
-                    
-                    // Activate power-up if the eaten food was a power-up
-                    if (eatenFood.powerUp) {
-                        players[playerId].activePowerUp = {
-                            type: eatenFood.powerUp,
-                            expiresAt: Date.now() + eatenFood.duration
-                        };
-                        console.log(`Power-up ${eatenFood.powerUp} activated for player ${playerId}`);
-                    }
-                    
-                    // Generate new food
-                    while (foods.length < MAX_FOODS) {
-                        foods.push(generateNewFood());
-                    }
-                    
-                    // Broadcast updated food positions to all clients
-                    broadcastGameState();
-                }
-            } else if (data.type === 'requestFood') {
-                // Create food at the requested position
-                const food = {
-                    x: data.x,
-                    y: data.y,
-                    createdAt: Date.now(),
-                    blinking: false,
-                    lifetime: BASE_FOOD_LIFETIME * 1.5, // Give safe zone food longer lifetime
-                    countdown: Math.floor((BASE_FOOD_LIFETIME * 1.5) / 1000)
-                };
-                
-                // Determine food type
-                if (data.specialFood) {
-                    // Special high-value food
-                    if (data.powerUp) {
-                        // Choose a random power-up
-                        const powerUpTypes = ['speed_boost', 'invincibility', 'magnet'];
-                        const randomPowerUp = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
-                        
-                        // Set power-up food properties
-                        food.points = 5;
-                        food.powerUp = randomPowerUp;
-                        food.duration = 10000; // 10 seconds
-                        
-                        switch (randomPowerUp) {
-                            case 'speed_boost':
-                                food.color = '#00BCD4';
-                                break;
-                            case 'invincibility':
-                                food.color = '#9C27B0';
-                                break;
-                            case 'magnet':
-                                food.color = '#FFEB3B';
-                                break;
-                        }
-                    } else {
-                        // High-value food
-                        food.points = data.points || 20;
-                        food.color = data.points >= 50 ? '#8BC34A' : '#FFC107';
-                    }
-                } else {
-                    // Regular food in safe zone
-                    food.points = 10;
-                    food.color = '#FF5722';
-                }
-                
-                // Add to foods array if not colliding with anything
-                let canPlace = true;
-                
-                // Check walls
-                for (const wall of walls) {
-                    if (wall.x === food.x && wall.y === food.y) {
-                        canPlace = false;
-                        break;
-                    }
-                }
-                
-                // Check other food
-                for (const existingFood of foods) {
-                    if (existingFood.x === food.x && existingFood.y === food.y) {
-                        canPlace = false;
-                        break;
-                    }
-                }
-                
-                if (canPlace) {
-                    foods.push(food);
-                }
-            } else if (data.type === 'gameOver') {
-                const playerId = data.id;
-                console.log(`Player ${playerId} game over`);
-                delete players[playerId];
-            }
-        } catch (error) {
-            console.error('Error processing message:', error);
-        }
-    });
 
-    ws.on('close', () => {
-        // Find and remove the disconnected player
-        const connectionId = clientMap.get(ws);
-        for (const playerId in players) {
-            if (players[playerId].connectionId === connectionId) {
-                console.log(`Player ${playerId} disconnected`);
-                delete players[playerId];
-                break;
-            }
-        }
-        
-        // Clean up resources
-        const timeout = clientHeartbeats.get(ws);
-        if (timeout) {
-            clearTimeout(timeout);
-        }
-        clientHeartbeats.delete(ws);
-        clientMessageCounts.delete(ws);
-        clientMap.delete(ws);
-        
-        console.log('Client disconnected, active connections:', clientMap.size);
-    });
+function updatePlayers(id, snake, score, level, activePowerUp, gameSpeed) {
+    // Validate gameSpeed to prevent cheating
+    const MIN_GAME_SPEED = 0.5;  // Example minimum speed
+    const MAX_GAME_SPEED = 2.0;  // Example maximum speed
+    const validatedGameSpeed = Math.max(MIN_GAME_SPEED, Math.min(gameSpeed, MAX_GAME_SPEED));
 
-    // Send initial game state to the new client
-    sendGameState(ws);
-});
+    players[id].snake = snake;
+    players[id].score = score;
+    players[id].level = level;
+    players[id].activePowerUp = activePowerUp;
+    players[id].gameSpeed = validatedGameSpeed;
+}
+
 
 // Check if a player's head collides with other players
 function checkPlayerCollisions(playerId, head) {
@@ -316,9 +189,15 @@ function generateNewFood() {
 // Send game state to a specific client
 function sendGameState(ws) {
     if (ws.readyState === WebSocket.OPEN) {
-        const gameState = JSON.stringify({ 
-            type: 'state', 
-            players: players,
+        const gameState = JSON.stringify({
+            type: 'state',
+            players: Object.fromEntries(Object.entries(players).map(([id, player]) => [id, {
+                snake: player.snake,
+                score: player.score,
+                level: player.level,
+                activePowerUp: player.activePowerUp,
+                gameSpeed: player.gameSpeed
+            }])),
             foods: foods,  // Send the foods array instead of a single food
             walls: walls   // Also send walls to clients
         });
@@ -329,13 +208,19 @@ function sendGameState(ws) {
 // Broadcast game state to all clients
 function broadcastGameState() {
     if (wss.clients.size > 0) {
-        const gameState = JSON.stringify({ 
-            type: 'state', 
-            players: players,
+        const gameState = JSON.stringify({
+            type: 'state',
+            players: Object.fromEntries(Object.entries(players).map(([id, player]) => [id, {
+                snake: player.snake,
+                score: player.score,
+                level: player.level,
+                activePowerUp: player.activePowerUp,
+                gameSpeed: player.gameSpeed
+            }])),
             foods: foods,  // Send the foods array instead of a single food
             walls: walls   // Also send walls to clients
         });
-        
+
         wss.clients.forEach(client => {
             if (client.readyState === WebSocket.OPEN) {
                 client.send(gameState);
@@ -349,30 +234,6 @@ setInterval(() => {
     broadcastGameState();
 }, 100);
 
-// WebSocket ping/pong heartbeat to detect dead connections
-setInterval(() => {
-    wss.clients.forEach((ws) => {
-        const clientId = clientMap.get(ws);
-        if (ws.isAlive === false) {
-            console.log(`Client ${clientId} did not respond to ping, terminating connection`);
-            clientHeartbeats.delete(ws);
-            return ws.terminate();
-        }
-        
-        ws.isAlive = false;
-        ws.ping();
-        
-        // Set a timeout for response
-        const timeout = setTimeout(() => {
-            if (ws.isAlive === false) {
-                console.log(`Client ${clientId} ping timeout, terminating connection`);
-                ws.terminate();
-            }
-        }, PONG_TIMEOUT);
-        
-        clientHeartbeats.set(ws, timeout);
-    });
-}, PING_INTERVAL);
 
 // Update foods and broadcast game state
 setInterval(() => {
