@@ -398,6 +398,24 @@ socket.onmessage = (event) => {
     }
 };
 
+ws.on('close', () => {
+    // Remove player if its connection ID matches
+    for (const playerId in players) {
+        if (players[playerId].connectionId === connectionId) {
+            console.log(`Player ${playerId} disconnected`);
+            delete players[playerId];
+            break;
+        }
+    }
+    // Clean up resources
+    const timeout = clientHeartbeats.get(ws);
+    if (timeout) clearTimeout(timeout);
+    clientHeartbeats.delete(ws);
+    clientMessageCounts.delete(ws);
+    clientMap.delete(ws);
+    console.log('Client disconnected, active connections:', clientMap.size);
+});
+
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_DELAY = 2000; // 2 seconds
