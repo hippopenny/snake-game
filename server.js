@@ -217,6 +217,36 @@ wss.on('connection', (ws) => {
                         console.log(`Removed dead player ${playerId}`);
                     }, 500);
                 }
+            } else if (data.type === 'eatSnake') {
+                const playerId = data.id;
+                const targetId = data.target;
+                const segmentIndex = data.segmentIndex;
+                
+                console.log(`Player ${playerId} eating player ${targetId} from segment ${segmentIndex}`);
+                
+                if (players[targetId] && players[targetId].snake) {
+                    // Mark the target snake as partially eaten
+                    if (segmentIndex === 0) {
+                        // If head is eaten, mark the whole snake as dead
+                        players[targetId].dead = true;
+                        
+                        // Broadcast immediately that the player is dead
+                        broadcastGameState();
+                        
+                        // Remove the player after a short delay
+                        setTimeout(() => {
+                            delete players[targetId];
+                            console.log(`Removed eaten player ${targetId}`);
+                        }, 500);
+                    } else {
+                        // If body segment is eaten, remove that part of the snake
+                        players[targetId].snake = players[targetId].snake.slice(0, segmentIndex);
+                        console.log(`Player ${targetId} snake shortened to ${players[targetId].snake.length} segments`);
+                        
+                        // Broadcast updated state
+                        broadcastGameState();
+                    }
+                }
             }
         } catch (error) {
             console.error('Error processing message:', error);

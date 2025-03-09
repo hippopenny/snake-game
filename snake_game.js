@@ -84,7 +84,8 @@ const POWER_UP_EFFECTS = {
     },
     invincibility: {
         visualEffect: '#9C27B0',
-        duration: 15000
+        duration: 15000,
+        canEatOtherSnakes: true
     },
     magnet: {
         range: 12,
@@ -947,6 +948,22 @@ function drawSnake(snakeBody, isCurrentPlayer) {
         }
     }
     
+    // Add visual indicator when player is invincible and can eat other snakes
+    let isInvincible = false;
+    if (isCurrentPlayer && activePowerUp && activePowerUp.type === 'invincibility') {
+        isInvincible = true;
+    } else if (!isCurrentPlayer) {
+        // Check if other player has invincibility
+        for (const id in players) {
+            if (players[id].snake === snakeBody && 
+                players[id].activePowerUp && 
+                players[id].activePowerUp.type === 'invincibility') {
+                isInvincible = true;
+                break;
+            }
+        }
+    }
+    
     // Apply interpolation for smoother movement
     let positionsToRender = snakeBody;
     
@@ -1034,6 +1051,11 @@ function drawSnake(snakeBody, isCurrentPlayer) {
                 headColor = '#9C27B0';
                 bodyColor = '#CE93D8';
                 glowEffect = true;
+                // Add a special effect to show snake can eat others
+                if (isCurrentPlayer) {
+                    // Enhance the head to indicate it can eat other snakes
+                    headColor = '#F44336'; // Bright red for more aggressive look
+                }
                 break;
             case 'speed_boost':
                 headColor = '#00BCD4';
@@ -1700,35 +1722,39 @@ function checkCollisions() {
     
     const head = snake[0];
     
-    // If invincibility power-up or safe zone is active, skip collision detection
-    if ((activePowerUp && activePowerUp.type === 'invincibility') || 
-        (safeZoneActive && Date.now() < safeZoneExpiry)) {
-        return false;
-    }
-    
     // Ensure head has valid coordinates
     if (head.x === undefined || head.y === undefined) {
         console.error("Snake head has invalid coordinates");
         return false;
     }
     
-    // Check wall collisions
+    // Check wall collisions (even with invincibility)
     if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE) {
         return true;
     }
     
-    // Check wall object collisions
+    // Check wall object collisions (even with invincibility)
     for (let i = 0; i < WALLS.length; i++) {
         if (head.x === WALLS[i].x && head.y === WALLS[i].y) {
             return true;
         }
     }
     
-    // Check self-collision
+    // Check self-collision (even with invincibility)
     for (let i = 1; i < snake.length; i++) {
         if (head.x === snake[i].x && head.y === snake[i].y) {
             return true;
         }
+    }
+    
+    // If invincibility power-up or safe zone is active, we don't die from other snake collisions
+    if ((activePowerUp && activePowerUp.type === 'invincibility') || 
+        (safeZoneActive && Date.now() < safeZoneExpiry)) {
+        // Instead, check if we can eat other snakes with invincibility
+        if (activePowerUp && activePowerUp.type === 'invincibility') {
+            checkEatOtherSnake();
+        }
+        return false;
     }
     
     // Check collision with other players (except in safe zone)
@@ -2735,7 +2761,7 @@ function updatePowerUpIndicator() {
             powerUpColor = POWER_UP_EFFECTS.speed_boost.visualEffect;
             break;
         case 'invincibility':
-            powerUpName = 'INVINCIBILITY';
+            powerUpName = 'INVINCIBILITY - EAT OTHER SNAKES!';
             powerUpColor = POWER_UP_EFFECTS.invincibility.visualEffect;
             break;
         case 'magnet':
@@ -2936,6 +2962,153 @@ function showMagnetEffect(fromX, fromY, toX, toY) {
         
         requestAnimationFrame(animate);
     }
+}
+
+// Function to check and handle eating other snakes when invincible
+function checkEatOtherSnake() {
+    if (!activePowerUp || activePowerUp.type !== 'invincibility' || !snake.length) {
+        return;
+    }
+    
+    const head = snake[0];
+    
+    for (const id in players) {
+        if (id === playerId) continue; // Skip our own snake
+        
+        const otherSnake = players[id].snake;
+        if (!otherSnake || !otherSnake.length) continue;
+        
+        // Check for collision with each segment of other snake
+        for (let i = 0; i < otherSnake.length; i++) {
+            if (head.x === otherSnake[i].x && head.y === otherSnake[i].y) {
+                // We found a collision! Eat this snake
+                eatOtherSnake(id, i);
+                return;
+            }
+        }
+    }
+}
+
+// Function to handle eating another snake
+function eatOtherSnake(otherPlayerId, segmentIndex) {
+    const otherSnake = players[otherPlayerId].snake;
+    if (!otherSnake) return;
+    
+    // Calculate points based on how much of the snake we're eating
+    // We get points for each segment from the hit position to the end
+    const segmentsEaten = otherSnake.length - segmentIndex;
+    const pointsGained = segmentsEaten * 5; // 5 points per segment
+    
+    // Increase score
+    score += pointsGained;
+    
+    // Grow our snake based on how much we ate (but cap it)
+    const growthAmount = Math.min(10, Math.floor(segmentsEaten / 3));
+    for (let i = 0; i < growthAmount; i++) {
+        const tail = snake[snake.length - 1];
+        snake.push({x: tail.x, y: tail.y});
+    }
+    
+    // Restore hunger based on segments eaten
+    hungerTimer = Math.min(MAX_HUNGER, hungerTimer + (segmentsEaten * 1.5));
+    updateHungerBar();
+    
+    // Show visual effect for eating a snake
+    showSnakeEatenEffect(otherPlayerId, pointsGained);
+    
+    // Notify server that we ate part of another snake
+    if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+            type: 'eatSnake',
+            id: playerId,
+            target: otherPlayerId,
+            segmentIndex: segmentIndex,
+            points: pointsGained
+        }));
+    }
+    
+    updateScoreAndLevel();
+    checkLevelUp();
+}
+
+// Visual effect for eating another snake
+function showSnakeEatenEffect(otherPlayerId, points) {
+    if (!players[otherPlayerId] || !players[otherPlayerId].snake) return;
+    
+    const otherSnake = players[otherPlayerId].snake;
+    if (!otherSnake.length) return;
+    
+    // Create particle explosion at each segment
+    for (let i = 0; i < otherSnake.length; i++) {
+        const segment = otherSnake[i];
+        // Create explosion effect
+        createParticles(
+            segment.x, 
+            segment.y, 
+            '#FF5722', // Orange color
+            8, // More particles
+            3, // Faster movement
+            5, // Larger particles
+            1000 // Longer lifetime
+        );
+    }
+    
+    // Show points gained
+    const head = otherSnake[0];
+    const effectDiv = document.createElement('div');
+    effectDiv.textContent = `+${points}`;
+    effectDiv.style.position = 'absolute';
+    effectDiv.style.left = `${head.x * CELL_SIZE}px`;
+    effectDiv.style.top = `${head.y * CELL_SIZE}px`;
+    effectDiv.style.color = '#FF5722';
+    effectDiv.style.fontSize = '24px';
+    effectDiv.style.fontWeight = 'bold';
+    effectDiv.style.pointerEvents = 'none';
+    effectDiv.style.textShadow = '0 0 5px rgba(0,0,0,0.7)';
+    document.body.appendChild(effectDiv);
+    
+    // Add "SNAKE EATEN!" text
+    const messageDiv = document.createElement('div');
+    messageDiv.textContent = 'SNAKE EATEN!';
+    messageDiv.style.position = 'absolute';
+    messageDiv.style.left = '50%';
+    messageDiv.style.top = '30%';
+    messageDiv.style.transform = 'translate(-50%, -50%)';
+    messageDiv.style.color = '#FF5722';
+    messageDiv.style.fontSize = '36px';
+    messageDiv.style.fontWeight = 'bold';
+    messageDiv.style.textShadow = '0 0 10px rgba(255,87,34,0.7)';
+    messageDiv.style.pointerEvents = 'none';
+    document.body.appendChild(messageDiv);
+    
+    // Screen shake effect
+    shakeScreen(15, 800);
+    
+    // Animate and remove the effect
+    const startTime = Date.now();
+    const animDuration = 1500;
+    
+    function animateText() {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(1, elapsed / animDuration);
+        const yOffset = -30 * Math.sin(progress * Math.PI);
+        const scale = 1 + Math.sin(progress * Math.PI / 2);
+        
+        effectDiv.style.transform = `translateY(${yOffset}px) scale(${scale})`;
+        effectDiv.style.opacity = 1 - progress;
+        
+        messageDiv.style.opacity = 1 - progress;
+        messageDiv.style.fontSize = `${36 + 10 * Math.sin(progress * Math.PI)}px`;
+        
+        if (progress < 1) {
+            requestAnimationFrame(animateText);
+        } else {
+            document.body.removeChild(effectDiv);
+            document.body.removeChild(messageDiv);
+        }
+    }
+    
+    requestAnimationFrame(animateText);
 }
 
 function updateHungerBar() {
