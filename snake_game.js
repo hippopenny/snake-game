@@ -86,7 +86,8 @@ const POWER_UP_EFFECTS = {
     invincibility: {
         visualEffect: '#9C27B0',
         duration: 15000,
-        canEatOtherSnakes: true
+        canEatOtherSnakes: true,
+        canPhaseWalls: true
     },
     magnet: {
         range: 12,
@@ -1828,8 +1829,18 @@ function moveSnake() {
     head.speedBoosted = activePowerUp && activePowerUp.type === 'speed_boost';
     
     // Check if this is a valid move for speed boosted snake
-    // Speed boosted snakes still can't go through other snakes
+    // Speed boosted snakes still can't go through other snakes or walls
     if (activePowerUp && activePowerUp.type === 'speed_boost') {
+        // Check collision with walls
+        for (let i = 0; i < WALLS.length; i++) {
+            if (head.x === WALLS[i].x && head.y === WALLS[i].y) {
+                // Return to previous position if we'd hit a wall
+                head.x = snake[0].x;
+                head.y = snake[0].y;
+                break;
+            }
+        }
+        
         // Check collision with other players' snakes
         for (const id in players) {
             if (id !== playerId && players[id].snake) {
@@ -1875,15 +1886,18 @@ function checkCollisions() {
         return false;
     }
     
-    // Check wall collisions (even with invincibility)
+    // Check wall collisions
     if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE) {
+        // Map edge collision - invincibility can't bypass this
         return {collision: true, reason: 'collision', message: 'You hit the edge of the map!'};
     }
     
-    // Check wall object collisions (even with invincibility)
-    for (let i = 0; i < WALLS.length; i++) {
-        if (head.x === WALLS[i].x && head.y === WALLS[i].y) {
-            return {collision: true, reason: 'collision', message: 'You crashed into a wall!'};
+    // Check wall object collisions - invincibility can bypass this
+    if (!(activePowerUp && activePowerUp.type === 'invincibility')) {
+        for (let i = 0; i < WALLS.length; i++) {
+            if (head.x === WALLS[i].x && head.y === WALLS[i].y) {
+                return {collision: true, reason: 'collision', message: 'You crashed into a wall!'};
+            }
         }
     }
     
