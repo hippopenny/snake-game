@@ -3175,7 +3175,7 @@ function updatePowerUpIndicator() {
             powerUpColor = POWER_UP_EFFECTS.speed_boost.visualEffect;
             break;
         case 'invincibility':
-            powerUpName = 'INVINCIBILITY - EAT OTHER SNAKES!';
+            powerUpName = 'INVINCIBILITY!';
             powerUpColor = POWER_UP_EFFECTS.invincibility.visualEffect;
             break;
         case 'magnet':
