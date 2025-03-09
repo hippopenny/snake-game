@@ -230,6 +230,13 @@ wss.on('connection', (ws) => {
                         // If head is eaten, mark the whole snake as dead
                         players[targetId].dead = true;
                         
+                        // Add points to the eating player based on the eaten snake's length
+                        if (players[playerId]) {
+                            const pointsGained = players[targetId].snake.length * 5;
+                            players[playerId].score = (players[playerId].score || 0) + pointsGained;
+                            console.log(`Player ${playerId} gained ${pointsGained} points for eating player ${targetId}`);
+                        }
+                        
                         // Broadcast immediately that the player is dead
                         broadcastGameState();
                         
@@ -240,8 +247,16 @@ wss.on('connection', (ws) => {
                         }, 500);
                     } else {
                         // If body segment is eaten, remove that part of the snake
+                        const eatenSegments = players[targetId].snake.length - segmentIndex;
                         players[targetId].snake = players[targetId].snake.slice(0, segmentIndex);
                         console.log(`Player ${targetId} snake shortened to ${players[targetId].snake.length} segments`);
+                        
+                        // Add points to the eating player based on eaten segments
+                        if (players[playerId]) {
+                            const pointsGained = eatenSegments * 5; // 5 points per segment
+                            players[playerId].score = (players[playerId].score || 0) + pointsGained;
+                            console.log(`Player ${playerId} gained ${pointsGained} points for eating segments from ${targetId}`);
+                        }
                         
                         // Broadcast updated state
                         broadcastGameState();

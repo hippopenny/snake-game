@@ -3025,6 +3025,9 @@ function eatOtherSnake(otherPlayerId, segmentIndex) {
             segmentIndex: segmentIndex,
             points: pointsGained
         }));
+        
+        // Update our local score immediately (server will confirm later)
+        score += pointsGained;
     }
     
     updateScoreAndLevel();
@@ -3038,9 +3041,12 @@ function showSnakeEatenEffect(otherPlayerId, points) {
     const otherSnake = players[otherPlayerId].snake;
     if (!otherSnake.length) return;
     
+    // Store the current snake before it gets updated by server
+    const snakeSegments = [...otherSnake];
+    
     // Create particle explosion at each segment
-    for (let i = 0; i < otherSnake.length; i++) {
-        const segment = otherSnake[i];
+    for (let i = 0; i < snakeSegments.length; i++) {
+        const segment = snakeSegments[i];
         // Create explosion effect
         createParticles(
             segment.x, 
