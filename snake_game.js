@@ -1415,6 +1415,8 @@ function gameStep() {
     }
     
     if (checkCollisions()) {
+        console.log("Collision detected! Calling gameOver()");
+
         gameOver();
         return;
     }
@@ -1847,6 +1849,25 @@ function cleanupGame() {
 }
 
 function gameOver(reason = 'collision') {
+    console.log("Game Over called with reason:", reason);
+    
+    // Make sure the element exists
+    if (!gameOverScreen) {
+        console.error("gameOverScreen element not found!");
+        return;
+    }
+    
+    // Set display and ensure visibility
+    gameOverScreen.style.display = 'block';
+    gameOverScreen.style.zIndex = '1001'; // Make sure it's above other elements
+    
+    console.log("gameOverScreen display set to:", gameOverScreen.style.display);
+    console.log("gameOverScreen computed style:", window.getComputedStyle(gameOverScreen).display);
+    
+    // Update final score and level
+    finalScoreDisplay.textContent = `Score: ${score}`;
+    finalLevelDisplay.textContent = `Level: ${level}`;
+    
     // Cancel animation frame first to stop rendering
     if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
