@@ -89,16 +89,30 @@ wss.on('connection', (ws) => {
                     console.log(`New player joined with ID: ${playerId}`);
                 }
                 
-                // Update player data
-                players[playerId] = {
-                    id: playerId,
-                    snake: data.snake,
-                    score: data.score,
-                    level: data.level,
-                    lastUpdate: Date.now(),
-                    connectionId: clientMap.get(ws),
-                    activePowerUp: data.activePowerUp
-                };
+                // Don't update dead players' snake positions - they should stay fixed
+                if (players[playerId] && players[playerId].dead) {
+                    // Only update non-position data
+                    players[playerId].score = data.score;
+                    players[playerId].level = data.level;
+                    players[playerId].activePowerUp = data.activePowerUp;
+                    players[playerId].lastUpdate = Date.now();
+                } else {
+                    // Update player data
+                    players[playerId] = {
+                        id: playerId,
+                        snake: data.snake,
+                        score: data.score,
+                        level: data.level,
+                        lastUpdate: Date.now(),
+                        connectionId: clientMap.get(ws),
+                        activePowerUp: data.activePowerUp
+                    };
+                    
+                    // Preserve final position if it existed
+                    if (players[playerId] && players[playerId].finalPosition) {
+                        players[playerId].finalPosition = players[playerId].finalPosition;
+                    }
+                }
                 
                 // Check for collisions with other players
                 const head = data.snake[0];
@@ -211,6 +225,13 @@ wss.on('connection', (ws) => {
                     players[playerId].dead = true;
                     players[playerId].deathReason = deathReason;
                     players[playerId].deathTime = Date.now();
+                    
+                    // Store final position to ensure consistency across all clients
+                    if (data.finalPosition) {
+                        players[playerId].finalPosition = data.finalPosition;
+                        // Replace the snake with the final position
+                        players[playerId].snake = data.finalPosition;
+                    }
                     
                     if (data.score !== undefined) {
                         players[playerId].score = data.score;

@@ -1075,33 +1075,38 @@ function drawSnake(snakeBody, isCurrentPlayer) {
     // Apply interpolation for smoother movement
     let positionsToRender = snakeBody;
     
-    // Find if this snake has speed boost active
-    const hasSpeedBoost = isCurrentPlayer ? 
-        (activePowerUp && activePowerUp.type === 'speed_boost') : 
-        getPlayerPowerUp(snakeBody) === 'speed_boost';
-    
-    // Ensure previous positions exist before trying to interpolate
-    if (prevSnakePositions && prevSnakePositions.length > 0 && isCurrentPlayer) {
-        // Use cubic easing for smoother animation
-        let eased = easeInOutCubic(interpolationAlpha);
+    // For dead snakes with final position, use that instead
+    if (isDead && finalPosition) {
+        positionsToRender = finalPosition;
+    } else {
+        // Find if this snake has speed boost active
+        const hasSpeedBoost = isCurrentPlayer ? 
+            (activePowerUp && activePowerUp.type === 'speed_boost') : 
+            getPlayerPowerUp(snakeBody) === 'speed_boost';
         
-        // Make interpolation faster for speed boosted snake
-        if (hasSpeedBoost) {
-            eased = Math.min(1, eased * 1.5); // Speed up interpolation for boosted snake
-        }
-        
-        // Create completely interpolated snake for smoother rendering
-        positionsToRender = snakeBody.map((segment, i) => {
-            if (i >= prevSnakePositions.length) return segment;
+        // Ensure previous positions exist before trying to interpolate
+        if (prevSnakePositions && prevSnakePositions.length > 0 && isCurrentPlayer) {
+            // Use cubic easing for smoother animation
+            let eased = easeInOutCubic(interpolationAlpha);
             
-            return {
-                x: prevSnakePositions[i].x + (segment.x - prevSnakePositions[i].x) * eased,
-                y: prevSnakePositions[i].y + (segment.y - prevSnakePositions[i].y) * eased,
-                moveDirection: segment.moveDirection,
-                moveTime: segment.moveTime,
-                speedBoosted: segment.speedBoosted
-            };
-        });
+            // Make interpolation faster for speed boosted snake
+            if (hasSpeedBoost) {
+                eased = Math.min(1, eased * 1.5); // Speed up interpolation for boosted snake
+            }
+            
+            // Create completely interpolated snake for smoother rendering
+            positionsToRender = snakeBody.map((segment, i) => {
+                if (i >= prevSnakePositions.length) return segment;
+                
+                return {
+                    x: prevSnakePositions[i].x + (segment.x - prevSnakePositions[i].x) * eased,
+                    y: prevSnakePositions[i].y + (segment.y - prevSnakePositions[i].y) * eased,
+                    moveDirection: segment.moveDirection,
+                    moveTime: segment.moveTime,
+                    speedBoosted: segment.speedBoosted
+                };
+            });
+        }
     }
     
     // Add motion trail effect
@@ -1995,6 +2000,9 @@ function gameOver(reason = 'collision') {
     
     console.log("Game Over called with reason:", reason);
     
+    // Store the final snake position to ensure consistency
+    const finalPosition = [...snake];
+    
     // Make sure the element exists
     if (!gameOverScreen) {
         console.error("gameOverScreen element not found!");
@@ -2040,7 +2048,8 @@ function gameOver(reason = 'collision') {
             reason: reason,
             score: score,
             level: level,
-            dead: true
+            dead: true,
+            finalPosition: finalPosition // Send final snake position
         }));
     }
     
