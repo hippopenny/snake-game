@@ -80,9 +80,7 @@ let activePowerUp = null;
 const POWER_UP_EFFECTS = {
     speed_boost: {
         speedMultiplier: 2.0,
-        visualEffect: '#00BCD4',
-        movementFactor: 1.0, // Normal cell-by-cell movement
-        updateFactor: 2.0    // But visually update twice as often
+        visualEffect: '#00BCD4'
     },
     invincibility: {
         visualEffect: '#9C27B0',
@@ -706,16 +704,9 @@ function renderFrame(timestamp) {
     const maxDelta = 50; // Maximum milliseconds to process in a single frame
     frameAccumulator = (frameAccumulator + Math.min(deltaTime, maxDelta));
     
-    // Adjust interpolation factor for speed boost
-    let effectiveGameSpeed = gameSpeed;
-    if (activePowerUp && activePowerUp.type === 'speed_boost') {
-        // For speed boost, we adjust the visual update rate while keeping the game loop consistent
-        effectiveGameSpeed = gameSpeed / POWER_UP_EFFECTS.speed_boost.speedMultiplier;
-    }
-    
-    // Calculate interpolation factor between 0 and 1
+    // Calculate base interpolation factor between 0 and 1
     // This should be a percentage of how far we are between moves
-    interpolationAlpha = Math.min(1, frameAccumulator / effectiveGameSpeed);
+    interpolationAlpha = Math.min(1, frameAccumulator / gameSpeed);
     
     // Draw with interpolation factor
     draw(interpolationAlpha);
@@ -937,23 +928,24 @@ function drawSnake(snakeBody, isCurrentPlayer) {
     
     // Ensure previous positions exist before trying to interpolate
     if (prevSnakePositions && prevSnakePositions.length > 0 && isCurrentPlayer) {
-        // Use cubic easing for smoother animation - adjust for speed boost
+        // Use cubic easing for smoother animation
         let eased = easeInOutCubic(interpolationAlpha);
+        
+        // Make interpolation faster for speed boosted snake
+        if (hasSpeedBoost) {
+            eased = Math.min(1, eased * 1.5); // Speed up interpolation for boosted snake
+        }
         
         // Create completely interpolated snake for smoother rendering
         positionsToRender = snakeBody.map((segment, i) => {
             if (i >= prevSnakePositions.length) return segment;
             
-            // For speed boost, improve interpolation based on movement timestamps
-            const timeFactor = hasSpeedBoost && segment.moveTime ? 
-                Math.min(1, (Date.now() - segment.moveTime) / gameSpeed) : 
-                eased;
-            
             return {
                 x: prevSnakePositions[i].x + (segment.x - prevSnakePositions[i].x) * eased,
                 y: prevSnakePositions[i].y + (segment.y - prevSnakePositions[i].y) * eased,
                 moveDirection: segment.moveDirection,
-                moveTime: segment.moveTime
+                moveTime: segment.moveTime,
+                speedBoosted: segment.speedBoosted
             };
         });
     }
@@ -1346,21 +1338,18 @@ function gameStep() {
         applyMagnetEffect();
     }
     
-    // Apply speed boost by changing how often we move the snake
-    const shouldMove = activePowerUp && activePowerUp.type === 'speed_boost' ? 
-        // With speed boost, we only move the snake on some game steps
-        Math.floor(Date.now() / (gameSpeed / POWER_UP_EFFECTS.speed_boost.speedMultiplier)) !==
-        Math.floor((Date.now() - gameSpeed) / (gameSpeed / POWER_UP_EFFECTS.speed_boost.speedMultiplier)) :
-        // Without speed boost, move snake on every game step
-        true;
+    // Always move the snake in game step
+    moveSnake();
     
-    if (shouldMove) {
+    // If speed boost is active, move the snake again immediately
+    // This effectively doubles the speed of movement
+    if (activePowerUp && activePowerUp.type === 'speed_boost') {
         moveSnake();
-        
-        if (checkCollisions()) {
-            gameOver();
-            return;
-        }
+    }
+    
+    if (checkCollisions()) {
+        gameOver();
+        return;
     }
         
     // Initialize mobile controls if needed
@@ -1624,8 +1613,7 @@ function moveSnake() {
     
     const head = {x: snake[0].x, y: snake[0].y};
     
-    // For speed boost, we no longer apply multiplier to position directly
-    // We keep standard movement increments but will draw more frequently
+    // Standard movement increment of 1 cell
     switch (direction) {
         case 'up':
             head.y -= 1;
@@ -1646,6 +1634,7 @@ function moveSnake() {
     
     // Store a timestamp for more accurate time-based interpolation
     head.moveTime = Date.now();
+    head.speedBoosted = activePowerUp && activePowerUp.type === 'speed_boost';
     
     snake.unshift(head);
     
