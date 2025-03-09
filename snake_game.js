@@ -80,7 +80,9 @@ let activePowerUp = null;
 const POWER_UP_EFFECTS = {
     speed_boost: {
         speedMultiplier: 2.0,
-        visualEffect: '#00BCD4'
+        visualEffect: '#00BCD4',
+        movementFactor: 1.0, // Normal cell-by-cell movement
+        updateFactor: 2.0    // But visually update twice as often
     },
     invincibility: {
         visualEffect: '#9C27B0',
@@ -704,9 +706,16 @@ function renderFrame(timestamp) {
     const maxDelta = 50; // Maximum milliseconds to process in a single frame
     frameAccumulator = (frameAccumulator + Math.min(deltaTime, maxDelta));
     
+    // Adjust interpolation factor for speed boost
+    let effectiveGameSpeed = gameSpeed;
+    if (activePowerUp && activePowerUp.type === 'speed_boost') {
+        // For speed boost, we adjust the visual update rate while keeping the game loop consistent
+        effectiveGameSpeed = gameSpeed / POWER_UP_EFFECTS.speed_boost.speedMultiplier;
+    }
+    
     // Calculate interpolation factor between 0 and 1
     // This should be a percentage of how far we are between moves
-    interpolationAlpha = Math.min(1, frameAccumulator / gameSpeed);
+    interpolationAlpha = Math.min(1, frameAccumulator / effectiveGameSpeed);
     
     // Draw with interpolation factor
     draw(interpolationAlpha);
@@ -921,18 +930,30 @@ function drawSnake(snakeBody, isCurrentPlayer) {
     // Apply interpolation for smoother movement
     let positionsToRender = snakeBody;
     
+    // Find if this snake has speed boost active
+    const hasSpeedBoost = isCurrentPlayer ? 
+        (activePowerUp && activePowerUp.type === 'speed_boost') : 
+        getPlayerPowerUp(snakeBody) === 'speed_boost';
+    
     // Ensure previous positions exist before trying to interpolate
-    if (isCurrentPlayer && prevSnakePositions && prevSnakePositions.length > 0) {
-        // Use cubic easing for smoother animation
-        const eased = easeInOutCubic(interpolationAlpha);
+    if (prevSnakePositions && prevSnakePositions.length > 0 && isCurrentPlayer) {
+        // Use cubic easing for smoother animation - adjust for speed boost
+        let eased = easeInOutCubic(interpolationAlpha);
         
         // Create completely interpolated snake for smoother rendering
         positionsToRender = snakeBody.map((segment, i) => {
             if (i >= prevSnakePositions.length) return segment;
             
+            // For speed boost, improve interpolation based on movement timestamps
+            const timeFactor = hasSpeedBoost && segment.moveTime ? 
+                Math.min(1, (Date.now() - segment.moveTime) / gameSpeed) : 
+                eased;
+            
             return {
                 x: prevSnakePositions[i].x + (segment.x - prevSnakePositions[i].x) * eased,
-                y: prevSnakePositions[i].y + (segment.y - prevSnakePositions[i].y) * eased
+                y: prevSnakePositions[i].y + (segment.y - prevSnakePositions[i].y) * eased,
+                moveDirection: segment.moveDirection,
+                moveTime: segment.moveTime
             };
         });
     }
@@ -1193,14 +1214,14 @@ function updateScoreAndLevel() {
 }
 
 function updateSpeedDisplay() {
-    let speedMultiplier = (baseGameSpeed / gameSpeed).toFixed(1);
+    let displaySpeed = (baseGameSpeed / gameSpeed).toFixed(1);
     
     // If speed boost is active, show the boosted speed
     if (activePowerUp && activePowerUp.type === 'speed_boost') {
-        speedMultiplier = (baseGameSpeed / gameSpeed * POWER_UP_EFFECTS.speed_boost.speedMultiplier).toFixed(1);
+        displaySpeed = (baseGameSpeed / gameSpeed * POWER_UP_EFFECTS.speed_boost.speedMultiplier).toFixed(1);
     }
     
-    speedDisplay.textContent = `Speed: ${speedMultiplier}x`;
+    speedDisplay.textContent = `Speed: ${displaySpeed}x`;
 }
 
 
@@ -1314,9 +1335,6 @@ function gameStep() {
         return;
     }
     
-    // Apply speed boost if active
-    // Speed boost effect is handled by the interval timing
-    
     // Check if any power-up has expired
     checkPowerUpExpiration();
     
@@ -1328,11 +1346,21 @@ function gameStep() {
         applyMagnetEffect();
     }
     
-    moveSnake();
+    // Apply speed boost by changing how often we move the snake
+    const shouldMove = activePowerUp && activePowerUp.type === 'speed_boost' ? 
+        // With speed boost, we only move the snake on some game steps
+        Math.floor(Date.now() / (gameSpeed / POWER_UP_EFFECTS.speed_boost.speedMultiplier)) !==
+        Math.floor((Date.now() - gameSpeed) / (gameSpeed / POWER_UP_EFFECTS.speed_boost.speedMultiplier)) :
+        // Without speed boost, move snake on every game step
+        true;
     
-    if (checkCollisions()) {
-        gameOver();
-        return;
+    if (shouldMove) {
+        moveSnake();
+        
+        if (checkCollisions()) {
+            gameOver();
+            return;
+        }
     }
         
     // Initialize mobile controls if needed
@@ -1595,26 +1623,29 @@ function moveSnake() {
     prevSnakePositions = JSON.parse(JSON.stringify(snake));
     
     const head = {x: snake[0].x, y: snake[0].y};
-    const multiplier = (activePowerUp && activePowerUp.type === 'speed_boost') ? POWER_UP_EFFECTS.speed_boost.speedMultiplier : 1;
     
+    // For speed boost, we no longer apply multiplier to position directly
+    // We keep standard movement increments but will draw more frequently
     switch (direction) {
         case 'up':
-            head.y -= multiplier;
-            console.log('direction: up');
+            head.y -= 1;
             break;
         case 'down':
-            head.y += multiplier;
-            console.log('direction: down');
+            head.y += 1;
             break;
         case 'left':
-            head.x -= multiplier;
-            console.log('direction: left');
+            head.x -= 1;
             break;
         case 'right':
-            head.x += multiplier;
-            console.log('direction: right');
+            head.x += 1;
             break;
     }
+    
+    // Store the direction used for this move for improved interpolation
+    head.moveDirection = direction;
+    
+    // Store a timestamp for more accurate time-based interpolation
+    head.moveTime = Date.now();
     
     snake.unshift(head);
     
@@ -2616,10 +2647,9 @@ function checkPowerUpExpiration() {
 function deactivatePowerUp() {
     if (!activePowerUp) return;
     
-    // Reset game speed if speed boost was active
-    if (activePowerUp.type === 'speed_boost') {
-        clearInterval(gameLoop);
-        gameLoop = setInterval(gameStep, gameSpeed);
+    // Reset any stored game speed
+    if (activePowerUp.type === 'speed_boost' && window.originalGameSpeed) {
+        window.originalGameSpeed = null;
     }
     
     // Clear all visual effects
@@ -2635,6 +2665,18 @@ function deactivatePowerUp() {
     powerUpEffects.forEach(el => {
         el.classList.add('temp-game-element');
     });
+    
+    // Tell server about power-up deactivation
+    if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+            type: 'update',
+            id: playerId,
+            snake: snake,
+            score: score,
+            level: level,
+            activePowerUp: null
+        }));
+    }
 }
 
 // Update the power-up indicator
@@ -2688,10 +2730,26 @@ function updatePowerUpIndicator() {
         powerUpIndicator.style.animation = '';
     }
     
-    // Speed boost adjustment removed; speed boost is now handled in moveSnake()
+    // For speed boost, we keep the game loop the same speed but change the animation timing
+    if (activePowerUp.type === 'speed_boost') {
+        if (!window.originalGameSpeed) {
+            window.originalGameSpeed = gameSpeed;
+        }
+    }
 }
 
 // Add the missing updatePowerUpStatus function
+// Helper function to determine if another player's snake has a specific power-up
+function getPlayerPowerUp(snakeBody) {
+    // Find the player ID for this snake
+    for (const id in players) {
+        if (players[id].snake === snakeBody && players[id].activePowerUp) {
+            return players[id].activePowerUp.type;
+        }
+    }
+    return null;
+}
+
 function updatePowerUpStatus() {
     if (!activePowerUp) {
         powerUpStatus.style.display = 'none';
