@@ -215,7 +215,9 @@ wss.on('connection', (ws) => {
                     setTimeout(() => {
                         delete players[playerId];
                         console.log(`Removed dead player ${playerId}`);
-                    }, 500);
+                        // Broadcast again to ensure all clients remove the player
+                        broadcastGameState();
+                    }, 1000); // Increased from 500ms to 1000ms for better visibility
                 }
             } else if (data.type === 'eatSnake') {
                 const playerId = data.id;
@@ -244,7 +246,9 @@ wss.on('connection', (ws) => {
                         setTimeout(() => {
                             delete players[targetId];
                             console.log(`Removed eaten player ${targetId}`);
-                        }, 500);
+                            // Broadcast again to ensure all clients remove the player
+                            broadcastGameState();
+                        }, 1000); // Increased from 500ms to 1000ms for better visibility
                     } else {
                         // If body segment is eaten, remove that part of the snake
                         const eatenSegments = players[targetId].snake.length - segmentIndex;

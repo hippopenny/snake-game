@@ -1706,6 +1706,32 @@ function moveSnake() {
     head.moveTime = Date.now();
     head.speedBoosted = activePowerUp && activePowerUp.type === 'speed_boost';
     
+    // Check if this is a valid move for speed boosted snake
+    // Speed boosted snakes still can't go through other snakes
+    if (activePowerUp && activePowerUp.type === 'speed_boost') {
+        // Check collision with other players' snakes
+        for (const id in players) {
+            if (id !== playerId && players[id].snake) {
+                const otherSnake = players[id].snake;
+                const otherIsInvincible = players[id].activePowerUp && 
+                                        players[id].activePowerUp.type === 'invincibility';
+                
+                // Skip if the other snake is invincible - we'll handle that differently
+                if (otherIsInvincible) continue;
+                
+                for (let i = 0; i < otherSnake.length; i++) {
+                    if (head.x === otherSnake[i].x && head.y === otherSnake[i].y) {
+                        // Collision detected - block this move
+                        // Return to previous position
+                        head.x = snake[0].x;
+                        head.y = snake[0].y;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    
     snake.unshift(head);
     
     // Reset interpolation at the start of a new movement cycle
@@ -1755,6 +1781,20 @@ function checkCollisions() {
             checkEatOtherSnake();
         }
         return false;
+    }
+    
+    // Check for other players with speed boost trying to move through us
+    for (const id in players) {
+        if (id !== playerId && players[id].snake && players[id].snake.length > 0) {
+            const otherHead = players[id].snake[0];
+            const otherHasSpeedBoost = players[id].activePowerUp && 
+                                       players[id].activePowerUp.type === 'speed_boost';
+            
+            // If they have speed boost, they still can't pass through us
+            if (otherHasSpeedBoost && otherHead.x === head.x && otherHead.y === head.y) {
+                return true; // Block the movement - speed boost doesn't allow passing through
+            }
+        }
     }
     
     // Check collision with other players (except in safe zone)
@@ -3028,6 +3068,17 @@ function eatOtherSnake(otherPlayerId, segmentIndex) {
         
         // Update our local score immediately (server will confirm later)
         score += pointsGained;
+        
+        // Update the other player's snake locally to provide immediate feedback
+        if (players[otherPlayerId] && players[otherPlayerId].snake) {
+            if (segmentIndex === 0) {
+                // If we ate the head, mark the snake as dead
+                players[otherPlayerId].dead = true;
+            } else {
+                // If we ate part of the body, truncate the snake
+                players[otherPlayerId].snake = players[otherPlayerId].snake.slice(0, segmentIndex);
+            }
+        }
     }
     
     updateScoreAndLevel();
