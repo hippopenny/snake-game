@@ -96,7 +96,7 @@ const POWER_UP_EFFECTS = {
 // Add this after the POWER_UP_EFFECTS constant
 // Particle system for visual effects
 const particles = [];
-const MAX_PARTICLES = 50;
+const MAX_PARTICLES = 20;
 
 // Function to create particles
 function createParticles(x, y, color, count, speed, size, lifetime) {
@@ -369,7 +369,14 @@ socket.onopen = () => {
 socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
     if (data.type === 'state') {
-        players = data.players;
+        // players = data.players; //Original line
+        players = Object.fromEntries(Object.entries(data.players).map(([id, player]) => [id, {
+            snake: player.snake,
+            score: player.score,
+            level: player.level,
+            activePowerUp: player.activePowerUp,
+            gameSpeed: player.gameSpeed // Get gameSpeed here
+        }]));
         if (data.foods) {
             foods = data.foods;
         }
@@ -1258,7 +1265,8 @@ function sendPlayerState() {
             snake: snake,
             score: score,
             level: level,
-            activePowerUp: activePowerUp
+            activePowerUp: activePowerUp,
+            gameSpeed: gameSpeed // Add gameSpeed here
         };
         socket.send(JSON.stringify(playerState));
     }
@@ -2571,6 +2579,7 @@ restartBtn.addEventListener('click', () => {
     initGame();
 });
 
+
 function checkPowerUpExpiration() {
     if (activePowerUp && Date.now() > activePowerUp.expiresAt) {
         deactivatePowerUp();
@@ -2658,6 +2667,31 @@ function updatePowerUpIndicator() {
         clearInterval(gameLoop);
         gameLoop = setInterval(gameStep, boostedSpeed);
     }
+}
+
+
+function applySpeedBoost() {
+    if (!activePowerUp || activePowerUp.type !== 'speed_boost') return;
+    
+    const boostedSpeed = Math.floor(gameSpeed / POWER_UP_EFFECTS.speed_boost.speedMultiplier);
+    
+    clearInterval(gameLoop);
+    gameLoop = setInterval(() => {
+        const predictedPosition = calculateNextPosition();
+        
+        // Send movement update
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+                type: 'movement',
+                id: playerId,
+                position: predictedPosition,
+                speed: boostedSpeed,
+                timestamp: Date.now()
+            }));
+        }
+        
+        gameStep();
+    }, boostedSpeed);
 }
 
 // Add the missing updatePowerUpStatus function
@@ -3244,4 +3278,275 @@ function getPowerUpIcon(type) {
         default: return '✨';
     }
 }
+
+function drawSnake(snakeBody, isCurrentPlayer) {
+    // Do not attempt to draw an empty snake
+    if (!snakeBody || snakeBody.length === 0) {
+        console.error("Attempted to draw empty snake");
+        return;
+    }
+    
+    // Apply interpolation for smoother movement
+    let positionsToRender = snakeBody;
+    
+    // Ensure previous positions exist before trying to interpolate
+    if (isCurrentPlayer && prevSnakePositions && prevSnakePositions.length > 0) {
+        // Use cubic easing for smoother animation
+        const eased = easeInOutCubic(interpolationAlpha);
+        
+        // Create completely interpolated snake for smoother rendering
+        positionsToRender = snakeBody.map((segment, i) => {
+            if (i >= prevSnakePositions.length) return segment;
+            
+            return {
+                x: prevSnakePositions[i].x + (segment.x - prevSnakePositions[i].x) * eased,
+                y: prevSnakePositions[i].y + (segment.y - prevSnakePositions[i].y) * eased
+            };
+        });
+    }
+    
+    // Add motion trail effect
+    if (isCurrentPlayer && snakeBody.length > 2) {
+        // Draw ghosted trail segments
+        for (let i = snakeBody.length - 1; i >= 1; i--) {
+            const segment = snakeBody[i];
+            const x = segment.x * CELL_SIZE;
+            const y = segment.y * CELL_SIZE;
+            
+            const trailOpacity = 0.15 - (i / snakeBody.length) * 0.1;
+            
+            // Draw ghost trail
+            ctx.fillStyle = `rgba(255, 255, 255, ${trailOpacity})`;
+            ctx.beginPath();
+            ctx.arc(
+                x + CELL_SIZE / 2,
+                y + CELL_SIZE / 2,
+                CELL_SIZE / 3 * (1 - i / snakeBody.length * 0.5),
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+        }
+    }
+    
+    // Determine if this snake has an active power-up
+    let powerUp = null;
+    
+    if (isCurrentPlayer) {
+        powerUp = activePowerUp;
+    } else {
+        // Find the player ID for this snake
+        for (const id in players) {
+            if (players[id].snake === snakeBody && players[id].activePowerUp) {
+                powerUp = players[id].activePowerUp;
+                break;
+            }
+        }
+    }
+    
+    // Base colors and styles
+    let headColor = isCurrentPlayer ? '#4CAF50' : '#3F51B5';
+    let bodyColor = isCurrentPlayer ? '#8BC34A' : '#7986CB';
+    
+    // Reset all effects flags
+    let glowEffect = false;
+    let trailEffect = false;
+    let particleEffect = false;
+    
+    // Only apply visual effects if a power-up is active
+    if (powerUp) {
+        switch(powerUp.type) {
+            case 'invincibility':
+                headColor = '#9C27B0';
+                bodyColor = '#CE93D8';
+                glowEffect = true;
+                break;
+            case 'speed_boost':
+                headColor = '#00BCD4';
+                bodyColor = '#80DEEA';
+                trailEffect = true;
+                break;
+            case 'magnet':
+                headColor = '#FFEB3B';
+                bodyColor = '#FFF59D';
+                particleEffect = true;
+                break;
+        }
+    }
+    
+    // Draw snake segments with enhanced power-up effects
+    positionsToRender.forEach((segment, index) => {
+        const x = segment.x * CELL_SIZE;
+        const y = segment.y * CELL_SIZE;
+        
+        // Apply enhanced glow effect if power-up is active
+        if (powerUp) {
+            ctx.shadowColor = powerUp.type === 'invincibility' ? '#9C27B0' : 
+                              powerUp.type === 'speed_boost' ? '#00BCD4' : 
+                              powerUp.type === 'magnet' ? '#FFEB3B' : 'transparent';
+            ctx.shadowBlur = 20;
+        }
+        
+        // Set fill style based on segment type
+        ctx.fillStyle = index === 0 ? headColor : bodyColor;
+        
+        // Determine pulsing effect scale
+        let pulseScale = 1;
+        if (powerUp) {
+            pulseScale = 1 + 0.15 * Math.sin(Date.now() / 150);
+        } else if (index === 0) {
+            pulseScale = 1 + 0.05 * Math.sin(Date.now() / 200);
+        }
+        
+        // Calculate dimensions for enhanced segment rendering
+        const size = CELL_SIZE * pulseScale;
+        const radius = index === 0 ? CELL_SIZE / 3 : CELL_SIZE / 4;
+        const centerX = x + CELL_SIZE / 2;
+        const centerY = y + CELL_SIZE / 2;
+        
+        ctx.beginPath();
+        ctx.moveTo(centerX - size/2 + radius, centerY - size/2);
+        ctx.lineTo(centerX + size/2 - radius, centerY - size/2);
+        ctx.quadraticCurveTo(centerX + size/2, centerY - size/2, centerX + size/2, centerY - size/2 + radius);
+        ctx.lineTo(centerX + size/2, centerY + size/2 - radius);
+        ctx.quadraticCurveTo(centerX + size/2, centerY + size/2, centerX + size/2 - radius, centerY + size/2);
+        ctx.lineTo(centerX - size/2 + radius, centerY + size/2);
+        ctx.quadraticCurveTo(centerX - size/2, centerY + size/2, centerX - size/2, centerY + size/2 - radius);
+        ctx.lineTo(centerX - size/2, centerY - size/2 + radius);
+        ctx.quadraticCurveTo(centerX - size/2, centerY - size/2, centerX - size/2 + radius, centerY - size/2);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Reset shadow effect after drawing segment
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        
+        // Add eyes and head decorations for the head segment
+        if (index === 0) {
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(x + CELL_SIZE * 0.7, y + CELL_SIZE * 0.3, CELL_SIZE * 0.15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(x + CELL_SIZE * 0.7, y + CELL_SIZE * 0.7, CELL_SIZE * 0.15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(x + CELL_SIZE * 0.75, y + CELL_SIZE * 0.3, CELL_SIZE * 0.07, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(x + CELL_SIZE * 0.75, y + CELL_SIZE * 0.7, CELL_SIZE * 0.07, 0, Math.PI * 2);
+            ctx.fill();
+            
+            if (powerUp) {
+                if (powerUp.type === 'invincibility') {
+                    ctx.fillStyle = '#FFD700';
+                    ctx.beginPath();
+                    ctx.moveTo(x + CELL_SIZE * 0.5, y - CELL_SIZE * 0.3);
+                    ctx.lineTo(x + CELL_SIZE * 0.2, y + CELL_SIZE * 0.2);
+                    ctx.lineTo(x + CELL_SIZE * 0.35, y);
+                    ctx.lineTo(x + CELL_SIZE * 0.5, y + CELL_SIZE * 0.2);
+                    ctx.lineTo(x + CELL_SIZE * 0.65, y);
+                    ctx.lineTo(x + CELL_SIZE * 0.8, y + CELL_SIZE * 0.2);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    ctx.strokeStyle = '#FFD700';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(x + CELL_SIZE/2, y + CELL_SIZE/2, CELL_SIZE * 1.0, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else if (powerUp.type === 'speed_boost') {
+                    ctx.fillStyle = '#FFFF00';
+                    ctx.beginPath();
+                    ctx.moveTo(x - CELL_SIZE * 0.2, y + CELL_SIZE * 0.2);
+                    ctx.lineTo(x + CELL_SIZE * 0.6, y + CELL_SIZE * 0.2);
+                    ctx.lineTo(x + CELL_SIZE * 0.3, y + CELL_SIZE * 0.8);
+                    ctx.lineTo(x + CELL_SIZE * 0.7, y + CELL_SIZE * 0.5);
+                    ctx.lineTo(x + CELL_SIZE * 0.4, y + CELL_SIZE * 0.5);
+                    ctx.lineTo(x + CELL_SIZE * 0.9, y - CELL_SIZE * 0.2);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    ctx.strokeStyle = '#FFFF00';
+                    ctx.lineWidth = 2;
+                    for (let i = 0; i < 3; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(x - CELL_SIZE * 0.3 - i * 5, y + CELL_SIZE * (0.3 + i * 0.2));
+                        ctx.lineTo(x - CELL_SIZE * 0.1 - i * 3, y + CELL_SIZE * (0.3 + i * 0.2));
+                        ctx.stroke();
+                    }
+                } else if (powerUp.type === 'magnet') {
+                    ctx.fillStyle = '#FF5722';
+                    ctx.beginPath();
+                    ctx.rect(x + CELL_SIZE * 0.3, y - CELL_SIZE * 0.2, CELL_SIZE * 0.4, CELL_SIZE * 0.3);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.rect(x + CELL_SIZE * 0.3, y + CELL_SIZE * 0.9, CELL_SIZE * 0.4, CELL_SIZE * 0.3);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.rect(x + CELL_SIZE * 0.4, y - CELL_SIZE * 0.2, CELL_SIZE * 0.2, CELL_SIZE * 1.4);
+                    ctx.fill();
+                }
+            }
+        }
+    });
+    
+    if (isCurrentPlayer && powerUp) {
+        if (trailEffect) {
+            for (let i = snakeBody.length - 1; i > 0; i--) {
+                const segment = snakeBody[i];
+                const x = segment.x * CELL_SIZE;
+                const y = segment.y * CELL_SIZE;
+                if (i % 2 === 0 || i % 3 === 0) {
+                    const opacity = 0.8 * (1 - i / snakeBody.length);
+                    ctx.fillStyle = `rgba(0, 188, 212, ${opacity})`;
+                    ctx.beginPath();
+                    ctx.moveTo(x - CELL_SIZE * 0.8, y + CELL_SIZE * 0.2);
+                    ctx.lineTo(x, y + CELL_SIZE * 0.5);
+                    ctx.lineTo(x - CELL_SIZE * 0.8, y + CELL_SIZE * 0.8);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    if (Math.random() < 0.3) {
+                        createParticles(segment.x, segment.y, '#00BCD4', 3, 2, 4, 500);
+                    }
+                }
+            }
+        } else if (glowEffect) {
+            if (Math.random() < 0.3) {
+                const head = snakeBody[0];
+                createParticles(head.x, head.y, '#9C27B0', 5, 1.5, 5, 800);
+            }
+            ctx.strokeStyle = 'rgba(156, 39, 176, 0.5)';
+            ctx.lineWidth = 4;
+            for (let i = 0; i < snakeBody.length; i += 3) {
+                const segment = snakeBody[i];
+                ctx.beginPath();
+                ctx.arc(segment.x * CELL_SIZE + CELL_SIZE/2, segment.y * CELL_SIZE + CELL_SIZE/2, CELL_SIZE * 1.2, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+        
+        if (particleEffect) {
+            drawMagnetOrbits(snakeBody[0].x, snakeBody[0].y);
+            ctx.strokeStyle = 'rgba(255, 235, 59, 0.6)';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < snakeBody.length; i += 4) {
+                const segment = snakeBody[i];
+                const x = segment.x * CELL_SIZE + CELL_SIZE/2;
+                const y = segment.y * CELL_SIZE + CELL_SIZE/2;
+                for (let j = 0; j < 4; j++) {
+                    const angle = (j / 4) * Math.PI * 2 + Date.now() / 1000;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x + Math.cos(angle) * CELL_SIZE * 1.5, y + Math.sin(angle) * CELL_SIZE * 1.5);
+                    ctx.stroke();
+                }
+            }
+        }
+    }
+}
+
 // Add a new maze-like structure
