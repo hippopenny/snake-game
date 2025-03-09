@@ -36,48 +36,6 @@ const FOOD_TYPES = [
 // Track connected clients to handle disconnections properly
 const clientMap = new Map();
 
-        const now = Date.now();
-        
-        // Reset counter if window has passed
-        if (now - clientStats.lastReset > MESSAGE_TRACKING_WINDOW) {
-            clientStats.count = 0;
-            clientStats.lastReset = now;
-        }
-        
-        // Increment message count
-        clientStats.count++;
-        
-        // Check if rate limit exceeded
-        if (clientStats.count > MESSAGE_RATE_LIMIT) {
-            console.log(`Rate limit exceeded for client ${connectionId}`);
-            return; // Silently drop the message
-        }
-        
-        // Rate limiting code:
-        const clientStats = clientMessageCounts.get(ws);
-        const now = Date.now();
-        if (now - clientStats.lastReset > MESSAGE_TRACKING_WINDOW) {
-            clientStats.count = 0;
-            clientStats.lastReset = now;
-        }
-        clientStats.count++;
-        if (clientStats.count > MESSAGE_RATE_LIMIT) {
-            console.log(`Rate limit exceeded for client ${connectionId}`);
-            return; // Silently drop the message
-        }
-
-        // Now parse and process the message
-        try {
-            const data = JSON.parse(message);
-            switch (data.type) {
-                case 'update':
-                    updatePlayers(data.id, data.snake, data.score, data.level, data.activePowerUp, data.gameSpeed);
-                    break;
-                // ... handle other cases
-            }
-        } catch (e) {
-            console.error("Failed to parse or process message:", e);
-        }
 
 function updatePlayers(id, snake, score, level, activePowerUp, gameSpeed) {
     // Validate gameSpeed to prevent cheating
