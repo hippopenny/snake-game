@@ -55,17 +55,49 @@ wss.on('connection', (ws) => {
         }
     });
 
+    ws.on('close', () => {
+        // Remove player if its connection ID matches
+        for (const playerId in players) {
+            if (players[playerId].connectionId === connectionId) {
+                console.log(`Player ${playerId} disconnected`);
+                delete players[playerId];
+                break;
+            }
+        }
+        // Clean up resources
+        const timeout = clientHeartbeats.get(ws);
+        if (timeout) clearTimeout(timeout);
+        clientHeartbeats.delete(ws);
+        clientMessageCounts.delete(ws);
+        clientMap.delete(ws);
+        console.log('Client disconnected, active connections:', clientMap.size);
+    });
+
     // Initialize rate limiting for this client
     clientMessageCounts.set(ws, { count: 0, lastReset: Date.now() });
 
-    ws.on('message', message => {
+    ws.on('message', (message) => {
+        // Rate limiting code:
+        const clientStats = clientMessageCounts.get(ws);
+        const now = Date.now();
+        if (now - clientStats.lastReset > MESSAGE_TRACKING_WINDOW) {
+            clientStats.count = 0;
+            clientStats.lastReset = now;
+        }
+        clientStats.count++;
+        if (clientStats.count > MESSAGE_RATE_LIMIT) {
+            console.log(`Rate limit exceeded for client ${connectionId}`);
+            return; // Silently drop the message
+        }
+
+        // Now parse and process the message
         try {
             const data = JSON.parse(message);
             switch (data.type) {
                 case 'update':
-                    updatePlayers(data.id, data.snake, data.score, data.level, data.activePowerUp, data.gameSpeed); // Include gameSpeed
+                    updatePlayers(data.id, data.snake, data.score, data.level, data.activePowerUp, data.gameSpeed);
                     break;
-                // ... other cases
+                // ... handle other cases
             }
         } catch (e) {
             console.error("Failed to parse or process message:", e);
@@ -227,54 +259,6 @@ function updatePlayers(id, snake, score, level, activePowerUp, gameSpeed) {
     players[id].gameSpeed = validatedGameSpeed;
 }
 
-wss.on('connection', (ws) => {
-    console.log('New connection established');
-
-    // Generate a unique connection ID for tracking this socket
-    const connectionId = Date.now().toString() + Math.floor(Math.random() * 1000);
-    clientMap.set(ws, connectionId);
-
-    // Set up heartbeat handling
-    ws.isAlive = true;
-    ws.on('pong', () => {
-        ws.isAlive = true;
-
-        // Clear the timeout for this client
-        const timeout = clientHeartbeats.get(ws);
-        if (timeout) {
-            clearTimeout(timeout);
-        }
-    });
-
-    // Initialize rate limiting for this client
-    clientMessageCounts.set(ws, { count: 0, lastReset: Date.now() });
-
-    ws.on('message', (message) => {
-        // Apply rate limiting
-        const clientStats = clientMessageCounts.get(ws);
-        for (const playerId in players) {
-            if (players[playerId].connectionId === connectionId) {
-                console.log(`Player ${playerId} disconnected`);
-                delete players[playerId];
-                break;
-            }
-        }
-        
-        // Clean up resources
-        const timeout = clientHeartbeats.get(ws);
-        if (timeout) {
-            clearTimeout(timeout);
-        }
-        clientHeartbeats.delete(ws);
-        clientMessageCounts.delete(ws);
-        clientMap.delete(ws);
-        
-        console.log('Client disconnected, active connections:', clientMap.size);
-    });
-
-    // Send initial game state to the new client
-    sendGameState(ws);
-});
 
 // Check if a player's head collides with other players
 function checkPlayerCollisions(playerId, head) {
