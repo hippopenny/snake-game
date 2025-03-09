@@ -1521,10 +1521,11 @@ function gameStep() {
         moveSnake();
     }
     
-    if (checkCollisions()) {
-        console.log("Collision detected! Calling gameOver()");
-
-        gameOver();
+    // Check for collisions with the updated collision detection
+    const collisionResult = checkCollisions();
+    if (collisionResult.collision) {
+        console.log("Collision detected! Reason:", collisionResult.reason);
+        gameOver(collisionResult.reason);
         return;
     }
         
@@ -1985,6 +1986,12 @@ function cleanupGame() {
 }
 
 function gameOver(reason = 'collision') {
+    // Prevent multiple gameOver calls
+    if (!gameRunning) return;
+
+    // Set game state to not running
+    gameRunning = false;
+    
     console.log("Game Over called with reason:", reason);
     
     // Make sure the element exists
@@ -1993,76 +2000,271 @@ function gameOver(reason = 'collision') {
         return;
     }
     
-    // Set display and ensure visibility
-    gameOverScreen.style.display = 'block';
-    gameOverScreen.style.zIndex = '1001'; // Make sure it's above other elements
-    
-    console.log("gameOverScreen display set to:", gameOverScreen.style.display);
-    console.log("gameOverScreen computed style:", window.getComputedStyle(gameOverScreen).display);
-    
-    // Update final score and level
-    finalScoreDisplay.textContent = `Score: ${score}`;
-    finalLevelDisplay.textContent = `Level: ${level}`;
-    
-    // Cancel animation frame first to stop rendering
-    if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-        animationFrameId = null;
-    }
-    
-    // Clear game interval
-    if (gameLoop) {
-        clearInterval(gameLoop);
-        gameLoop = null;
-    }
-    
-    gameRunning = false;
-    
-    // Clean up game resources
-    cleanupGame();
-    
     // Set different messages based on death reason
     let deathMessage = '';
+    let deathColor = '#F44336'; // Default red
+    
     switch (reason) {
         case 'starvation':
             deathMessage = 'You starved to death!';
+            deathColor = '#FF9800'; // Orange for starvation
+            // Create starvation visual effect
+            createHungerDeathEffect();
             break;
         case 'collision':
             deathMessage = 'You crashed!';
+            deathColor = '#F44336'; // Red for collision
+            // Create collision visual effect
+            createCollisionEffect();
+            break;
+        case 'eaten':
+            deathMessage = 'You were eaten by another snake!';
+            deathColor = '#9C27B0'; // Purple for being eaten
+            // Create eaten visual effect
+            createEatenEffect();
+            break;
+        case 'disconnect':
+            deathMessage = 'Connection lost!';
+            deathColor = '#607D8B'; // Blue-grey for disconnect
             break;
         default:
             deathMessage = 'Game Over!';
     }
     
-    // Add death message to game over screen
-    const deathMessageElement = document.getElementById('death-message') || document.createElement('div');
-    if (!document.getElementById('death-message')) {
-        deathMessageElement.id = 'death-message';
-        deathMessageElement.style.color = '#F44336';
-        deathMessageElement.style.fontSize = '24px';
-        deathMessageElement.style.marginBottom = '15px';
-        gameOverScreen.insertBefore(deathMessageElement, gameOverScreen.firstChild);
+    // Send game over message to server BEFORE cleanup to ensure it's sent
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+            type: 'gameOver',
+            id: playerId,
+            reason: reason,
+            score: score,
+            level: level,
+            dead: true
+        }));
     }
-    deathMessageElement.textContent = deathMessage;
-    
-    finalScoreDisplay.textContent = `Score: ${score} (Best: ${highestScore})`;
-    finalLevelDisplay.textContent = `Level: ${level}`;
-    gameOverScreen.style.display = 'block';
     
     // Store high scores locally
     if (score > localStorage.getItem('snake_highest_score') || !localStorage.getItem('snake_highest_score')) {
         localStorage.setItem('snake_highest_score', score);
     }
     
-    if (socket.readyState === WebSocket.OPEN) {
-        // Send game over message to server with dead flag
-        socket.send(JSON.stringify({
-            type: 'gameOver',
-            id: playerId,
-            reason: reason,
-            dead: true
-        }));
+    // Add a short delay before showing the game over screen for visual effects to complete
+    setTimeout(() => {
+        // Clean up game resources after showing effects
+        cleanupGame();
+        
+        // Set display and ensure visibility
+        gameOverScreen.style.display = 'block';
+        gameOverScreen.style.zIndex = '1001'; // Make sure it's above other elements
+        
+        // Add death message to game over screen
+        const deathMessageElement = document.getElementById('death-message') || document.createElement('div');
+        if (!document.getElementById('death-message')) {
+            deathMessageElement.id = 'death-message';
+            deathMessageElement.style.fontSize = '24px';
+            deathMessageElement.style.marginBottom = '15px';
+            gameOverScreen.insertBefore(deathMessageElement, gameOverScreen.firstChild);
+        }
+        
+        deathMessageElement.textContent = deathMessage;
+        deathMessageElement.style.color = deathColor;
+        
+        // Add animation to the death message
+        deathMessageElement.style.animation = 'pulseText 2s infinite';
+        if (!document.getElementById('death-message-style')) {
+            const style = document.createElement('style');
+            style.id = 'death-message-style';
+            style.textContent = `
+                @keyframes pulseText {
+                    0% { opacity: 0.7; transform: scale(1); }
+                    50% { opacity: 1; transform: scale(1.05); }
+                    100% { opacity: 0.7; transform: scale(1); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        finalScoreDisplay.textContent = `Score: ${score} (Best: ${highestScore})`;
+        finalLevelDisplay.textContent = `Level: ${level}`;
+        
+        // Add some details about the death
+        const deathDetailsElement = document.getElementById('death-details') || document.createElement('div');
+        if (!document.getElementById('death-details')) {
+            deathDetailsElement.id = 'death-details';
+            deathDetailsElement.style.color = '#AAAAAA';
+            deathDetailsElement.style.fontSize = '16px';
+            deathDetailsElement.style.marginBottom = '20px';
+            gameOverScreen.insertBefore(deathDetailsElement, restartBtn);
+        }
+        
+        // Show different details based on death reason
+        switch (reason) {
+            case 'starvation':
+                deathDetailsElement.textContent = 'Remember to eat regularly to keep your hunger meter full!';
+                break;
+            case 'collision':
+                deathDetailsElement.textContent = 'Watch out for walls and other snakes next time!';
+                break;
+            case 'eaten':
+                deathDetailsElement.textContent = 'Players with invincibility power-ups can eat other snakes!';
+                break;
+            case 'disconnect':
+                deathDetailsElement.textContent = 'Check your internet connection and try again.';
+                break;
+        }
+        
+        // Animate the game over screen appearing
+        gameOverScreen.style.opacity = '0';
+        gameOverScreen.style.display = 'block';
+        gameOverScreen.style.transition = 'opacity 0.5s ease-in';
+        
+        setTimeout(() => {
+            gameOverScreen.style.opacity = '1';
+        }, 50);
+    }, 800); // Short delay for death effects
+}
+
+// Death effect functions
+function createHungerDeathEffect() {
+    // Create a hunger death overlay effect
+    const overlay = document.createElement('div');
+    overlay.className = 'death-overlay temp-game-element';
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.background = 'radial-gradient(circle, transparent 30%, rgba(255, 152, 0, 0.3) 70%)';
+    overlay.style.zIndex = '1000';
+    overlay.style.opacity = '0';
+    document.body.appendChild(overlay);
+    
+    // Create hunger icon in the center
+    const icon = document.createElement('div');
+    icon.className = 'death-icon temp-game-element';
+    icon.innerHTML = '💔';
+    icon.style.position = 'fixed';
+    icon.style.top = '50%';
+    icon.style.left = '50%';
+    icon.style.transform = 'translate(-50%, -50%) scale(0)';
+    icon.style.fontSize = '100px';
+    icon.style.zIndex = '1001';
+    document.body.appendChild(icon);
+    
+    // Animate
+    setTimeout(() => {
+        overlay.style.transition = 'opacity 0.5s ease-in';
+        overlay.style.opacity = '1';
+        
+        icon.style.transition = 'transform 0.5s ease-out';
+        icon.style.transform = 'translate(-50%, -50%) scale(2)';
+        
+        // Shake screen effect
+        shakeScreen(10, 500);
+    }, 100);
+}
+
+function createCollisionEffect() {
+    // Get snake head position
+    if (!snake.length) return;
+    
+    const head = snake[0];
+    const headX = head.x * CELL_SIZE + CELL_SIZE/2;
+    const headY = head.y * CELL_SIZE + CELL_SIZE/2;
+    
+    // Create explosion particles
+    for (let i = 0; i < 30; i++) {
+        createParticles(
+            head.x, 
+            head.y, 
+            '#FF5722', // Orange-red
+            30, // More particles
+            3, // Faster speed
+            5, // Larger particles
+            1200 // Longer lifetime
+        );
     }
+    
+    // Create impact flash
+    const flash = document.createElement('div');
+    flash.className = 'impact-flash temp-game-element';
+    flash.style.position = 'fixed';
+    flash.style.top = '0';
+    flash.style.left = '0';
+    flash.style.width = '100%';
+    flash.style.height = '100%';
+    flash.style.backgroundColor = 'white';
+    flash.style.opacity = '0.8';
+    flash.style.zIndex = '1000';
+    document.body.appendChild(flash);
+    
+    // Animate flash
+    setTimeout(() => {
+        flash.style.transition = 'opacity 0.3s ease-out';
+        flash.style.opacity = '0';
+    }, 50);
+    
+    // Shake screen effect
+    shakeScreen(15, 700);
+}
+
+function createEatenEffect() {
+    // Create a purple overlay to indicate being eaten
+    const overlay = document.createElement('div');
+    overlay.className = 'eaten-overlay temp-game-element';
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.background = 'radial-gradient(circle, rgba(156, 39, 176, 0.3) 0%, rgba(156, 39, 176, 0.6) 100%)';
+    overlay.style.zIndex = '1000';
+    overlay.style.opacity = '0';
+    document.body.appendChild(overlay);
+    
+    // Create eaten message
+    const message = document.createElement('div');
+    message.className = 'eaten-message temp-game-element';
+    message.textContent = 'EATEN!';
+    message.style.position = 'fixed';
+    message.style.top = '50%';
+    message.style.left = '50%';
+    message.style.transform = 'translate(-50%, -50%) scale(0)';
+    message.style.color = '#9C27B0';
+    message.style.fontSize = '80px';
+    message.style.fontWeight = 'bold';
+    message.style.zIndex = '1001';
+    message.style.textShadow = '0 0 20px rgba(156, 39, 176, 0.8)';
+    document.body.appendChild(message);
+    
+    // Animate
+    setTimeout(() => {
+        overlay.style.transition = 'opacity 0.5s ease-in';
+        overlay.style.opacity = '1';
+        
+        message.style.transition = 'transform 0.5s ease-out';
+        message.style.transform = 'translate(-50%, -50%) scale(1)';
+        
+        // Create particles from each body segment
+        if (snake.length) {
+            snake.forEach((segment, index) => {
+                setTimeout(() => {
+                    createParticles(
+                        segment.x,
+                        segment.y,
+                        '#9C27B0', // Purple
+                        10,
+                        2,
+                        4,
+                        1000
+                    );
+                }, index * 50); // Staggered effect along snake body
+            });
+        }
+        
+        // Shake screen effect
+        shakeScreen(8, 600);
+    }, 100);
 }
 
 function shakeScreen(intensity, duration) {
