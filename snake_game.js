@@ -1595,22 +1595,23 @@ function moveSnake() {
     prevSnakePositions = JSON.parse(JSON.stringify(snake));
     
     const head = {x: snake[0].x, y: snake[0].y};
+    const multiplier = (activePowerUp && activePowerUp.type === 'speed_boost') ? POWER_UP_EFFECTS.speed_boost.speedMultiplier : 1;
     
     switch (direction) {
         case 'up':
-            head.y -= 1;
+            head.y -= multiplier;
             console.log('direction: up');
             break;
         case 'down':
-            head.y += 1;
+            head.y += multiplier;
             console.log('direction: down');
             break;
         case 'left':
-            head.x -= 1;
+            head.x -= multiplier;
             console.log('direction: left');
             break;
         case 'right':
-            head.x += 1;
+            head.x += multiplier;
             console.log('direction: right');
             break;
     }
@@ -2687,11 +2688,7 @@ function updatePowerUpIndicator() {
         powerUpIndicator.style.animation = '';
     }
     
-    if (activePowerUp.type === 'speed_boost' && gameRunning) {
-        const boostedSpeed = gameSpeed / POWER_UP_EFFECTS.speed_boost.speedMultiplier;
-        clearInterval(gameLoop);
-        gameLoop = setInterval(gameStep, boostedSpeed);
-    }
+    // Speed boost adjustment removed; speed boost is now handled in moveSnake()
 }
 
 // Add the missing updatePowerUpStatus function
