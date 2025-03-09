@@ -246,7 +246,8 @@ wss.on('connection', (ws) => {
                 const playerId = data.id;
                 console.log(`Player ${playerId} game over`);
                 delete players[playerId];
-});
+            }
+        });
 
 function updatePlayers(id, snake, score, level, activePowerUp, gameSpeed) {
     // Validate gameSpeed to prevent cheating
