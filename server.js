@@ -1,4 +1,4 @@
-import { WebSocket, WebSocketServer } from 'ws';
+import WebSocket, { WebSocketServer } from 'ws';
 
 const wss = new WebSocketServer({ port: 8080 });
 
@@ -246,6 +246,8 @@ wss.on('connection', (ws) => {
                 const playerId = data.id;
                 console.log(`Player ${playerId} game over`);
                 delete players[playerId];
+});
+
 function updatePlayers(id, snake, score, level, activePowerUp, gameSpeed) {
     // Validate gameSpeed to prevent cheating
     const MIN_GAME_SPEED = 0.5;  // Example minimum speed
