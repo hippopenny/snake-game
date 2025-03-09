@@ -434,25 +434,6 @@ socket.onerror = (error) => {
 socket.onclose = (event) => {
     console.log('Disconnected from server:', event.code, event.reason);
     
-    // Add connection lost indicator
-    const connectionLostIndicator = document.createElement('div');
-    connectionLostIndicator.id = 'connection-lost';
-    connectionLostIndicator.style.position = 'fixed';
-    connectionLostIndicator.style.top = '50%';
-    connectionLostIndicator.style.left = '50%';
-    connectionLostIndicator.style.transform = 'translate(-50%, -50%)';
-    connectionLostIndicator.style.backgroundColor = 'rgba(244, 67, 54, 0.95)';
-    connectionLostIndicator.style.color = 'white';
-    connectionLostIndicator.style.padding = '20px 30px';
-    connectionLostIndicator.style.borderRadius = '10px';
-    connectionLostIndicator.style.fontWeight = 'bold';
-    connectionLostIndicator.style.fontSize = '24px';
-    connectionLostIndicator.style.zIndex = '2000';
-    connectionLostIndicator.style.boxShadow = '0 0 20px rgba(0, 0, 0, 0.7)';
-    connectionLostIndicator.style.border = '2px solid white';
-    connectionLostIndicator.textContent = 'CONNECTION LOST. Attempting to reconnect...';
-    document.body.appendChild(connectionLostIndicator);
-    
     // Save current game state for reconnection
     const savedSnake = [...snake];
     const savedScore = score;
@@ -461,23 +442,75 @@ socket.onclose = (event) => {
     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS && gameRunning) {
         console.log(`Attempting to reconnect (${reconnectAttempts + 1}/${MAX_RECONNECT_ATTEMPTS})...`);
         
-        // Add visual reconnection indicator
+        // Add connection lost indicator with animated dots
+        const connectionLostIndicator = document.createElement('div');
+        connectionLostIndicator.id = 'connection-lost';
+        connectionLostIndicator.style.position = 'fixed';
+        connectionLostIndicator.style.top = '50%';
+        connectionLostIndicator.style.left = '50%';
+        connectionLostIndicator.style.transform = 'translate(-50%, -50%)';
+        connectionLostIndicator.style.backgroundColor = 'rgba(244, 67, 54, 0.9)';
+        connectionLostIndicator.style.color = 'white';
+        connectionLostIndicator.style.padding = '20px 30px';
+        connectionLostIndicator.style.borderRadius = '10px';
+        connectionLostIndicator.style.fontWeight = 'bold';
+        connectionLostIndicator.style.fontSize = '24px';
+        connectionLostIndicator.style.zIndex = '2000';
+        connectionLostIndicator.style.boxShadow = '0 0 20px rgba(0, 0, 0, 0.7)';
+        connectionLostIndicator.style.border = '2px solid white';
+        
+        // Create a container for the message and dots
+        const messageContainer = document.createElement('div');
+        messageContainer.style.display = 'flex';
+        messageContainer.style.alignItems = 'center';
+        messageContainer.style.justifyContent = 'center';
+        
+        // Add the message text
+        const messageText = document.createElement('div');
+        messageText.textContent = 'CONNECTION LOST. Attempting to reconnect';
+        messageContainer.appendChild(messageText);
+        
+        // Add animated dots
+        const dotsContainer = document.createElement('div');
+        dotsContainer.style.marginLeft = '5px';
+        dotsContainer.style.width = '30px';
+        dotsContainer.style.textAlign = 'left';
+        messageContainer.appendChild(dotsContainer);
+        
+        connectionLostIndicator.appendChild(messageContainer);
+        document.body.appendChild(connectionLostIndicator);
+        
+        // Animate dots
+        let dotCount = 0;
+        const dotAnimation = setInterval(() => {
+            dotsContainer.textContent = '.'.repeat(dotCount % 4);
+            dotCount++;
+        }, 500);
+        
+        // Add visual reconnection indicator with attempt counter
         const reconnectingMessage = document.createElement('div');
         reconnectingMessage.id = 'reconnecting-message';
-        reconnectingMessage.style.position = 'absolute';
-        reconnectingMessage.style.top = '50%';
+        reconnectingMessage.style.position = 'fixed';
+        reconnectingMessage.style.bottom = '20%';
         reconnectingMessage.style.left = '50%';
-        reconnectingMessage.style.transform = 'translate(-50%, -50%)';
+        reconnectingMessage.style.transform = 'translateX(-50%)';
         reconnectingMessage.style.background = 'rgba(0, 0, 0, 0.8)';
         reconnectingMessage.style.color = '#4CAF50';
-        reconnectingMessage.style.padding = '20px';
+        reconnectingMessage.style.padding = '10px 20px';
         reconnectingMessage.style.borderRadius = '10px';
         reconnectingMessage.style.zIndex = '2000';
         reconnectingMessage.style.fontWeight = 'bold';
-        reconnectingMessage.style.fontSize = '18px';
+        reconnectingMessage.style.fontSize = '16px';
         reconnectingMessage.style.boxShadow = '0 0 20px rgba(76, 175, 80, 0.5)';
-        reconnectingMessage.textContent = `Reconnecting (${reconnectAttempts + 1}/${MAX_RECONNECT_ATTEMPTS})...`;
+        reconnectingMessage.style.opacity = '0';
+        reconnectingMessage.style.transition = 'opacity 0.5s';
+        reconnectingMessage.textContent = `Reconnecting (${reconnectAttempts + 1}/${MAX_RECONNECT_ATTEMPTS})`;
         document.body.appendChild(reconnectingMessage);
+        
+        // Fade in the reconnecting message
+        setTimeout(() => {
+            reconnectingMessage.style.opacity = '1';
+        }, 100);
         
         setTimeout(() => {
             reconnectAttempts++;
@@ -488,19 +521,34 @@ socket.onclose = (event) => {
             newSocket.onopen = () => {
                 console.log("WebSocket reconnected. Player ID:", playerId);
                 
+                // Clear the dot animation interval
+                clearInterval(dotAnimation);
+                
                 // Remove reconnection message if it exists
                 const reconnectMessage = document.getElementById('reconnecting-message');
                 if (reconnectMessage) {
-                    document.body.removeChild(reconnectMessage);
+                    reconnectMessage.style.opacity = '0';
+                    setTimeout(() => {
+                        if (document.body.contains(reconnectMessage)) {
+                            document.body.removeChild(reconnectMessage);
+                        }
+                    }, 500);
                 }
                 
                 // Remove connection lost indicator if it exists
-                if (document.getElementById('connection-lost')) {
-                    document.body.removeChild(document.getElementById('connection-lost'));
+                const connectionLostElement = document.getElementById('connection-lost');
+                if (connectionLostElement) {
+                    connectionLostElement.style.opacity = '0';
+                    connectionLostElement.style.transition = 'opacity 0.5s';
+                    setTimeout(() => {
+                        if (document.body.contains(connectionLostElement)) {
+                            document.body.removeChild(connectionLostElement);
+                        }
+                    }, 500);
                 }
                 
                 // Restore player state immediately after reconnection
-                if (gameRunning && savedSnake.length > 0) {
+                if (gameRunning && savedSnake && savedSnake.length > 0) {
                     // Send the saved state to restore the snake
                     const playerState = {
                         type: 'update',
@@ -517,6 +565,35 @@ socket.onclose = (event) => {
                 
                 // Reset reconnect attempts on successful connection
                 reconnectAttempts = 0;
+                
+                // Show a success message
+                const reconnectedMessage = document.createElement('div');
+                reconnectedMessage.style.position = 'fixed';
+                reconnectedMessage.style.top = '10%';
+                reconnectedMessage.style.left = '50%';
+                reconnectedMessage.style.transform = 'translateX(-50%)';
+                reconnectedMessage.style.background = 'rgba(76, 175, 80, 0.9)';
+                reconnectedMessage.style.color = 'white';
+                reconnectedMessage.style.padding = '10px 20px';
+                reconnectedMessage.style.borderRadius = '5px';
+                reconnectedMessage.style.zIndex = '2000';
+                reconnectedMessage.style.fontWeight = 'bold';
+                reconnectedMessage.textContent = 'Reconnected!';
+                reconnectedMessage.style.opacity = '0';
+                reconnectedMessage.style.transition = 'opacity 0.5s';
+                document.body.appendChild(reconnectedMessage);
+                
+                setTimeout(() => {
+                    reconnectedMessage.style.opacity = '1';
+                    setTimeout(() => {
+                        reconnectedMessage.style.opacity = '0';
+                        setTimeout(() => {
+                            if (document.body.contains(reconnectedMessage)) {
+                                document.body.removeChild(reconnectedMessage);
+                            }
+                        }, 500);
+                    }, 2000);
+                }, 100);
             };
             
             newSocket.onmessage = socket.onmessage;
@@ -527,13 +604,43 @@ socket.onclose = (event) => {
             socket = newSocket;
         }, RECONNECT_DELAY);
     } else if (gameRunning) {
+        // End the game if we've exceeded reconnect attempts
+        gameOver('disconnect');
+        
         // Remove any existing reconnection message
         const reconnectMessage = document.getElementById('reconnecting-message');
         if (reconnectMessage) {
             document.body.removeChild(reconnectMessage);
         }
         
-        alert("Lost connection to server. Please refresh the page to reconnect.");
+        // Show a more user-friendly message
+        const disconnectMessage = document.createElement('div');
+        disconnectMessage.style.position = 'fixed';
+        disconnectMessage.style.top = '30%';
+        disconnectMessage.style.left = '50%';
+        disconnectMessage.style.transform = 'translateX(-50%)';
+        disconnectMessage.style.background = 'rgba(33, 33, 33, 0.9)';
+        disconnectMessage.style.color = 'white';
+        disconnectMessage.style.padding = '20px';
+        disconnectMessage.style.borderRadius = '10px';
+        disconnectMessage.style.zIndex = '2500';
+        disconnectMessage.style.textAlign = 'center';
+        disconnectMessage.style.maxWidth = '80%';
+        
+        disconnectMessage.innerHTML = `
+            <h3 style="margin-top: 0; color: #FF5722;">Connection Lost</h3>
+            <p>Unable to reconnect to the server after multiple attempts.</p>
+            <button style="background-color: #4CAF50; color: white; border: none; padding: 10px 15px; 
+                     border-radius: 5px; cursor: pointer; margin-top: 10px;">
+                Refresh Page
+            </button>
+        `;
+        document.body.appendChild(disconnectMessage);
+        
+        // Add click handler for the refresh button
+        disconnectMessage.querySelector('button').addEventListener('click', () => {
+            window.location.reload();
+        });
     }
 };
 
@@ -1758,20 +1865,20 @@ function checkCollisions() {
     
     // Check wall collisions (even with invincibility)
     if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE) {
-        return true;
+        return {collision: true, reason: 'collision', message: 'You hit the edge of the map!'};
     }
     
     // Check wall object collisions (even with invincibility)
     for (let i = 0; i < WALLS.length; i++) {
         if (head.x === WALLS[i].x && head.y === WALLS[i].y) {
-            return true;
+            return {collision: true, reason: 'collision', message: 'You crashed into a wall!'};
         }
     }
     
     // Check self-collision (even with invincibility)
     for (let i = 1; i < snake.length; i++) {
         if (head.x === snake[i].x && head.y === snake[i].y) {
-            return true;
+            return {collision: true, reason: 'collision', message: 'You crashed into yourself!'};
         }
     }
     
@@ -1782,7 +1889,7 @@ function checkCollisions() {
         if (activePowerUp && activePowerUp.type === 'invincibility') {
             checkEatOtherSnake();
         }
-        return false;
+        return {collision: false};
     }
     
     // Check for other players with speed boost trying to move through us
@@ -1794,7 +1901,14 @@ function checkCollisions() {
             
             // If they have speed boost, they still can't pass through us
             if (otherHasSpeedBoost && otherHead.x === head.x && otherHead.y === head.y) {
-                return true; // Block the movement - speed boost doesn't allow passing through
+                return {collision: true, reason: 'collision', message: 'A speed boosted snake crashed into you!'};
+            }
+            
+            // Check if we're colliding with an invincible snake that can eat us
+            const otherHasInvincibility = players[id].activePowerUp && 
+                                          players[id].activePowerUp.type === 'invincibility';
+            if (otherHasInvincibility && otherHead.x === head.x && otherHead.y === head.y) {
+                return {collision: true, reason: 'eaten', message: 'You were eaten by an invincible snake!'};
             }
         }
     }
@@ -1807,7 +1921,12 @@ function checkCollisions() {
                 if (otherSnake) {
                     for (let i = 0; i < otherSnake.length; i++) {
                         if (head.x === otherSnake[i].x && head.y === otherSnake[i].y) {
-                            return true;
+                            // Different message depending on if it's a head-on collision or not
+                            if (i === 0) {
+                                return {collision: true, reason: 'collision', message: 'Head-on collision with another snake!'};
+                            } else {
+                                return {collision: true, reason: 'collision', message: 'You crashed into another snake!'};
+                            }
                         }
                     }
                 }
@@ -1815,22 +1934,30 @@ function checkCollisions() {
         }
     }
     
-    return false;
+    return {collision: false};
 }
 
 // Power-up countdown bar is now defined earlier in the file
 
 function cleanupGame() {
-    // Remove temporary UI elements
+    // Remove temporary UI elements safely
     const tempElements = document.querySelectorAll('.temp-game-element');
     tempElements.forEach(el => {
-        document.body.removeChild(el);
+        if (document.body.contains(el)) {
+            document.body.removeChild(el);
+        }
     });
     
     // Clear any running animations or intervals
     if (gameLoop) {
         clearInterval(gameLoop);
         gameLoop = null;
+    }
+    
+    // Cancel any animation frame to stop rendering
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
     }
     
     // Clear particles
@@ -1841,11 +1968,20 @@ function cleanupGame() {
     powerUpStatus.style.display = 'none';
     powerUpCountdownContainer.style.display = 'none';
     
+    // Clean up joystick if it exists
     if (joystick) {
         joystick.destroy();
         joystick = null;
         joystickContainer.style.display = 'none';
     }
+    
+    // Clear any pending timeouts
+    const highestId = setTimeout(() => {}, 0);
+    for (let i = highestId; i >= highestId - 100; i--) {
+        clearTimeout(i);
+    }
+    
+    gameRunning = false;
 }
 
 function gameOver(reason = 'collision') {

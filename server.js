@@ -201,23 +201,37 @@ wss.on('connection', (ws) => {
                 }
             } else if (data.type === 'gameOver') {
                 const playerId = data.id;
-                console.log(`Player ${playerId} game over`);
+                const deathReason = data.reason || 'unknown';
+                console.log(`Player ${playerId} game over. Reason: ${deathReason}`);
         
                 // Mark player as dead first, then remove after a short delay
                 // This ensures other clients see the dead state before removal
                 if (players[playerId]) {
+                    // Preserve the player's score and level in the dead state for leaderboard
                     players[playerId].dead = true;
+                    players[playerId].deathReason = deathReason;
+                    players[playerId].deathTime = Date.now();
+                    
+                    if (data.score !== undefined) {
+                        players[playerId].score = data.score;
+                    }
+                    
+                    if (data.level !== undefined) {
+                        players[playerId].level = data.level;
+                    }
             
                     // Broadcast immediately that the player is dead
                     broadcastGameState();
             
-                    // Remove the player after a short delay
+                    // Remove the player after a longer delay to ensure death animation visibility
                     setTimeout(() => {
-                        delete players[playerId];
-                        console.log(`Removed dead player ${playerId}`);
-                        // Broadcast again to ensure all clients remove the player
-                        broadcastGameState();
-                    }, 1000); // Increased from 500ms to 1000ms for better visibility
+                        if (players[playerId]) {
+                            delete players[playerId];
+                            console.log(`Removed dead player ${playerId}`);
+                            // Broadcast again to ensure all clients remove the player
+                            broadcastGameState();
+                        }
+                    }, 3000); // Increased to 3 seconds for better visibility of death state
                 }
             } else if (data.type === 'eatSnake') {
                 const playerId = data.id;
