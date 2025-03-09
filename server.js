@@ -202,7 +202,21 @@ wss.on('connection', (ws) => {
             } else if (data.type === 'gameOver') {
                 const playerId = data.id;
                 console.log(`Player ${playerId} game over`);
-                delete players[playerId];
+        
+                // Mark player as dead first, then remove after a short delay
+                // This ensures other clients see the dead state before removal
+                if (players[playerId]) {
+                    players[playerId].dead = true;
+            
+                    // Broadcast immediately that the player is dead
+                    broadcastGameState();
+            
+                    // Remove the player after a short delay
+                    setTimeout(() => {
+                        delete players[playerId];
+                        console.log(`Removed dead player ${playerId}`);
+                    }, 500);
+                }
             }
         } catch (error) {
             console.error('Error processing message:', error);
@@ -249,7 +263,15 @@ function checkPlayerCollisions(playerId, head) {
         for (let i = 0; i < otherSnake.length; i++) {
             if (head.x === otherSnake[i].x && head.y === otherSnake[i].y) {
                 console.log(`Player ${playerId} collided with player ${otherId}`);
-                // The client will handle its own game over
+                // Mark this player as dead
+                if (players[playerId]) {
+                    players[playerId].dead = true;
+                    // Remove the player after a short delay
+                    setTimeout(() => {
+                        delete players[playerId];
+                        console.log(`Removed dead player ${playerId}`);
+                    }, 500);
+                }
                 return;
             }
         }

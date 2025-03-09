@@ -769,6 +769,23 @@ function draw(alpha = 1) {
             }
             
             if (isVisible) {
+                // When drawing dead snakes, add visual decay effect
+                if (players[id].dead) {
+                    // Create particles for dead snake
+                    if (Math.random() < 0.3 && otherSnake.length > 0) {
+                        const randomSegment = otherSnake[Math.floor(Math.random() * otherSnake.length)];
+                        createParticles(
+                            randomSegment.x,
+                            randomSegment.y,
+                            'rgba(100, 100, 100, 0.8)',
+                            3,
+                            1.5,
+                            4,
+                            500
+                        );
+                    }
+                }
+                
                 drawSnake(otherSnake, false);
             }
         }
@@ -918,6 +935,18 @@ function drawSnake(snakeBody, isCurrentPlayer) {
         return;
     }
     
+    // Find if this snake belongs to a dead player
+    let isDead = false;
+    if (!isCurrentPlayer) {
+        // Check if this snake belongs to a player marked as dead
+        for (const id in players) {
+            if (players[id].snake === snakeBody && players[id].dead) {
+                isDead = true;
+                break;
+            }
+        }
+    }
+    
     // Apply interpolation for smoother movement
     let positionsToRender = snakeBody;
     
@@ -1032,8 +1061,15 @@ function drawSnake(snakeBody, isCurrentPlayer) {
             ctx.shadowBlur = 20;
         }
         
-        // Set fill style based on segment type
-        ctx.fillStyle = index === 0 ? headColor : bodyColor;
+        // If snake is dead, make it fade with translucent gray
+        if (isDead) {
+            ctx.fillStyle = index === 0 ? 'rgba(150, 150, 150, 0.6)' : 'rgba(100, 100, 100, 0.5)';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+            ctx.shadowBlur = 5;
+        } else {
+            // Normal coloring for live snakes
+            ctx.fillStyle = index === 0 ? headColor : bodyColor;
+        }
         
         // Determine pulsing effect scale
         let pulseScale = 1;
@@ -1796,10 +1832,12 @@ function gameOver(reason = 'collision') {
     }
     
     if (socket.readyState === WebSocket.OPEN) {
+        // Send game over message to server with dead flag
         socket.send(JSON.stringify({
             type: 'gameOver',
             id: playerId,
-            reason: reason
+            reason: reason,
+            dead: true
         }));
     }
 }
