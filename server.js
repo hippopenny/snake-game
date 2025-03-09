@@ -14,6 +14,64 @@ const clientMessageCounts = new Map(); // Track message counts per client
 
 // Game state
 let players = {};
+
+wss.on('connection', (ws) => {
+    // Connection health tracking
+    ws.isAlive = true;
+    ws.on('pong', () => ws.isAlive = true);
+
+    // Initialize client message count
+    clientMessageCounts.set(ws, { count: 0, lastReset: Date.now() });
+
+    ws.on('message', (message) => {
+        // Rate limiting code:
+        const clientStats = clientMessageCounts.get(ws);
+        const now = Date.now();
+        if (now - clientStats.lastReset > MESSAGE_TRACKING_WINDOW) {
+          clientStats.count = 0;
+          clientStats.lastReset = now;
+        }
+        clientStats.count++;
+        if (clientStats.count > MESSAGE_RATE_LIMIT) {
+          console.log(`Rate limit exceeded for client ${connectionId}`);
+          return; // Silently drop the message
+        }
+
+        // Now parse and process the message
+        try {
+            const data = JSON.parse(message);
+            switch (data.type) {
+                case 'update':
+                    updatePlayers(data.id, data.snake, data.score, data.level, data.activePowerUp, data.gameSpeed);
+                    break;
+                // ... handle other cases
+            }
+        } catch (e) {
+            console.error("Failed to parse or process message:", e);
+        }
+    });
+
+    // Send initial game state to the new client
+    sendGameState(ws);
+
+    ws.on('close', () => {
+        // Remove player if its connection ID matches
+        for (const playerId in players) {
+            if (players[playerId].connectionId === connectionId) {
+                console.log(`Player ${playerId} disconnected`);
+                delete players[playerId];
+                break;
+            }
+        }
+        // Clean up resources
+        const timeout = clientHeartbeats.get(ws);
+        if (timeout) clearTimeout(timeout);
+        clientHeartbeats.delete(ws);
+        clientMessageCounts.delete(ws);
+        clientMap.delete(ws);
+        console.log('Client disconnected, active connections:', clientMap.size);
+    });
+});
 let foods = [];
 let walls = []; // Store wall positions
 const BASE_FOOD_DENSITY = 0.001; // Reduced from 0.0025
@@ -194,30 +252,6 @@ ws.on('close', () => {
     console.log('Client disconnected, active connections:', clientMap.size);
 });
 
-// WebSocket ping/pong heartbeat to detect dead connections
-setInterval(() => {
-    wss.clients.forEach((ws) => {
-        const clientId = clientMap.get(ws);
-        if (ws.isAlive === false) {
-            console.log(`Client ${clientId} did not respond to ping, terminating connection`);
-            clientHeartbeats.delete(ws);
-            return ws.terminate();
-        }
-        
-        ws.isAlive = false;
-        ws.ping();
-        
-        // Set a timeout for response
-        const timeout = setTimeout(() => {
-            if (ws.isAlive === false) {
-                console.log(`Client ${clientId} ping timeout, terminating connection`);
-                ws.terminate();
-            }
-        }, PONG_TIMEOUT);
-        
-        clientHeartbeats.set(ws, timeout);
-    });
-}, PING_INTERVAL);
 
 // Update foods and broadcast game state
 setInterval(() => {
