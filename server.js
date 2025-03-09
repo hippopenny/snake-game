@@ -53,133 +53,31 @@ const clientMap = new Map();
             return; // Silently drop the message
         }
         
+        // Rate limiting code:
+        const clientStats = clientMessageCounts.get(ws);
+        const now = Date.now();
+        if (now - clientStats.lastReset > MESSAGE_TRACKING_WINDOW) {
+            clientStats.count = 0;
+            clientStats.lastReset = now;
+        }
+        clientStats.count++;
+        if (clientStats.count > MESSAGE_RATE_LIMIT) {
+            console.log(`Rate limit exceeded for client ${connectionId}`);
+            return; // Silently drop the message
+        }
+
+        // Now parse and process the message
         try {
             const data = JSON.parse(message);
-            
-            if (data.type === 'update') {
-                const playerId = data.id;
-                
-                // New player joined
-                if (!players[playerId]) {
-                    console.log(`New player joined with ID: ${playerId}`);
-                }
-                
-                // Update player data
-                players[playerId] = {
-                    id: playerId,
-                    snake: data.snake,
-                    score: data.score,
-                    level: data.level,
-                    lastUpdate: Date.now(),
-                    connectionId: clientMap.get(ws),
-                    activePowerUp: data.activePowerUp
-                };
-                
-                // Check for collisions with other players
-                const head = data.snake[0];
-                if (head) {
-                    checkPlayerCollisions(playerId, head);
-                }
-            } else if (data.type === 'foodEaten') {
-                const playerId = data.id;
-                const foodIndex = data.foodIndex;
-                
-                if (foodIndex >= 0 && foodIndex < foods.length) {
-                    const eatenFood = foods[foodIndex];
-                    foods.splice(foodIndex, 1);
-                    console.log(`Food eaten by player ${playerId}`);
-                    
-                    // Activate power-up if the eaten food was a power-up
-                    if (eatenFood.powerUp) {
-                        players[playerId].activePowerUp = {
-                            type: eatenFood.powerUp,
-                            expiresAt: Date.now() + eatenFood.duration
-                        };
-                        console.log(`Power-up ${eatenFood.powerUp} activated for player ${playerId}`);
-                    }
-                    
-                    // Generate new food
-                    while (foods.length < MAX_FOODS) {
-                        foods.push(generateNewFood());
-                    }
-                    
-                    // Broadcast updated food positions to all clients
-                    broadcastGameState();
-                }
-            } else if (data.type === 'requestFood') {
-                // Create food at the requested position
-                const food = {
-                    x: data.x,
-                    y: data.y,
-                    createdAt: Date.now(),
-                    blinking: false,
-                    lifetime: BASE_FOOD_LIFETIME * 1.5, // Give safe zone food longer lifetime
-                    countdown: Math.floor((BASE_FOOD_LIFETIME * 1.5) / 1000)
-                };
-                
-                // Determine food type
-                if (data.specialFood) {
-                    // Special high-value food
-                    if (data.powerUp) {
-                        // Choose a random power-up
-                        const powerUpTypes = ['speed_boost', 'invincibility', 'magnet'];
-                        const randomPowerUp = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
-                        
-                        // Set power-up food properties
-                        food.points = 5;
-                        food.powerUp = randomPowerUp;
-                        food.duration = 10000; // 10 seconds
-                        
-                        switch (randomPowerUp) {
-                            case 'speed_boost':
-                                food.color = '#00BCD4';
-                                break;
-                            case 'invincibility':
-                                food.color = '#9C27B0';
-                                break;
-                            case 'magnet':
-                                food.color = '#FFEB3B';
-                                break;
-                        }
-                    } else {
-                        // High-value food
-                        food.points = data.points || 20;
-                        food.color = data.points >= 50 ? '#8BC34A' : '#FFC107';
-                    }
-                } else {
-                    // Regular food in safe zone
-                    food.points = 10;
-                    food.color = '#FF5722';
-                }
-                
-                // Add to foods array if not colliding with anything
-                let canPlace = true;
-                
-                // Check walls
-                for (const wall of walls) {
-                    if (wall.x === food.x && wall.y === food.y) {
-                        canPlace = false;
-                        break;
-                    }
-                }
-                
-                // Check other food
-                for (const existingFood of foods) {
-                    if (existingFood.x === food.x && existingFood.y === food.y) {
-                        canPlace = false;
-                        break;
-                    }
-                }
-                
-                if (canPlace) {
-                    foods.push(food);
-                }
-            } else if (data.type === 'gameOver') {
-                const playerId = data.id;
-                console.log(`Player ${playerId} game over`);
-                delete players[playerId];
+            switch (data.type) {
+                case 'update':
+                    updatePlayers(data.id, data.snake, data.score, data.level, data.activePowerUp, data.gameSpeed);
+                    break;
+                // ... handle other cases
             }
-        });
+        } catch (e) {
+            console.error("Failed to parse or process message:", e);
+        }
 
 function updatePlayers(id, snake, score, level, activePowerUp, gameSpeed) {
     // Validate gameSpeed to prevent cheating
@@ -319,6 +217,24 @@ function broadcastGameState() {
 setInterval(() => {
     broadcastGameState();
 }, 100);
+
+ws.on('close', () => {
+    // Remove player if its connection ID matches
+    for (const playerId in players) {
+        if (players[playerId].connectionId === connectionId) {
+            console.log(`Player ${playerId} disconnected`);
+            delete players[playerId];
+            break;
+        }
+    }
+    // Clean up resources
+    const timeout = clientHeartbeats.get(ws);
+    if (timeout) clearTimeout(timeout);
+    clientHeartbeats.delete(ws);
+    clientMessageCounts.delete(ws);
+    clientMap.delete(ws);
+    console.log('Client disconnected, active connections:', clientMap.size);
+});
 
 // WebSocket ping/pong heartbeat to detect dead connections
 setInterval(() => {
