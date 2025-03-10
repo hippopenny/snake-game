@@ -224,39 +224,6 @@ function initHeatMap() {
     }
 }
 
-function initJoystick() {
-    if (!joystick && detectTouchDevice()) {
-        const options = {
-            zone: joystickContainer,
-            mode: 'static',
-            position: { right: '75px', bottom: '75px' },
-            color: 'green',
-            size: 100,
-            opacity: 0.01
-        };
-        
-        joystick = nipplejs.create(options);
-
-        joystick.on('dir:up', () => {
-            if (direction !== 'down') nextDirection = 'up';
-        });
-
-        joystick.on('dir:down', () => {
-            if (direction !== 'up') nextDirection = 'down';
-        });
-
-        joystick.on('dir:left', () => {
-            if (direction !== 'right') nextDirection = 'left';
-        });
-
-        joystick.on('dir:right', () => {
-            if (direction !== 'left') nextDirection = 'right';
-        });
-        
-        // Show the container when joystick is initialized
-        joystickContainer.style.display = 'block';
-    }
-}
 
 // Create meters container to hold both meters
 const metersContainer = document.createElement('div');
@@ -803,7 +770,6 @@ function initGame() {
     
     // Store animation frame ID for proper cancellation later
     animationFrameId = requestAnimationFrame(renderFrame);
-    initJoystick(); // Add this line
 }
 
 function renderFrame(timestamp) {
@@ -3947,9 +3913,10 @@ function detectTouchDevice() {
         window.joystick = nipplejs.create({
             zone: joystickContainer,
             mode: 'static',
-            position: { left: '50%', bottom: '50%' },
-            color: 'green',
-            size: 100
+            position: { right: '75px', bottom: '75px' },
+            color: 'rgba(0,255,0,0.05)',
+            size: 100,
+            opacity: 0.05
         });
 
         // Debounce function
