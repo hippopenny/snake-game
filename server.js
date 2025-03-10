@@ -616,7 +616,157 @@ function createRoomStructure() {
         foods.push(food);
     }
     
-    // No other rooms or corridors needed for traditional snake game
+    // Add random obstacles outside the safe room
+    addRandomObstacles();
+}
+
+// Add random obstacles throughout the map
+function addRandomObstacles() {
+    const centerX = Math.floor(GRID_SIZE / 2);
+    const centerY = Math.floor(GRID_SIZE / 2);
+    
+    // Function to check if a position is safe (inside or near the safe zone)
+    const isSafe = (x, y) => {
+        const dx = x - centerX;
+        const dy = y - centerY;
+        // Keep a wider safety margin around the safe zone
+        return Math.sqrt(dx*dx + dy*dy) < SAFE_ZONE_RADIUS * 2.5;
+    };
+    
+    // Add random rectangular obstacles
+    for (let i = 0; i < 12; i++) {
+        const obstacleWidth = Math.floor(Math.random() * 15) + 5;
+        const obstacleHeight = Math.floor(Math.random() * 15) + 5;
+        
+        // Place obstacles away from the center
+        let obstacleX, obstacleY;
+        do {
+            obstacleX = Math.floor(Math.random() * (GRID_SIZE - obstacleWidth - 40)) + 20;
+            obstacleY = Math.floor(Math.random() * (GRID_SIZE - obstacleHeight - 40)) + 20;
+        } while (isSafe(obstacleX, obstacleY));
+        
+        // Create the obstacle
+        for (let x = obstacleX; x < obstacleX + obstacleWidth; x++) {
+            for (let y = obstacleY; y < obstacleY + obstacleHeight; y++) {
+                // Only create walls at the perimeter of the obstacle
+                if (x === obstacleX || x === obstacleX + obstacleWidth - 1 || 
+                    y === obstacleY || y === obstacleY + obstacleHeight - 1) {
+                    walls.push({x, y});
+                }
+            }
+        }
+        
+        // Add some food inside the obstacle
+        for (let j = 0; j < 3; j++) {
+            const foodX = Math.floor(obstacleX + 1 + Math.random() * (obstacleWidth - 2));
+            const foodY = Math.floor(obstacleY + 1 + Math.random() * (obstacleHeight - 2));
+            
+            let food = generateNewFood();
+            food.x = foodX;
+            food.y = foodY;
+            // Make obstacle food more valuable
+            food.points = 30;
+            food.color = '#FFC107';
+            foods.push(food);
+        }
+    }
+    
+    // Add random circular obstacles
+    for (let i = 0; i < 8; i++) {
+        const radius = Math.floor(Math.random() * 10) + 8;
+        
+        // Place circles away from the center
+        let centerObsX, centerObsY;
+        do {
+            centerObsX = Math.floor(Math.random() * (GRID_SIZE - 40)) + 20;
+            centerObsY = Math.floor(Math.random() * (GRID_SIZE - 40)) + 20;
+        } while (isSafe(centerObsX, centerObsY));
+        
+        // Create circular obstacle
+        for (let x = centerObsX - radius; x <= centerObsX + radius; x++) {
+            for (let y = centerObsY - radius; y <= centerObsY + radius; y++) {
+                if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
+                    const dx = x - centerObsX;
+                    const dy = y - centerObsY;
+                    const distance = Math.sqrt(dx*dx + dy*dy);
+                    
+                    // Only create walls at the perimeter of the circle
+                    if (Math.abs(distance - radius) < 1.5) {
+                        walls.push({x, y});
+                    }
+                }
+            }
+        }
+        
+        // Add power-up food in the center of the circle
+        let powerUpFood = generateNewFood();
+        powerUpFood.x = centerObsX;
+        powerUpFood.y = centerObsY;
+        
+        // Randomly select a power-up type
+        const powerUpTypes = ['speed_boost', 'invincibility', 'magnet'];
+        const randomPowerUp = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+        
+        powerUpFood.powerUp = randomPowerUp;
+        powerUpFood.duration = 10000;
+        
+        switch (randomPowerUp) {
+            case 'speed_boost':
+                powerUpFood.color = '#00BCD4';
+                break;
+            case 'invincibility':
+                powerUpFood.color = '#9C27B0';
+                break;
+            case 'magnet':
+                powerUpFood.color = '#FFEB3B';
+                break;
+        }
+        
+        foods.push(powerUpFood);
+    }
+    
+    // Add diagonal maze-like structures
+    for (let i = 0; i < 5; i++) {
+        // Place maze structures away from the center
+        let mazeX, mazeY;
+        const mazeSize = Math.floor(Math.random() * 30) + 20;
+        
+        do {
+            mazeX = Math.floor(Math.random() * (GRID_SIZE - mazeSize - 40)) + 20;
+            mazeY = Math.floor(Math.random() * (GRID_SIZE - mazeSize - 40)) + 20;
+        } while (isSafe(mazeX, mazeY));
+        
+        // Create maze walls at intervals
+        const interval = Math.floor(Math.random() * 3) + 3;
+        for (let j = 0; j < mazeSize; j += interval) {
+            // Create horizontal and vertical lines with gaps
+            for (let k = 0; k < mazeSize; k += 2) {
+                if (Math.random() > 0.3) { // 70% chance to place a wall segment
+                    walls.push({x: mazeX + j, y: mazeY + k});
+                }
+                if (Math.random() > 0.3) {
+                    walls.push({x: mazeX + k, y: mazeY + j});
+                }
+            }
+        }
+        
+        // Add special food in the maze
+        for (let j = 0; j < 5; j++) {
+            const foodX = Math.floor(mazeX + Math.random() * mazeSize);
+            const foodY = Math.floor(mazeY + Math.random() * mazeSize);
+            
+            // Check if position is not a wall
+            const isWall = walls.some(wall => wall.x === foodX && wall.y === foodY);
+            if (!isWall) {
+                let food = generateNewFood();
+                food.x = foodX;
+                food.y = foodY;
+                food.points = 20;
+                food.color = '#8BC34A';
+                foods.push(food);
+            }
+        }
+    }
 }
 
 
