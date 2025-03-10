@@ -591,48 +591,31 @@ function generateWalls() {
 
 // Create a room-based structure with connecting corridors
 function createRoomStructure() {
-    const roomCount = 9; // 3x3 grid of rooms
+    // Since we're creating a traditional snake game with just walls around the safe zone,
+    // this function will be simplified to not create additional rooms outside the main one
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
     const SAFE_ZONE_RADIUS = 50;
     const border = 20;
     
-    // Calculate the playable area dimensions
-    const playableWidth = GRID_SIZE - (border * 2);
-    const playableHeight = GRID_SIZE - (border * 2);
+    // Keep track of the room we already created around the safe zone
+    const roomSize = SAFE_ZONE_RADIUS * 2;
+    const roomStartX = centerX - roomSize / 2;
+    const roomStartY = centerY - roomSize / 2;
     
-    // Create a 3x3 grid of rooms
-    const roomsPerSide = 3;
-    const roomWidth = Math.floor(playableWidth / roomsPerSide);
-    const roomHeight = Math.floor(playableHeight / roomsPerSide);
-    
-    // Safety check for center room
-    const isSafe = (x, y) => {
-        const dx = x - centerX;
-        const dy = y - centerY;
-        return Math.sqrt(dx*dx + dy*dy) < SAFE_ZONE_RADIUS * 1.2;
-    };
-    
-    // Create rooms
-    for (let roomY = 0; roomY < roomsPerSide; roomY++) {
-        for (let roomX = 0; roomX < roomsPerSide; roomX++) {
-            // Calculate room position
-            const roomStartX = border + (roomX * roomWidth);
-            const roomStartY = border + (roomY * roomHeight);
-            
-            // Skip creating walls for the center room (safe zone)
-            if (roomX === 1 && roomY === 1) continue;
-            
-            // Create room walls
-            createRoom(roomStartX, roomStartY, roomWidth, roomHeight);
-        }
+    // Add some food inside the room
+    for (let i = 0; i < 10; i++) {
+        const x = Math.floor(roomStartX + Math.random() * roomSize);
+        const y = Math.floor(roomStartY + Math.random() * roomSize);
+        
+        // Request food creation at this position
+        let food = generateNewFood();
+        food.x = x;
+        food.y = y;
+        foods.push(food);
     }
     
-    // Create corridors between rooms
-    createCorridors(border, roomWidth, roomHeight, roomsPerSide);
-    
-    // Add a few decorative elements in rooms
-    addRoomDecorations(border, roomWidth, roomHeight, roomsPerSide);
+    // No other rooms or corridors needed for traditional snake game
 }
 
 // Create walls for a single room
