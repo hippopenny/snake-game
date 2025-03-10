@@ -1901,10 +1901,12 @@ function checkCollisions() {
         }
     }
     
-    // Check self-collision (even with invincibility)
-    for (let i = 1; i < snake.length; i++) {
-        if (head.x === snake[i].x && head.y === snake[i].y) {
-            return {collision: true, reason: 'collision', message: 'You crashed into yourself!'};
+    // Check self-collision (skip this check if invincibility power-up is active)
+    if (!(activePowerUp && activePowerUp.type === 'invincibility')) {
+        for (let i = 1; i < snake.length; i++) {
+            if (head.x === snake[i].x && head.y === snake[i].y) {
+                return {collision: true, reason: 'collision', message: 'You crashed into yourself!'};
+            }
         }
     }
     
