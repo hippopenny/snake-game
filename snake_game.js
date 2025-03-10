@@ -230,7 +230,8 @@ function initJoystick() {
             mode: 'static',
             position: { right: '75px', bottom: '75px' },
             color: 'green',
-            size: 100
+            size: 100,
+            opacity: 0.01
         };
         
         joystick = nipplejs.create(options);
