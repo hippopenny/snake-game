@@ -941,7 +941,8 @@ function addPacManTeleportTunnels() {
     // For traditional snake game, we'll add teleport tunnels to the main room
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
-    const roomSize = SAFE_ZONE_RADIUS * 2;
+    const safeZoneRadius = 50; // Define it locally to avoid reference error
+    const roomSize = safeZoneRadius * 2;
     const roomStartX = centerX - roomSize / 2;
     const roomStartY = centerY - roomSize / 2;
     
