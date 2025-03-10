@@ -561,6 +561,26 @@ function generateWalls() {
         if (!isSafe(border, y)) walls.push({x: border, y});
         if (!isSafe(GRID_SIZE - border - 1, y)) walls.push({x: GRID_SIZE - border - 1, y});
     }
+    
+    // Add walls around the safe zone to create a traditional snake game room
+    const safeZoneX = Math.floor(GRID_SIZE / 2);
+    const safeZoneY = Math.floor(GRID_SIZE / 2);
+    // This creates a square room that's slightly larger than the safe zone
+    const roomSize = SAFE_ZONE_RADIUS * 2;
+    const roomStartX = safeZoneX - roomSize / 2;
+    const roomStartY = safeZoneY - roomSize / 2;
+    
+    // Add horizontal walls for the room
+    for (let x = roomStartX; x < roomStartX + roomSize; x++) {
+        walls.push({x, y: roomStartY});
+        walls.push({x, y: roomStartY + roomSize});
+    }
+    
+    // Add vertical walls for the room
+    for (let y = roomStartY; y < roomStartY + roomSize; y++) {
+        walls.push({x: roomStartX, y});
+        walls.push({x: roomStartX + roomSize, y});
+    }
 
     // Create a room-based structure
     createRoomStructure();
@@ -671,50 +691,24 @@ function createRoom(x, y, width, height) {
 
 // Create corridors between rooms
 function createCorridors(border, roomWidth, roomHeight, roomsPerSide) {
+    // For traditional snake game, we don't need corridors
+    // Instead, we'll create a doorway or opening in the room walls
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
+    const roomSize = SAFE_ZONE_RADIUS * 2;
+    const roomStartX = centerX - roomSize / 2;
+    const roomStartY = centerY - roomSize / 2;
     
-    // Create doorways between rooms
-    for (let roomY = 0; roomY < roomsPerSide; roomY++) {
-        for (let roomX = 0; roomX < roomsPerSide; roomX++) {
-            const roomStartX = border + (roomX * roomWidth);
-            const roomStartY = border + (roomY * roomHeight);
-            
-            // Add a doorway to the right (if not the rightmost room)
-            if (roomX < roomsPerSide - 1) {
-                const doorY = roomStartY + Math.floor(roomHeight / 2);
-                const doorX = roomStartX + roomWidth;
-                
-                // Create a door (remove 5 wall segments)
-                const doorWidth = 5;
-                for (let i = -Math.floor(doorWidth/2); i <= Math.floor(doorWidth/2); i++) {
-                    walls = walls.filter(wall => !(wall.x === doorX && wall.y === doorY + i));
-                }
-            }
-            
-            // Add a doorway to the bottom (if not the bottommost room)
-            if (roomY < roomsPerSide - 1) {
-                const doorX = roomStartX + Math.floor(roomWidth / 2);
-                const doorY = roomStartY + roomHeight;
-                
-                // Create a door (remove 5 wall segments)
-                const doorWidth = 5;
-                for (let i = -Math.floor(doorWidth/2); i <= Math.floor(doorWidth/2); i++) {
-                    walls = walls.filter(wall => !(wall.x === doorX + i && wall.y === doorY));
-                }
-            }
-        }
+    // Create an opening on the right side of the room
+    const doorWidth = 10;
+    const doorY = roomStartY + Math.floor(roomSize / 2) - Math.floor(doorWidth / 2);
+    
+    // Remove wall segments for the door
+    for (let i = 0; i < doorWidth; i++) {
+        walls = walls.filter(wall => !(wall.x === roomStartX + roomSize && wall.y === doorY + i));
     }
     
-    // Add special corridors to the center room
-    const centerRoomX = border + roomWidth;
-    const centerRoomY = border + roomHeight;
-    
-    // Four diagonal corridors to the center
-    createDiagonalCorridor(centerRoomX, centerRoomY, centerX, centerY);
-    createDiagonalCorridor(centerRoomX + roomWidth, centerRoomY, centerX, centerY);
-    createDiagonalCorridor(centerRoomX, centerRoomY + roomHeight, centerX, centerY);
-    createDiagonalCorridor(centerRoomX + roomWidth, centerRoomY + roomHeight, centerX, centerY);
+    // No need for diagonal corridors in traditional snake game
 }
 
 // Create a diagonal corridor to the center
@@ -739,81 +733,38 @@ function createDiagonalCorridor(startX, startY, endX, endY) {
 
 // Add decorative elements inside rooms
 function addRoomDecorations(border, roomWidth, roomHeight, roomsPerSide) {
+    // For traditional snake game, we'll add a few obstacles inside the safe zone room
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
-    const SAFE_ZONE_RADIUS = 50;
+    const roomSize = SAFE_ZONE_RADIUS * 2;
+    const roomStartX = centerX - roomSize / 2;
+    const roomStartY = centerY - roomSize / 2;
     
-    // Skip the center room and rooms adjacent to the center
-    const isCenterOrAdjacent = (roomX, roomY) => {
-        return (roomX === 1 && roomY === 1) || 
-               ((roomX === 0 || roomX === 2) && roomY === 1) ||
-               ((roomY === 0 || roomY === 2) && roomX === 1);
-    };
+    // Add a small obstacle in the top-left corner of the room
+    const obstacleSize = 5;
+    const cornerX = roomStartX + 10;
+    const cornerY = roomStartY + 10;
     
-    // Add decorations to each room
-    for (let roomY = 0; roomY < roomsPerSide; roomY++) {
-        for (let roomX = 0; roomX < roomsPerSide; roomX++) {
-            // Skip center room and those adjacent
-            if (isCenterOrAdjacent(roomX, roomY)) continue;
-            
-            const roomStartX = border + (roomX * roomWidth);
-            const roomStartY = border + (roomY * roomHeight);
-            
-            // Determine decoration type based on room position
-            const decorationType = (roomX + roomY) % 4;
-            
-            switch (decorationType) {
-                case 0: // Pillar in the center
-                    addPillar(
-                        roomStartX + Math.floor(roomWidth / 2), 
-                        roomStartY + Math.floor(roomHeight / 2),
-                        Math.min(8, Math.floor(roomWidth / 5))
-                    );
-                    break;
-                    
-                case 1: // Four small pillars in corners
-                    const offset = 10;
-                    addPillar(roomStartX + offset, roomStartY + offset, 3);
-                    addPillar(roomStartX + roomWidth - offset, roomStartY + offset, 3);
-                    addPillar(roomStartX + offset, roomStartY + roomHeight - offset, 3);
-                    addPillar(roomStartX + roomWidth - offset, roomStartY + roomHeight - offset, 3);
-                    break;
-                    
-                case 2: // L-shaped wall
-                    const wallLength = Math.min(Math.floor(roomWidth / 2) - 5, Math.floor(roomHeight / 2) - 5);
-                    
-                    // Create horizontal part of L
-                    for (let x = roomStartX + 5; x < roomStartX + 5 + wallLength; x++) {
-                        walls.push({x: x, y: roomStartY + Math.floor(roomHeight / 2)});
-                    }
-                    
-                    // Create vertical part of L
-                    for (let y = roomStartY + Math.floor(roomHeight / 2); y < roomStartY + Math.floor(roomHeight / 2) + wallLength; y++) {
-                        walls.push({x: roomStartX + 5, y: y});
-                    }
-                    break;
-                    
-                case 3: // Zigzag obstacle
-                    const zigLength = Math.min(Math.floor(roomWidth / 3), Math.floor(roomHeight / 3));
-                    const zigX = roomStartX + Math.floor(roomWidth / 3);
-                    const zigY = roomStartY + Math.floor(roomHeight / 3);
-                    
-                    // First segment (horizontal)
-                    for (let x = zigX; x < zigX + zigLength; x++) {
-                        walls.push({x: x, y: zigY});
-                    }
-                    
-                    // Second segment (vertical)
-                    for (let y = zigY; y < zigY + zigLength; y++) {
-                        walls.push({x: zigX + zigLength, y: y});
-                    }
-                    
-                    // Third segment (horizontal)
-                    for (let x = zigX + zigLength; x > zigX; x--) {
-                        walls.push({x: x, y: zigY + zigLength});
-                    }
-                    break;
+    // Create a small square obstacle
+    for (let x = cornerX; x < cornerX + obstacleSize; x++) {
+        for (let y = cornerY; y < cornerY + obstacleSize; y++) {
+            // Make sure not to block the center starting area
+            const dx = x - centerX;
+            const dy = y - centerY;
+            if (Math.sqrt(dx*dx + dy*dy) > 15) { // Keep center area clear
+                walls.push({x, y});
             }
+        }
+    }
+    
+    // Add another small obstacle in the bottom-right
+    const corner2X = roomStartX + roomSize - 15;
+    const corner2Y = roomStartY + roomSize - 15;
+    
+    // Create another small square obstacle
+    for (let x = corner2X; x < corner2X + obstacleSize; x++) {
+        for (let y = corner2Y; y < corner2Y + obstacleSize; y++) {
+            walls.push({x, y});
         }
     }
 }
@@ -1004,33 +955,36 @@ function addPacmanStyleMaze(centerX, centerY, width, height) {
 
 // Function to add teleport tunnels 
 function addPacManTeleportTunnels() {
-    const tunnelY = Math.floor(GRID_SIZE / 2);
-    const tunnelHeight = 5;
+    // For traditional snake game, we'll add teleport tunnels to the main room
+    const centerX = Math.floor(GRID_SIZE / 2);
+    const centerY = Math.floor(GRID_SIZE / 2);
+    const roomSize = SAFE_ZONE_RADIUS * 2;
+    const roomStartX = centerX - roomSize / 2;
+    const roomStartY = centerY - roomSize / 2;
     
-    // Left tunnel entrance
+    // Create teleport tunnel on the right side of the main room
+    const tunnelHeight = 8;
+    const tunnelY = roomStartY + Math.floor(roomSize / 2);
+    
+    // Right tunnel entrance in the room
     for (let y = tunnelY - tunnelHeight; y <= tunnelY + tunnelHeight; y++) {
         // Create tunnel opening
-        walls = walls.filter(w => !(w.x === 0 && w.y === y));
-        
-        // Walls around tunnel entrance
-        for (let x = 0; x < 5; x++) {
-            if (x === 0) continue;
-            walls.push({x, y: tunnelY - tunnelHeight - 1});
-            walls.push({x, y: tunnelY + tunnelHeight + 1});
-        }
+        walls = walls.filter(w => !(w.x === roomStartX + roomSize && w.y === y));
     }
     
-    // Right tunnel entrance
+    // Left tunnel entrance to match
     for (let y = tunnelY - tunnelHeight; y <= tunnelY + tunnelHeight; y++) {
         // Create tunnel opening
-        walls = walls.filter(w => !(w.x === GRID_SIZE - 1 && w.y === y));
+        walls = walls.filter(w => !(w.x === roomStartX && w.y === y));
+    }
+    
+    // Add decorative walls around the teleport areas
+    for (let i = 1; i <= 3; i++) {
+        walls.push({x: roomStartX + roomSize + i, y: tunnelY - tunnelHeight - 1});
+        walls.push({x: roomStartX + roomSize + i, y: tunnelY + tunnelHeight + 1});
         
-        // Walls around tunnel entrance
-        for (let x = GRID_SIZE - 5; x < GRID_SIZE; x++) {
-            if (x === GRID_SIZE - 1) continue;
-            walls.push({x, y: tunnelY - tunnelHeight - 1});
-            walls.push({x, y: tunnelY + tunnelHeight + 1});
-        }
+        walls.push({x: roomStartX - i, y: tunnelY - tunnelHeight - 1});
+        walls.push({x: roomStartX - i, y: tunnelY + tunnelHeight + 1});
     }
 }
 
