@@ -4,7 +4,7 @@ const wss = new WebSocketServer({ port: 8080 });
 
 // Game constants
 const GRID_SIZE = 400; // Match the client's grid size
-const SAFE_ZONE_RADIUS = 30; // Safe zone radius, used throughout the code
+const SAFE_ZONE_RADIUS = 20; // Safe zone radius, used throughout the code
 
 // Connection health tracking
 const clientHeartbeats = new Map();
