@@ -566,7 +566,7 @@ function generateWalls() {
     const safeZoneX = Math.floor(GRID_SIZE / 2);
     const safeZoneY = Math.floor(GRID_SIZE / 2);
     // This creates a square room that's slightly larger than the safe zone
-    const roomSize = SAFE_ZONE_RADIUS * 2;
+    const roomSize = SAFE_ZONE_RADIUS * 2; // Now 60x60 instead of 100x100
     const roomStartX = safeZoneX - roomSize / 2;
     const roomStartY = safeZoneY - roomSize / 2;
     
@@ -595,7 +595,7 @@ function createRoomStructure() {
     // this function will be simplified to not create additional rooms outside the main one
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
-    const SAFE_ZONE_RADIUS = 50;
+    const SAFE_ZONE_RADIUS = 30; // Reduced from 50 to 30 for a more challenging game
     const border = 20;
     
     // Keep track of the room we already created around the safe zone
@@ -999,7 +999,7 @@ function addMazeFormation(centerX, centerY, width, height) {
 
 // Generate circular walls
 function addCircularWalls(centerX, centerY, innerRadius, outerRadius) {
-    const safeZoneRadius = 50;
+    const safeZoneRadius = 30; // Reduced from 50 to 30 for a more challenging game
     
     // Loop through a square area that contains the circle
     for (let x = centerX - outerRadius - 1; x <= centerX + outerRadius + 1; x++) {

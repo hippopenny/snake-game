@@ -46,7 +46,7 @@ let backgroundElements = [];
 
 // Wall configuration
 let WALLS = []; // Changed to let so it can be updated from server
-const SAFE_ZONE_RADIUS = 50; // Safe zone radius in cells
+const SAFE_ZONE_RADIUS = 30; // Safe zone radius in cells (reduced from 50 to 30)
 const WALL_COLOR = '#444';
 
 // Safe zone for new players
@@ -2496,7 +2496,7 @@ function drawWalls() {
 
 function activateSafeZone() {
     safeZoneActive = true;
-    safeZoneExpiry = Date.now() + SAFE_ZONE_DURATION * 1.5; // Increased duration by 50%
+    safeZoneExpiry = Date.now() + SAFE_ZONE_DURATION; // Reduced from 1.5x to make game more challenging
     
     // Create visual indicator that safe zone is active
     const indicator = document.createElement('div');
@@ -2528,17 +2528,18 @@ function spawnStartingFood() {
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
     
-    // Send request to server to create more food in starting area (increased from 8 to 15)
-    for (let i = 0; i < 15; i++) {
+    // Send request to server to create more food in starting area
+    // Reduced from 15 to 10 food items for the smaller safe zone
+    for (let i = 0; i < 10; i++) {
         // Create food in multiple concentric spiral patterns for better distribution
-        const angle = (i / 15) * Math.PI * 2;
+        const angle = (i / 10) * Math.PI * 2;
         
-        // Alternate between inner and outer food
+        // Alternate between inner and outer food - adjusted distances for smaller safe zone
         let distance;
         if (i % 2 === 0) {
-            distance = 3 + (i / 2); // Closer food (3-10 cells from center)
+            distance = 2 + (i / 2); // Closer food (2-7 cells from center)
         } else {
-            distance = 10 + (i / 2); // Farther food (10-17 cells from center)
+            distance = 8 + (i / 2); // Farther food (8-13 cells from center)
         }
         
         const x = Math.floor(centerX + Math.cos(angle) * distance);
