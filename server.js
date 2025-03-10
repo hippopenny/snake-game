@@ -2,6 +2,10 @@ import { WebSocket, WebSocketServer } from 'ws';
 
 const wss = new WebSocketServer({ port: 8080 });
 
+// Game constants
+const GRID_SIZE = 400; // Match the client's grid size
+const SAFE_ZONE_RADIUS = 30; // Safe zone radius, used throughout the code
+
 // Connection health tracking
 const clientHeartbeats = new Map();
 const PING_INTERVAL = 30000; // Send ping every 30 seconds
@@ -17,7 +21,6 @@ let players = {};
 let foods = [];
 let walls = []; // Store wall positions
 const BASE_FOOD_DENSITY = 0.001; // Reduced from 0.0025
-const GRID_SIZE = 400; // Match the client's grid size
 const MAX_FOODS = Math.max(80, Math.floor(Math.sqrt(GRID_SIZE * GRID_SIZE) * BASE_FOOD_DENSITY * GRID_SIZE)); // Reduced from 120 to 80
 const BASE_FOOD_LIFETIME = 30000; // 30 seconds base lifetime
 
@@ -539,7 +542,6 @@ function generateWalls() {
     // Basic parameters
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
-    const SAFE_ZONE_RADIUS = 20;
     
     const isSafe = (x, y) => {
         const dx = x - centerX;
@@ -595,7 +597,6 @@ function createRoomStructure() {
     // this function will be simplified to not create additional rooms outside the main one
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
-    const SAFE_ZONE_RADIUS = 30; // Reduced from 50 to 30 for a more challenging game
     const border = 20;
     
     // Keep track of the room we already created around the safe zone
@@ -771,103 +772,13 @@ function addWallFormation(centerX, centerY, width, height, type = 'square') {
     }
 }
 
-// Add Pac-Man style maze function
-function addPacmanStyleMaze(centerX, centerY, width, height) {
-    const safeZoneX = Math.floor(GRID_SIZE / 2);
-    const safeZoneY = Math.floor(GRID_SIZE / 2);
-    const SAFE_ZONE_RADIUS = 50;
-    
-    // Ensure we're not too close to safe zone
-    const safeZoneCheck = (x, y) => {
-        const dx = x - safeZoneX;
-        const dy = y - safeZoneY;
-        return Math.sqrt(dx*dx + dy*dy) < SAFE_ZONE_RADIUS * 1.5;
-    };
-    
-    const startX = centerX - width / 2;
-    const startY = centerY - height / 2;
-    
-    // Create outer boundaries
-    for (let x = startX; x < startX + width; x++) {
-        if (!safeZoneCheck(x, startY)) walls.push({x, y: startY});
-        if (!safeZoneCheck(x, startY + height - 1)) walls.push({x, y: startY + height - 1});
-    }
-    
-    for (let y = startY; y < startY + height; y++) {
-        if (!safeZoneCheck(startX, y)) walls.push({x: startX, y});
-        if (!safeZoneCheck(startX + width - 1, y)) walls.push({x: startX + width - 1, y});
-    }
-    
-    // Create Pac-Man style maze internal walls
-    const gridW = Math.floor(width / 10);
-    const gridH = Math.floor(height / 6);
-    
-    // Create T-junctions
-    for (let i = 1; i < 4; i++) {
-        // Horizontal bars
-        for (let x = startX + gridW; x < startX + width - gridW; x++) {
-            const y = startY + i * gridH * 1.5;
-            if (!safeZoneCheck(x, y)) walls.push({x, y});
-        }
-        
-        // Create openings
-        const gap1 = startX + Math.floor(width * 0.25);
-        const gap2 = startX + Math.floor(width * 0.75);
-        for (let g = -1; g <= 1; g++) {
-            const y = startY + i * gridH * 1.5;
-            if (!safeZoneCheck(gap1 + g, y)) {
-                walls = walls.filter(w => !(w.x === gap1 + g && w.y === y));
-            }
-            if (!safeZoneCheck(gap2 + g, y)) {
-                walls = walls.filter(w => !(w.x === gap2 + g && w.y === y));
-            }
-        }
-    }
-    
-    // Create vertical dividers
-    for (let i = 1; i < 4; i++) {
-        const x = startX + Math.floor(width / 4) * i;
-        for (let y = startY + gridH; y < startY + height - gridH; y++) {
-            // Skip if wall would be at an intersection with horizontal bars
-            const isAtHorizontalBar = [1, 2, 3].some(j => 
-                Math.abs(y - (startY + j * gridH * 1.5)) < 2
-            );
-            
-            if (isAtHorizontalBar) continue;
-            if (!safeZoneCheck(x, y)) walls.push({x, y});
-        }
-    }
-    
-    // Create ghost house in the center
-    const ghostHouseWidth = Math.floor(width / 5);
-    const ghostHouseHeight = Math.floor(height / 6);
-    const ghostHouseX = startX + Math.floor(width / 2) - Math.floor(ghostHouseWidth / 2);
-    const ghostHouseY = startY + Math.floor(height / 2) - Math.floor(ghostHouseHeight / 2);
-    
-    if (!safeZoneCheck(ghostHouseX, ghostHouseY)) {
-        for (let x = ghostHouseX; x < ghostHouseX + ghostHouseWidth; x++) {
-            if (!safeZoneCheck(x, ghostHouseY)) walls.push({x, y: ghostHouseY});
-            if (!safeZoneCheck(x, ghostHouseY + ghostHouseHeight)) walls.push({x, y: ghostHouseY + ghostHouseHeight});
-        }
-        
-        for (let y = ghostHouseY; y <= ghostHouseY + ghostHouseHeight; y++) {
-            if (!safeZoneCheck(ghostHouseX, y)) walls.push({x: ghostHouseX, y});
-            if (!safeZoneCheck(ghostHouseX + ghostHouseWidth, y)) walls.push({x: ghostHouseX + ghostHouseWidth, y});
-        }
-        
-        // Create doorway
-        const doorX = ghostHouseX + Math.floor(ghostHouseWidth / 2);
-        walls = walls.filter(w => !(w.x === doorX && w.y === ghostHouseY));
-    }
-}
 
 // Function to add teleport tunnels 
 function addPacManTeleportTunnels() {
     // For traditional snake game, we'll add teleport tunnels to the main room
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
-    const safeZoneRadius = 50; // Define it locally to avoid reference error
-    const roomSize = safeZoneRadius * 2;
+    const roomSize = SAFE_ZONE_RADIUS * 2;
     const roomStartX = centerX - roomSize / 2;
     const roomStartY = centerY - roomSize / 2;
     
@@ -897,201 +808,6 @@ function addPacManTeleportTunnels() {
     }
 }
 
-// Add a function to create grid patterns of walls
-function addGridPattern(startX, startY, width, height, spacing) {
-    const safeZoneX = Math.floor(GRID_SIZE / 2);
-    const safeZoneY = Math.floor(GRID_SIZE / 2);
-    const SAFE_ZONE_RADIUS = 50;
-    
-    const safeZoneCheck = (x, y) => {
-        const dx = x - safeZoneX;
-        const dy = y - safeZoneY;
-        return Math.sqrt(dx*dx + dy*dy) < SAFE_ZONE_RADIUS * 1.5;
-    };
-    
-    for (let x = startX; x < startX + width; x += spacing) {
-        for (let y = startY; y < startY + height; y += spacing) {
-            if (!safeZoneCheck(x, y)) {
-                walls.push({x, y});
-            }
-        }
-    }
-}
-
-function addMazeFormation(centerX, centerY, width, height) {
-    const safeZoneX = Math.floor(GRID_SIZE / 2);
-    const safeZoneY = Math.floor(GRID_SIZE / 2);
-    const SAFE_ZONE_RADIUS = 50;
-    
-    const startX = centerX - width / 2;
-    const startY = centerY - height / 2;
-    
-    // Create the outer wall
-    for (let x = startX; x < startX + width; x++) {
-        const dx = x - safeZoneX;
-        const dy = startY - safeZoneY;
-        if (Math.sqrt(dx*dx + dy*dy) >= SAFE_ZONE_RADIUS) {
-            walls.push({x, y: startY});
-        }
-        
-        const dy2 = (startY + height - 1) - safeZoneY;
-        if (Math.sqrt(dx*dx + dy2*dy2) >= SAFE_ZONE_RADIUS) {
-            walls.push({x, y: startY + height - 1});
-        }
-    }
-    
-    for (let y = startY; y < startY + height; y++) {
-        const dx = startX - safeZoneX;
-        const dy = y - safeZoneY;
-        if (Math.sqrt(dx*dx + dy*dy) >= SAFE_ZONE_RADIUS) {
-            walls.push({x: startX, y});
-        }
-        
-        const dx2 = (startX + width - 1) - safeZoneX;
-        if (Math.sqrt(dx2*dx2 + dy*dy) >= SAFE_ZONE_RADIUS) {
-            walls.push({x: startX + width - 1, y});
-        }
-    }
-    
-    // Create internal maze walls
-    const cells = 5; // Number of cells in the maze
-    const cellWidth = Math.floor(width / cells);
-    const cellHeight = Math.floor(height / cells);
-    
-    for (let i = 0; i < cells - 1; i++) {
-        for (let j = 0; j < cells - 1; j++) {
-            // Skip some cells randomly to create passages
-            if (Math.random() < 0.3) continue;
-            
-            // Decide whether to create a horizontal or vertical wall
-            const isHorizontal = Math.random() > 0.5;
-            
-            if (isHorizontal) {
-                // Create horizontal wall
-                const wallY = startY + (j + 1) * cellHeight;
-                const wallStartX = startX + i * cellWidth;
-                const wallLength = Math.floor(cellWidth * (0.5 + Math.random() * 0.5));
-                
-                for (let x = wallStartX; x < wallStartX + wallLength; x++) {
-                    const dx = x - safeZoneX;
-                    const dy = wallY - safeZoneY;
-                    if (Math.sqrt(dx*dx + dy*dy) < SAFE_ZONE_RADIUS) continue;
-                    
-                    walls.push({x, y: wallY});
-                }
-            } else {
-                // Create vertical wall
-                const wallX = startX + (i + 1) * cellWidth;
-                const wallStartY = startY + j * cellHeight;
-                const wallLength = Math.floor(cellHeight * (0.5 + Math.random() * 0.5));
-                
-                for (let y = wallStartY; y < wallStartY + wallLength; y++) {
-                    const dx = wallX - safeZoneX;
-                    const dy = y - safeZoneY;
-                    if (Math.sqrt(dx*dx + dy*dy) < SAFE_ZONE_RADIUS) continue;
-                    
-                    walls.push({x: wallX, y});
-                }
-            }
-        }
-    }
-}
-
-// Generate circular walls
-function addCircularWalls(centerX, centerY, innerRadius, outerRadius) {
-    const safeZoneRadius = 30; // Reduced from 50 to 30 for a more challenging game
-    
-    // Loop through a square area that contains the circle
-    for (let x = centerX - outerRadius - 1; x <= centerX + outerRadius + 1; x++) {
-        for (let y = centerY - outerRadius - 1; y <= centerY + outerRadius + 1; y++) {
-            // Skip invalid coordinates
-            if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) continue;
-            
-            // Calculate distance from center
-            const dx = x - centerX;
-            const dy = y - centerY;
-            const distance = Math.sqrt(dx*dx + dy*dy);
-            
-            // Add wall if it's in the ring area
-            if (distance >= innerRadius && distance <= outerRadius) {
-                // Make sure it's not too close to the safe zone
-                if (distance > safeZoneRadius) {
-                    walls.push({x, y});
-                }
-            }
-        }
-    }
-}
-
-// Generate radial walls spreading from center
-function addRadialWalls(centerX, centerY, minDist, maxDist, count) {
-    const safeZoneRadius = 50;
-    const angleStep = 2 * Math.PI / count;
-    
-    for (let i = 0; i < count; i++) {
-        const angle = i * angleStep;
-        
-        for (let dist = minDist; dist <= maxDist; dist++) {
-            const x = Math.floor(centerX + Math.cos(angle) * dist);
-            const y = Math.floor(centerY + Math.sin(angle) * dist);
-            
-            // Skip invalid coordinates
-            if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) continue;
-            
-            // Calculate distance from center to ensure we're not in the safe zone
-            const dx = x - centerX;
-            const dy = y - centerY;
-            const distance = Math.sqrt(dx*dx + dy*dy);
-            
-            if (distance > safeZoneRadius) {
-                walls.push({x, y});
-            }
-        }
-    }
-}
-
-// Add spiral maze
-function addSpiralMaze(centerX, centerY, size) {
-    const safeZoneX = Math.floor(GRID_SIZE / 2);
-    const safeZoneY = Math.floor(GRID_SIZE / 2);
-    const safeZoneRadius = 50;
-    
-    const safeCheck = (x, y) => {
-        const dx = x - safeZoneX;
-        const dy = y - safeZoneY;
-        return Math.sqrt(dx*dx + dy*dy) < safeZoneRadius * 1.2;
-    };
-    
-    const maxRadius = size / 2;
-    let radius = 5;
-    let angle = 0;
-    const angleIncrement = 0.25;  // Smaller value = tighter spiral
-    
-    while (radius <= maxRadius) {
-        const x = Math.floor(centerX + Math.cos(angle) * radius);
-        const y = Math.floor(centerY + Math.sin(angle) * radius);
-        
-        if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE && !safeCheck(x, y)) {
-            walls.push({x, y});
-        }
-        
-        angle += angleIncrement;
-        radius = 5 + (angle / (2 * Math.PI)) * 3;
-    }
-    
-    // Add an entry point (gap) at a random position
-    const entryAngle = Math.random() * 2 * Math.PI;
-    const entryRadius = 5 + Math.random() * (maxRadius - 10);
-    
-    for (let a = entryAngle - 0.5; a <= entryAngle + 0.5; a += 0.1) {
-        const x = Math.floor(centerX + Math.cos(a) * entryRadius);
-        const y = Math.floor(centerY + Math.sin(a) * entryRadius);
-        
-        if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
-            walls = walls.filter(wall => !(wall.x === x && wall.y === y));
-        }
-    }
-}
 
 // Generate walls once during server initialization
 generateWalls();
