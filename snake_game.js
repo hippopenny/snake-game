@@ -16,6 +16,7 @@ let minimapVisible = true;
 let bestScoresVisible = true;
 let bestScoresData = []; // Will store coordinates of highest scores
 const MAX_BEST_SCORES = 10; // Maximum number of best scores to display
+let soundEnabled = true; // Sound toggle
 
 let hungerTimer = 100; // Starting hunger value (in game steps)
 const MAX_HUNGER = 100;
@@ -726,6 +727,11 @@ function initGame() {
     if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
         animationFrameId = null;
+    }
+    
+    // Initialize sound system
+    if (!soundManager.initialized) {
+        soundManager.init();
     }
     
     // Start the snake at a reasonable position in the larger map
@@ -1464,6 +1470,9 @@ function checkLevelUp() {
         newLevelDisplay.textContent = `Level: ${level}`;
         levelUpScreen.style.display = 'block';
         
+        // Play level-up sound
+        soundManager.play('levelUp');
+        
         setTimeout(() => {
             levelUpScreen.style.display = 'none';
         }, 2000);
@@ -1613,6 +1622,13 @@ function showFoodEffect(food) {
         4,
         800
     );
+    
+    // Play eating sound
+    if (food.powerUp) {
+        soundManager.play('powerUp');
+    } else {
+        soundManager.play('eat');
+    }
     
     // Display score effect with bounce animation
     const effectDiv = document.createElement('div');
@@ -1822,6 +1838,11 @@ function moveSnake() {
             break;
     }
     
+    // Check if the snake teleported (wrapped around the edges)
+    if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE) {
+        soundManager.play('teleport');
+    }
+    
     // Store the direction used for this move for improved interpolation
     head.moveDirection = direction;
     
@@ -2022,6 +2043,9 @@ function gameOver(reason = 'collision') {
     
     console.log("Game Over called with reason:", reason);
     
+    // Play game over sound
+    soundManager.play('gameOver');
+    
     // Store the final snake position to ensure consistency
     const finalPosition = [...snake];
     
@@ -2216,6 +2240,9 @@ function createCollisionEffect() {
             1200 // Longer lifetime
         );
     }
+    
+    // Play collision sound
+    soundManager.play('collision');
     
     // Create impact flash
     const flash = document.createElement('div');
@@ -3122,6 +3149,7 @@ function updatePlayersCount() {
 
 
 startBtn.addEventListener('click', () => {
+    soundManager.play('menuClick');
     startScreen.style.display = 'none';
     canvas.style.display = 'block';
     if (!gameRunning) {
@@ -3130,6 +3158,7 @@ startBtn.addEventListener('click', () => {
 });
 
 restartBtn.addEventListener('click', () => {
+    soundManager.play('menuClick');
     gameOverScreen.style.display = 'none';
     initGame();
 });
@@ -3661,6 +3690,11 @@ function showHungerWarning() {
         return;
     }
     
+    // Play heartbeat sound if hunger is very low
+    if (hungerTimer < HUNGER_WARNING_THRESHOLD * 0.5) {
+        soundManager.play('heartbeat', { volume: 0.3 + (1 - hungerTimer / HUNGER_WARNING_THRESHOLD) * 0.7 });
+    }
+    
     const warning = document.createElement('div');
     warning.textContent = 'HUNGRY!';
     warning.style.position = 'absolute';
@@ -3716,16 +3750,20 @@ document.addEventListener('keydown', function(e) {
     // Toggle minimap with 'M' key
     if (e.key === 'm' || e.key === 'M') {
         toggleMinimap();
+        soundManager.play('menuSelect');
         return;
     }
     
     // Toggle mini leaderboard with 'L' key
     if (e.key === 'l' || e.key === 'L') {
         toggleBestScores();
+        soundManager.play('menuSelect');
         return;
     }
     
     if (!gameRunning) return;
+    
+    const oldDirection = direction;
     
     switch (e.key) {
         case 'ArrowUp':
@@ -3748,6 +3786,12 @@ document.addEventListener('keydown', function(e) {
         case 'D':
             if (direction !== 'left') nextDirection = 'right';
             break;
+    }
+    
+    // Play movement sound if direction has actually changed
+    if (oldDirection !== nextDirection) {
+        soundManager.play('move', { volume: 0.3 });
+        console.log(`direction: ${nextDirection}`);
     }
 });
 function drawMagnetOrbits(x, y) {
