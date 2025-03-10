@@ -539,7 +539,7 @@ function generateWalls() {
     // Basic parameters
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
-    const SAFE_ZONE_RADIUS = 50;
+    const SAFE_ZONE_RADIUS = 20;
     
     const isSafe = (x, y) => {
         const dx = x - centerX;
@@ -618,81 +618,6 @@ function createRoomStructure() {
     // No other rooms or corridors needed for traditional snake game
 }
 
-// Create walls for a single room
-function createRoom(x, y, width, height) {
-    const centerX = Math.floor(GRID_SIZE / 2);
-    const centerY = Math.floor(GRID_SIZE / 2);
-    const SAFE_ZONE_RADIUS = 50;
-    
-    // Safety check for walls
-    const isSafe = (x, y) => {
-        const dx = x - centerX;
-        const dy = y - centerY;
-        return Math.sqrt(dx*dx + dy*dy) < SAFE_ZONE_RADIUS * 1.2;
-    };
-    
-    // Determine if this is adjacent to the center room
-    const isAdjacentToCenter = 
-        (x < centerX && x + width > centerX - SAFE_ZONE_RADIUS) ||
-        (x > centerX && x < centerX + SAFE_ZONE_RADIUS) ||
-        (y < centerY && y + height > centerY - SAFE_ZONE_RADIUS) ||
-        (y > centerY && y < centerY + SAFE_ZONE_RADIUS);
-    
-    // Create room walls, but allow for doorways
-    const wallThickness = 1; // Single wall thickness for cleaner look
-    
-    // Top and bottom walls
-    for (let i = 0; i < wallThickness; i++) {
-        for (let dx = 0; dx <= width; dx++) {
-            // Top wall
-            if (!isSafe(x + dx, y + i)) {
-                walls.push({x: x + dx, y: y + i});
-            }
-            
-            // Bottom wall
-            if (!isSafe(x + dx, y + height - i)) {
-                walls.push({x: x + dx, y: y + height - i});
-            }
-        }
-    }
-    
-    // Left and right walls
-    for (let i = 0; i < wallThickness; i++) {
-        for (let dy = 0; dy <= height; dy++) {
-            // Left wall
-            if (!isSafe(x + i, y + dy)) {
-                walls.push({x: x + i, y: y + dy});
-            }
-            
-            // Right wall
-            if (!isSafe(x + width - i, y + dy)) {
-                walls.push({x: x + width - i, y: y + dy});
-            }
-        }
-    }
-}
-
-// Create corridors between rooms
-function createCorridors(border, roomWidth, roomHeight, roomsPerSide) {
-    // For traditional snake game, we don't need corridors
-    // Instead, we'll create a doorway or opening in the room walls
-    const centerX = Math.floor(GRID_SIZE / 2);
-    const centerY = Math.floor(GRID_SIZE / 2);
-    const roomSize = SAFE_ZONE_RADIUS * 2;
-    const roomStartX = centerX - roomSize / 2;
-    const roomStartY = centerY - roomSize / 2;
-    
-    // Create an opening on the right side of the room
-    const doorWidth = 10;
-    const doorY = roomStartY + Math.floor(roomSize / 2) - Math.floor(doorWidth / 2);
-    
-    // Remove wall segments for the door
-    for (let i = 0; i < doorWidth; i++) {
-        walls = walls.filter(wall => !(wall.x === roomStartX + roomSize && wall.y === doorY + i));
-    }
-    
-    // No need for diagonal corridors in traditional snake game
-}
 
 // Create a diagonal corridor to the center
 function createDiagonalCorridor(startX, startY, endX, endY) {
