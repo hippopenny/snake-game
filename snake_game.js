@@ -3387,11 +3387,26 @@ startBtn.addEventListener('click', function(e) {
     
     console.log("Start button clicked");
     soundManager.play('menuSelect');
-    startScreen.style.display = 'none';
-    canvas.style.display = 'block';
-    if (!gameRunning) {
-        initGame();
-        detectTouchDevice(); // Initialize touch controls when the game starts
+    
+    // If assets aren't loaded yet, show loading screen first then start game
+    if (!gameAssetsLoaded) {
+        showLoadingScreen(function() {
+            // This callback runs when loading is complete
+            startScreen.style.display = 'none';
+            canvas.style.display = 'block';
+            if (!gameRunning) {
+                initGame();
+                detectTouchDevice(); // Initialize touch controls when the game starts
+            }
+        });
+    } else {
+        // Assets already loaded, start game immediately
+        startScreen.style.display = 'none';
+        canvas.style.display = 'block';
+        if (!gameRunning) {
+            initGame();
+            detectTouchDevice(); // Initialize touch controls when the game starts
+        }
     }
 });
 
