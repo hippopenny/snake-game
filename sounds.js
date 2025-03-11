@@ -28,33 +28,6 @@ class SoundManager {
     init() {
         if (this.initialized) return;
         
-        // Check if we're in a test environment
-        const isTestEnv = window.location.href.includes('localhost:3000') || 
-                         navigator.userAgent.includes('HeadlessChrome');
-        
-        // For test environment, set initialized to true and skip loading
-        if (isTestEnv) {
-            console.log("Test environment detected, skipping sound initialization");
-            this.initialized = true;
-            
-            // Immediately update loading UI
-            const loadingProgress = document.getElementById('loading-progress');
-            if (loadingProgress) {
-                loadingProgress.style.width = '100%';
-            }
-            const loadingText = document.getElementById('loading-text');
-            if (loadingText) {
-                loadingText.textContent = 'Test Mode - Sounds Disabled';
-            }
-            
-            // Set global loaded state
-            if (typeof window.gameAssetsLoaded !== 'undefined') {
-                window.gameAssetsLoaded = true;
-            }
-            
-            return;
-        }
-        
         // Track loading progress
         let loadedCount = 0;
         const totalSounds = Object.keys(this.soundPaths).length;
