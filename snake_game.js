@@ -2348,6 +2348,16 @@ function shakeScreen(intensity, duration) {
     requestAnimationFrame(shake);
 }
 
+// Array to store decorative elements
+let decorativeElements = [];
+
+// Define decorative element types
+const DECORATIVE_TYPES = [
+    { name: 'crystal', color: '#9C27B0', size: [20, 40] },
+    { name: 'rock', color: '#607D8B', size: [15, 30] },
+    { name: 'flower', color: '#E91E63', size: [10, 25] }
+];
+
 function initBackgroundElements() {
     backgroundElements = [];
     
@@ -2366,6 +2376,60 @@ function initBackgroundElements() {
             backgroundElements.push(element);
         }
     });
+    
+    // Initialize decorative elements across the map
+    generateDecorativeElements();
+}
+
+// Generate decorative elements throughout the map
+function generateDecorativeElements() {
+    decorativeElements = [];
+    const MAX_ELEMENTS = 40; // Limited for performance
+    
+    // Generate a few paths across the map
+    const pathCount = 3;
+    
+    for (let p = 0; p < pathCount; p++) {
+        // Create a curving path with elements
+        const startX = Math.floor(Math.random() * GRID_SIZE);
+        const startY = Math.floor(Math.random() * GRID_SIZE);
+        let x = startX;
+        let y = startY;
+        
+        // Generate a random angle for this path
+        const baseAngle = Math.random() * Math.PI * 2;
+        
+        // Each path has a number of segments
+        const segmentCount = 15; // Limited for performance
+        
+        for (let i = 0; i < segmentCount && decorativeElements.length < MAX_ELEMENTS; i++) {
+            // Select random element type
+            const typeIndex = Math.floor(Math.random() * DECORATIVE_TYPES.length);
+            const type = DECORATIVE_TYPES[typeIndex];
+            
+            // Add element with variation
+            decorativeElements.push({
+                x: x * CELL_SIZE,
+                y: y * CELL_SIZE,
+                type: type.name,
+                color: type.color,
+                size: Math.random() * (type.size[1] - type.size[0]) + type.size[0],
+                rotation: Math.random() * Math.PI,
+                opacity: 0.4 + Math.random() * 0.4
+            });
+            
+            // Move position with some randomness for a natural path
+            const angle = baseAngle + (Math.random() - 0.5) * 0.8;
+            const distance = 10 + Math.random() * 20;
+            
+            x = Math.floor(x + Math.cos(angle) * distance / CELL_SIZE);
+            y = Math.floor(y + Math.sin(angle) * distance / CELL_SIZE);
+            
+            // Keep within grid bounds
+            x = Math.max(0, Math.min(GRID_SIZE - 1, x));
+            y = Math.max(0, Math.min(GRID_SIZE - 1, y));
+        }
+    }
 }
 
 function drawEnhancedBackground() {
@@ -4298,6 +4362,140 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // The click handler for startBtn is already defined earlier in the file
 
+// Draw decorative elements that are within the viewport
+function drawDecorativeElements() {
+    // Only process elements that could be visible
+    for (const element of decorativeElements) {
+        // Skip if element is outside viewport
+        if (element.x + element.size < camera.x || 
+            element.x > camera.x + VIEWPORT_WIDTH ||
+            element.y + element.size < camera.y || 
+            element.y > camera.y + VIEWPORT_HEIGHT) {
+            continue;
+        }
+        
+        // Draw based on element type
+        switch(element.type) {
+            case 'crystal':
+                drawCrystal(element);
+                break;
+            case 'rock':
+                drawRock(element);
+                break;
+            case 'flower':
+                drawFlower(element);
+                break;
+        }
+    }
+}
+
+// Draw a crystal formation
+function drawCrystal(element) {
+    ctx.save();
+    ctx.translate(element.x + element.size/2, element.y + element.size/2);
+    ctx.rotate(element.rotation);
+    
+    // Draw crystal shape
+    ctx.fillStyle = `rgba(${hexToRgb(element.color)}, ${element.opacity})`;
+    ctx.beginPath();
+    
+    // Simple crystal shape (hexagonal)
+    for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2;
+        const x = Math.cos(angle) * element.size/2;
+        const y = Math.sin(angle) * element.size/2;
+        
+        if (i === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    }
+    
+    ctx.closePath();
+    ctx.fill();
+    
+    // Add highlight
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    ctx.restore();
+}
+
+// Draw a rock formation
+function drawRock(element) {
+    ctx.save();
+    ctx.translate(element.x + element.size/2, element.y + element.size/2);
+    ctx.rotate(element.rotation);
+    
+    // Draw rock shape (irregular oval)
+    ctx.fillStyle = `rgba(${hexToRgb(element.color)}, ${element.opacity})`;
+    ctx.beginPath();
+    
+    // Draw an irregular boulder shape
+    const points = 7;
+    for (let i = 0; i < points; i++) {
+        const angle = (i / points) * Math.PI * 2;
+        const radius = element.size/2 * (0.8 + Math.sin(i * 3) * 0.2);
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        
+        if (i === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    }
+    
+    ctx.closePath();
+    ctx.fill();
+    
+    // Add shadow
+    ctx.shadowColor = 'rgba(0,0,0,0.2)';
+    ctx.shadowBlur = 5;
+    ctx.shadowOffsetX = 3;
+    ctx.shadowOffsetY = 3;
+    
+    ctx.restore();
+}
+
+// Draw a flower formation
+function drawFlower(element) {
+    ctx.save();
+    ctx.translate(element.x + element.size/2, element.y + element.size/2);
+    
+    // Draw flower petals
+    const petalCount = 5;
+    const petalLength = element.size / 2;
+    const innerRadius = element.size / 6;
+    
+    for (let i = 0; i < petalCount; i++) {
+        const angle = (i / petalCount) * Math.PI * 2 + element.rotation;
+        
+        // Draw petal
+        ctx.fillStyle = `rgba(${hexToRgb(element.color)}, ${element.opacity})`;
+        ctx.beginPath();
+        ctx.ellipse(
+            Math.cos(angle) * petalLength/2, 
+            Math.sin(angle) * petalLength/2,
+            petalLength, 
+            petalLength/3,
+            angle,
+            0, Math.PI * 2
+        );
+        ctx.fill();
+    }
+    
+    // Draw center
+    ctx.fillStyle = `rgba(255, 255, 150, ${element.opacity + 0.2})`;
+    ctx.beginPath();
+    ctx.arc(0, 0, innerRadius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.restore();
+}
+
 function getPowerUpIcon(type) {
     switch (type) {
         case 'speed_boost': return '⚡';
@@ -4306,4 +4504,3 @@ function getPowerUpIcon(type) {
         default: return '✨';
     }
 }
-// Add a new maze-like structure
