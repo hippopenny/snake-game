@@ -311,7 +311,7 @@ nextLevelText.style.transform = 'translate(-50%, -50%)';
 nextLevelText.style.fontSize = '12px';
 nextLevelText.style.color = 'white';
 nextLevelText.style.textAlign = 'center';
-nextLevelText.style.textShadow = '1px 1px 2px rgba(0,0,0,0.5)';
+nextLevelText.style.fontWeight = 'bold'; // Replaced text shadow with bold for better performance
 levelProgressContainer.appendChild(nextLevelText);
 
 /* Power-Up Status Display */
@@ -3470,7 +3470,7 @@ function updatePowerUpIndicator() {
     powerUpIndicator.style.padding = '10px 20px';
     powerUpIndicator.style.borderRadius = '10px';
     powerUpIndicator.style.color = 'white';
-    powerUpIndicator.style.textShadow = '2px 2px 4px rgba(0,0,0,0.7)';
+    powerUpIndicator.style.fontWeight = 'bold'; // Replaced text shadow with bold for better performance
     
     if (timeLeft <= 3) {
         powerUpIndicator.style.animation = 'pulse 0.5s infinite alternate';
@@ -3787,7 +3787,7 @@ function showSnakeEatenEffect(otherPlayerId, points) {
     messageDiv.style.color = '#FF5722';
     messageDiv.style.fontSize = '36px';
     messageDiv.style.fontWeight = 'bold';
-    messageDiv.style.textShadow = '0 0 10px rgba(255,87,34,0.7)';
+    messageDiv.style.fontWeight = 'bold'; // Replaced text shadow with bold for better performance
     messageDiv.style.pointerEvents = 'none';
     document.body.appendChild(messageDiv);
     
