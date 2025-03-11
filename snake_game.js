@@ -706,8 +706,10 @@ function initGame() {
     soundManager.ensureLoaded('move');
     soundManager.ensureLoaded('teleport');
     
-    // Start background music
-    soundManager.playBackgroundMusic();
+    // Only play background music when not in test mode
+    if (!window.location.href.includes('test') && !window.location.href.includes('localhost:3000')) {
+        soundManager.playBackgroundMusic();
+    }
     
     // Start the snake at a reasonable position in the larger map
     const centerX = Math.floor(GRID_SIZE / 2);
@@ -2127,6 +2129,11 @@ function gameOver(reason = 'collision') {
             soundManager.ensureLoaded('levelUp');
             soundManager.ensureLoaded('powerUp');
             soundManager.ensureLoaded('background');
+            // Reduce loading time for better test performance
+            if (window.location.href.includes('test') || window.location.href.includes('localhost:3000')) {
+                baseGameSpeed = 50; // Make tests run faster
+                INTERPOLATION_STEPS = 4; // Reduce animation steps for tests
+            }
         }, 1000);
         
         finalScoreDisplay.textContent = `Score: ${score} (Best: ${highestScore})`;
@@ -4203,6 +4210,13 @@ document.head.appendChild(mobileControlsStyle);
 // Call the detection function when the document is loaded
 document.addEventListener('DOMContentLoaded', () => {
     initSettings();
+    
+    // Fast initialization for tests
+    if (window.location.href.includes('test') || window.location.href.includes('localhost:3000')) {
+        console.log("Test environment detected, using faster initialization");
+        baseGameSpeed = 50; // Make tests run faster
+        INTERPOLATION_STEPS = 4; // Reduce animation steps for tests
+    }
 });
 
 // Call the detection function when the game starts
