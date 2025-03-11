@@ -938,9 +938,7 @@ function drawFood(food) {
     
     // Add glow effect for power-up foods
     if (food.powerUp) {
-        ctx.shadowColor = food.color;
-        ctx.shadowBlur = 10 + 5 * Math.sin(Date.now() / 300);
-        
+        // Draw highlight without shadow for better performance
         ctx.beginPath();
         ctx.arc(
             food.x * CELL_SIZE + CELL_SIZE / 2,
@@ -953,8 +951,19 @@ function drawFood(food) {
         ctx.lineWidth = 2;
         ctx.stroke();
         
-        ctx.shadowColor = 'transparent';
-        ctx.shadowBlur = 0;
+        // Add a second layer for glow-like effect without shadows
+        const glowColor = food.color.replace('rgb', 'rgba').replace(')', ', 0.5)');
+        ctx.strokeStyle = glowColor;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(
+            food.x * CELL_SIZE + CELL_SIZE / 2,
+            food.y * CELL_SIZE + CELL_SIZE / 2,
+            size * 1.4,
+            0,
+            Math.PI * 2
+        );
+        ctx.stroke();
     }
     
     // Draw countdown
