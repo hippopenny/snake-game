@@ -3371,7 +3371,7 @@ startBtn.addEventListener('click', function(e) {
     if (!gameAssetsLoaded) {
         showLoadingScreen(function() {
             // This callback runs when loading is complete
-            startScreen.style.display = 'none';
+            startScreen.style.display = 'none'; // Hide start screen
             canvas.style.display = 'block';
             if (!gameRunning) {
                 initGame();
@@ -4475,6 +4475,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Show loading screen function
 function showLoadingScreen(callback) {
+    // Hide start screen immediately when showing loading screen
+    const startScreen = document.getElementById('start-screen');
+    if (startScreen) {
+        startScreen.style.display = 'none';
+    }
+    
     // Create loading screen container
     const loadingScreen = document.createElement('div');
     loadingScreen.id = 'loading-screen';
