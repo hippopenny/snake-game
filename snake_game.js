@@ -2001,6 +2001,22 @@ function cleanupGame() {
         joystickContainer.style.display = 'none';
     }
     
+    // Remove any hunger warning elements that might be lingering
+    const hungerWarnings = document.querySelectorAll('div[textContent="HUNGRY!"]');
+    hungerWarnings.forEach(el => {
+        if (document.body.contains(el)) {
+            document.body.removeChild(el);
+        }
+    });
+    
+    // Remove vignette effects that might be lingering
+    const vignettes = document.querySelectorAll('div[style*="box-shadow: inset 0 0 150px rgba(244, 67, 54"]');
+    vignettes.forEach(el => {
+        if (document.body.contains(el)) {
+            document.body.removeChild(el);
+        }
+    });
+    
     // Clear any pending timeouts
     const highestId = setTimeout(() => {}, 0);
     for (let i = highestId; i >= highestId - 100; i--) {
@@ -3682,6 +3698,7 @@ function showHungerWarning() {
     }
     
     const warning = document.createElement('div');
+    warning.className = 'temp-game-element'; // Add class for easy cleanup
     warning.textContent = 'HUNGRY!';
     warning.style.position = 'absolute';
     warning.style.top = '50%';
@@ -3698,6 +3715,7 @@ function showHungerWarning() {
     
     // Add a subtle screen vignette effect when hungry
     const vignette = document.createElement('div');
+    vignette.className = 'temp-game-element'; // Add class for easy cleanup
     vignette.style.position = 'absolute';
     vignette.style.top = '0';
     vignette.style.left = '0';
@@ -3712,14 +3730,25 @@ function showHungerWarning() {
     let opacity = 0.9;
     const fadeInterval = setInterval(() => {
         opacity -= 0.05;
-        warning.style.opacity = opacity;
-        vignette.style.opacity = opacity;
+        if (warning && document.body.contains(warning)) {
+            warning.style.opacity = opacity;
+        }
+        if (vignette && document.body.contains(vignette)) {
+            vignette.style.opacity = opacity;
+        }
         if (opacity <= 0) {
             clearInterval(fadeInterval);
-            document.body.removeChild(warning);
-            document.body.removeChild(vignette);
+            if (warning && document.body.contains(warning)) {
+                document.body.removeChild(warning);
+            }
+            if (vignette && document.body.contains(vignette)) {
+                document.body.removeChild(vignette);
+            }
         }
     }, 50);
+    
+    // Store the interval ID so we can clear it during cleanup
+    warning.fadeIntervalId = fadeInterval;
     
     // Add screen shake effect for critical hunger
     if (hungerTimer < HUNGER_WARNING_THRESHOLD * 0.5) {
