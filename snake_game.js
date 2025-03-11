@@ -3142,7 +3142,7 @@ function updatePlayersCount() {
 startBtn.addEventListener('click', function(e) {
     e.preventDefault();
     console.log("Start button clicked");
-    soundManager.play('menuClick');
+    soundManager.play('menuSelect');
     startScreen.style.display = 'none';
     canvas.style.display = 'block';
     if (!gameRunning) {
@@ -3152,7 +3152,7 @@ startBtn.addEventListener('click', function(e) {
 });
 
 restartBtn.addEventListener('click', () => {
-    soundManager.play('menuClick');
+    soundManager.play('menuSelect');
     gameOverScreen.style.display = 'none';
     initGame();
 });

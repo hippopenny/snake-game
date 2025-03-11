@@ -7,24 +7,21 @@ class SoundManager {
         this.initialized = false;
         this.soundPaths = {
             'eat': 'sounds/eat.mp3',
-            'gameOver': 'sounds/gameoverFull.wav',
+            'gameOver': 'sounds/gameover.mp3',
             'powerUp': 'sounds/powerup.wav',
             'move': 'sounds/click.wav',
             'select': 'sounds/select.wav',
-            'levelUp': 'sounds/levelup.mp3',
-            'levelComplete': 'sounds/levelcomplete.mp3',
+            'levelUp': 'sounds/levelcomplete.mp3',
             'collision': 'sounds/notification.wav',
             'menuSelect': 'sounds/menuSelect.wav',
-            'menuClick': 'sounds/click.wav',
             'teleport': 'sounds/transition.wav',
             'heartbeat': 'sounds/heartbeat.mp3',
-            'background': 'sounds/backgroundMusic.wav',
-            'bonus': 'sounds/bonus.wav',
-            'ambient': 'sounds/ambient.wav'
+            'background': 'sounds/backgroundMusic.mp3',
+            'bonus': 'sounds/bonus.wav'
         };
         
         // Preload common UI sounds and background music
-        this.commonSounds = ['menuClick', 'menuSelect', 'select', 'background'];
+        this.commonSounds = ['menuSelect', 'menuSelect', 'select', 'background'];
         this.backgroundMusic = null; // Store reference to background music
     }
 
