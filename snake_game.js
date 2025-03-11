@@ -4545,17 +4545,6 @@ function showLoadingScreen(callback) {
 
     snakeAnimationInterval = setInterval(animateSnake, 300);
     animateSnake(); // Start immediately
-    
-    // Add info text
-    const infoText = document.createElement('div');
-    infoText.style.color = 'rgba(255, 255, 255, 0.6)';
-    infoText.style.fontSize = '14px';
-    infoText.style.marginTop = '40px';
-    infoText.style.textAlign = 'center';
-    infoText.style.maxWidth = '80%';
-    infoText.style.lineHeight = '1.5';
-    infoText.innerHTML = 'Optimized for mobile devices<br>Use arrow keys or swipe to control';
-    loadingScreen.appendChild(infoText);
 
     // Create loading text
     const loadingText = document.createElement('div');
