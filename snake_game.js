@@ -2112,6 +2112,12 @@ function gameOver(reason = 'collision') {
             document.head.appendChild(style);
         }
         
+        // Preload additional sounds that might be needed for restart
+        setTimeout(() => {
+            soundManager.ensureLoaded('levelUp');
+            soundManager.ensureLoaded('powerUp');
+        }, 1000);
+        
         finalScoreDisplay.textContent = `Score: ${score} (Best: ${highestScore})`;
         finalLevelDisplay.textContent = `Level: ${level}`;
         
