@@ -3379,6 +3379,12 @@ function updatePlayersCount() {
 
 startBtn.addEventListener('click', function(e) {
     e.preventDefault();
+    
+    // Prevent starting the game if button is disabled
+    if (startBtn.disabled) {
+        return;
+    }
+    
     console.log("Start button clicked");
     soundManager.play('menuSelect');
     startScreen.style.display = 'none';
@@ -4460,6 +4466,11 @@ document.head.appendChild(mobileControlsStyle);
 document.addEventListener('DOMContentLoaded', () => {
     initSettings();
     showLoadingScreen();
+    
+    // Disable the start button until loading is complete
+    startBtn.disabled = true;
+    startBtn.style.opacity = "0.5";
+    startBtn.style.cursor = "not-allowed";
 });
 
 // Show loading screen function
@@ -4596,6 +4607,11 @@ function showLoadingScreen() {
                     if (document.body.contains(loadingScreen)) {
                         document.body.removeChild(loadingScreen);
                     }
+                    
+                    // Re-enable the start button
+                    startBtn.disabled = false;
+                    startBtn.style.opacity = "1";
+                    startBtn.style.cursor = "pointer";
                 }, 500);
             }, 500);
         }

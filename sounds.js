@@ -63,15 +63,33 @@ class SoundManager {
         // Preload audio
         audio.load();
         
+        // Set a flag to track if callback was already called
+        let callbackFired = false;
+        
         // Add event listener for when loading completes
         audio.addEventListener('canplaythrough', () => {
-            if (callback) callback();
+            if (!callbackFired && callback) {
+                callbackFired = true;
+                callback();
+            }
         }, { once: true });
+        
+        // Handle audio loading errors
+        audio.addEventListener('error', () => {
+            console.warn(`Error loading sound: ${name}`);
+            if (!callbackFired && callback) {
+                callbackFired = true;
+                callback();
+            }
+        });
         
         // Fallback in case the event doesn't fire
         setTimeout(() => {
-            if (callback) callback();
-        }, 2000);
+            if (!callbackFired && callback) {
+                callbackFired = true;
+                callback();
+            }
+        }, 3000);
         
         return audio;
     }
