@@ -13,8 +13,10 @@ class SoundManager {
         // Define all sounds
         this.load('eat', 'sounds/eat.mp3');
         this.load('gameOver', 'sounds/gameover.mp3');
+        this.load('gameOverFull', 'sounds/gameoverFull.wav');
         this.load('powerUp', 'sounds/powerup.wav');
         this.load('move', 'sounds/click.wav');
+        this.load('select', 'sounds/select.wav');
         this.load('levelUp', 'sounds/levelup.mp3');
         this.load('levelComplete', 'sounds/levelcomplete.mp3');
         this.load('collision', 'sounds/notification.wav');
