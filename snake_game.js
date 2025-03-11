@@ -3271,16 +3271,21 @@ function updateMinimap() {
         // Just draw the head with a larger dot for visibility
         minimapCtx.fillStyle = isCurrentPlayer ? '#4CAF50' : '#3F51B5';
         
-        // Enlarged player indicators
+        // Enlarged player indicators with bigger dots
         minimapCtx.beginPath();
         minimapCtx.arc(
             head.x * minimapScale,
             head.y * minimapScale,
-            isCurrentPlayer ? 3 : 2, // Fixed size regardless of scale
+            isCurrentPlayer ? 5 : 4, // Increased from 3/2 to 5/4 for better visibility
             0,
             Math.PI * 2
         );
         minimapCtx.fill();
+        
+        // Add outline to further improve visibility
+        minimapCtx.strokeStyle = isCurrentPlayer ? '#FFFFFF' : '#AAAAFF';
+        minimapCtx.lineWidth = 1;
+        minimapCtx.stroke();
     }
     
     // Draw foods with better visibility
@@ -3334,16 +3339,16 @@ function updateMinimap() {
         minimapCtx.arc(
             head.x * minimapScale,
             head.y * minimapScale,
-            4, // Larger indicator for player
+            6, // Increased from 4 to 6 for larger indicator for player
             0,
             Math.PI * 2
         );
         minimapCtx.fill();
         
-        // Add pulsing effect
+        // Add pulsing effect with larger pulse
         minimapCtx.strokeStyle = 'rgba(76, 175, 80, 0.7)';
-        minimapCtx.lineWidth = 1;
-        const pulseSize = 4 + Math.sin(Date.now() / 200) * 2;
+        minimapCtx.lineWidth = 1.5; // Increased from 1 to 1.5
+        const pulseSize = 6 + Math.sin(Date.now() / 200) * 3; // Increased from 4+2 to 6+3
         minimapCtx.beginPath();
         minimapCtx.arc(
             head.x * minimapScale,
