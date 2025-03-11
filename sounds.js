@@ -28,22 +28,50 @@ class SoundManager {
     init() {
         if (this.initialized) return;
         
+        // Track loading progress
+        let loadedCount = 0;
+        const totalSounds = Object.keys(this.soundPaths).length;
+        
+        // Update loading progress in UI
+        const updateLoadingProgress = () => {
+            loadedCount++;
+            const progress = (loadedCount / totalSounds) * 100;
+            const loadingProgress = document.getElementById('loading-progress');
+            if (loadingProgress) {
+                loadingProgress.style.width = `${progress}%`;
+            }
+            const loadingText = document.getElementById('loading-text');
+            if (loadingText) {
+                loadingText.textContent = `Loading sounds... ${Math.floor(progress)}%`;
+            }
+        };
+        
         // Preload ALL sounds for better game experience
         for (const soundName in this.soundPaths) {
-            this.load(soundName, this.soundPaths[soundName]);
+            this.load(soundName, this.soundPaths[soundName], updateLoadingProgress);
         }
         
         this.initialized = true;
     }
     
     // Load a sound from file
-    load(name, path) {
+    load(name, path, callback) {
         const audio = new Audio(path);
         audio.volume = this.volume;
         this.sounds[name] = audio;
         
         // Preload audio
         audio.load();
+        
+        // Add event listener for when loading completes
+        audio.addEventListener('canplaythrough', () => {
+            if (callback) callback();
+        }, { once: true });
+        
+        // Fallback in case the event doesn't fire
+        setTimeout(() => {
+            if (callback) callback();
+        }, 2000);
         
         return audio;
     }

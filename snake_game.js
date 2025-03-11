@@ -696,6 +696,20 @@ function initGame() {
         animationFrameId = null;
     }
     
+    // Show a "Starting Game..." message
+    const startingMessage = document.createElement('div');
+    startingMessage.style.position = 'fixed';
+    startingMessage.style.top = '50%';
+    startingMessage.style.left = '50%';
+    startingMessage.style.transform = 'translate(-50%, -50%)';
+    startingMessage.style.color = '#4CAF50';
+    startingMessage.style.fontSize = '32px';
+    startingMessage.style.fontWeight = 'bold';
+    startingMessage.style.textShadow = '0 0 10px rgba(76, 175, 80, 0.7)';
+    startingMessage.style.zIndex = '9999';
+    startingMessage.textContent = 'Starting Game...';
+    document.body.appendChild(startingMessage);
+    
     // Initialize sound system
     if (!soundManager.initialized) {
         console.log("Initializing sound manager");
@@ -707,6 +721,13 @@ function initGame() {
     // Play background music
     console.log("Playing background music");
     soundManager.playBackgroundMusic();
+    
+    // Remove the starting message after a short delay
+    setTimeout(() => {
+        if (document.body.contains(startingMessage)) {
+            document.body.removeChild(startingMessage);
+        }
+    }, 1000);
     
     // Start the snake at a reasonable position in the larger map
     const centerX = Math.floor(GRID_SIZE / 2);
@@ -4438,7 +4459,151 @@ document.head.appendChild(mobileControlsStyle);
 // Call the detection function when the document is loaded
 document.addEventListener('DOMContentLoaded', () => {
     initSettings();
+    showLoadingScreen();
 });
+
+// Show loading screen function
+function showLoadingScreen() {
+    // Create loading screen container
+    const loadingScreen = document.createElement('div');
+    loadingScreen.id = 'loading-screen';
+    loadingScreen.style.position = 'fixed';
+    loadingScreen.style.top = '0';
+    loadingScreen.style.left = '0';
+    loadingScreen.style.width = '100%';
+    loadingScreen.style.height = '100%';
+    loadingScreen.style.backgroundColor = '#0a0a1a';
+    loadingScreen.style.display = 'flex';
+    loadingScreen.style.flexDirection = 'column';
+    loadingScreen.style.justifyContent = 'center';
+    loadingScreen.style.alignItems = 'center';
+    loadingScreen.style.zIndex = '10000';
+    document.body.appendChild(loadingScreen);
+
+    // Create snake logo
+    const snakeLogo = document.createElement('div');
+    snakeLogo.style.fontSize = '42px';
+    snakeLogo.style.color = '#4CAF50';
+    snakeLogo.style.fontWeight = 'bold';
+    snakeLogo.style.marginBottom = '30px';
+    snakeLogo.style.textShadow = '0 0 10px rgba(76, 175, 80, 0.7)';
+    snakeLogo.innerHTML = 'Snake Game';
+    loadingScreen.appendChild(snakeLogo);
+
+    // Create loading animation - snake
+    const snakeAnimation = document.createElement('div');
+    snakeAnimation.style.display = 'flex';
+    snakeAnimation.style.alignItems = 'center';
+    snakeAnimation.style.justifyContent = 'center';
+    snakeAnimation.style.marginBottom = '40px';
+    loadingScreen.appendChild(snakeAnimation);
+
+    // Create snake segments
+    const segmentCount = 5;
+    const segments = [];
+    for (let i = 0; i < segmentCount; i++) {
+        const segment = document.createElement('div');
+        segment.style.width = '20px';
+        segment.style.height = '20px';
+        segment.style.borderRadius = '50%';
+        segment.style.backgroundColor = i === 0 ? '#4CAF50' : '#8BC34A';
+        segment.style.margin = '0 5px';
+        segment.style.transform = 'scale(0.8)';
+        segment.style.opacity = '0.8';
+        segment.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+        snakeAnimation.appendChild(segment);
+        segments.push(segment);
+    }
+
+    // Create loading text
+    const loadingText = document.createElement('div');
+    loadingText.id = 'loading-text';
+    loadingText.style.color = '#ffffff';
+    loadingText.style.fontSize = '18px';
+    loadingText.style.marginBottom = '10px';
+    loadingText.textContent = 'Loading...';
+    loadingScreen.appendChild(loadingText);
+
+    // Create progress bar container
+    const progressContainer = document.createElement('div');
+    progressContainer.style.width = '200px';
+    progressContainer.style.height = '10px';
+    progressContainer.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+    progressContainer.style.borderRadius = '5px';
+    progressContainer.style.overflow = 'hidden';
+    loadingScreen.appendChild(progressContainer);
+
+    // Create progress bar
+    const progressBar = document.createElement('div');
+    progressBar.id = 'loading-progress';
+    progressBar.style.width = '0%';
+    progressBar.style.height = '100%';
+    progressBar.style.backgroundColor = '#4CAF50';
+    progressBar.style.borderRadius = '5px';
+    progressBar.style.transition = 'width 0.3s ease';
+    progressContainer.appendChild(progressBar);
+
+    // Add info text
+    const infoText = document.createElement('div');
+    infoText.style.color = 'rgba(255, 255, 255, 0.6)';
+    infoText.style.fontSize = '14px';
+    infoText.style.marginTop = '40px';
+    infoText.style.textAlign = 'center';
+    infoText.style.maxWidth = '80%';
+    infoText.style.lineHeight = '1.5';
+    infoText.innerHTML = 'Optimized for mobile devices<br>Use arrow keys or swipe to control';
+    loadingScreen.appendChild(infoText);
+
+    // Animate snake segments
+    let currentIndex = 0;
+    const animateSnake = () => {
+        segments.forEach((segment, i) => {
+            // Reset all segments
+            segment.style.transform = 'scale(0.8)';
+            segment.style.opacity = '0.8';
+        });
+        // Highlight current segment
+        if (segments[currentIndex]) {
+            segments[currentIndex].style.transform = 'scale(1.2)';
+            segments[currentIndex].style.opacity = '1';
+        }
+        currentIndex = (currentIndex + 1) % segmentCount;
+    };
+
+    const snakeAnimationInterval = setInterval(animateSnake, 300);
+    animateSnake(); // Start immediately
+
+    // Simulate loading progress
+    let progress = 0;
+    const updateProgress = () => {
+        progress += Math.random() * 15;
+        if (progress > 100) progress = 100;
+        progressBar.style.width = `${progress}%`;
+        loadingText.textContent = `Loading... ${Math.floor(progress)}%`;
+
+        if (progress < 100) {
+            setTimeout(updateProgress, 200 + Math.random() * 300);
+        } else {
+            // When loading is complete
+            loadingText.textContent = 'Ready!';
+            clearInterval(snakeAnimationInterval);
+            
+            setTimeout(() => {
+                // Fade out loading screen
+                loadingScreen.style.transition = 'opacity 0.5s ease';
+                loadingScreen.style.opacity = '0';
+                setTimeout(() => {
+                    if (document.body.contains(loadingScreen)) {
+                        document.body.removeChild(loadingScreen);
+                    }
+                }, 500);
+            }, 500);
+        }
+    };
+
+    // Start progress updates
+    setTimeout(updateProgress, 500);
+}
 
 // The click handler for startBtn is already defined earlier in the file
 
