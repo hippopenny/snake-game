@@ -696,20 +696,6 @@ function initGame() {
         animationFrameId = null;
     }
     
-    // Show a "Starting Game..." message
-    const startingMessage = document.createElement('div');
-    startingMessage.style.position = 'fixed';
-    startingMessage.style.top = '50%';
-    startingMessage.style.left = '50%';
-    startingMessage.style.transform = 'translate(-50%, -50%)';
-    startingMessage.style.color = '#4CAF50';
-    startingMessage.style.fontSize = '32px';
-    startingMessage.style.fontWeight = 'bold';
-    startingMessage.style.textShadow = '0 0 10px rgba(76, 175, 80, 0.7)';
-    startingMessage.style.zIndex = '9999';
-    startingMessage.textContent = 'Starting Game...';
-    document.body.appendChild(startingMessage);
-    
     // Initialize sound system
     if (!soundManager.initialized) {
         console.log("Initializing sound manager");
@@ -721,13 +707,6 @@ function initGame() {
     // Play background music
     console.log("Playing background music");
     soundManager.playBackgroundMusic();
-    
-    // Remove the starting message after a short delay
-    setTimeout(() => {
-        if (document.body.contains(startingMessage)) {
-            document.body.removeChild(startingMessage);
-        }
-    }, 1000);
     
     // Start the snake at a reasonable position in the larger map
     const centerX = Math.floor(GRID_SIZE / 2);
