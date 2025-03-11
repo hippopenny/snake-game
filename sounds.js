@@ -28,10 +28,10 @@ class SoundManager {
     init() {
         if (this.initialized) return;
         
-        // Preload only essential sounds initially
-        this.commonSounds.forEach(sound => {
-            this.load(sound, this.soundPaths[sound]);
-        });
+        // Preload ALL sounds for better game experience
+        for (const soundName in this.soundPaths) {
+            this.load(soundName, this.soundPaths[soundName]);
+        }
         
         // Create mute/unmute button
         this.createMuteButton();

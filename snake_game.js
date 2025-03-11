@@ -702,10 +702,7 @@ function initGame() {
         soundManager.init();
     }
     
-    // Preload game sounds that will be needed shortly
-    soundManager.ensureLoaded('eat');
-    soundManager.ensureLoaded('move');
-    soundManager.ensureLoaded('teleport');
+    // All sounds are already preloaded during sound manager initialization
     
     // Play background music
     console.log("Playing background music");
@@ -2124,12 +2121,7 @@ function gameOver(reason = 'collision') {
             document.head.appendChild(style);
         }
         
-        // Preload additional sounds that might be needed for restart
-        setTimeout(() => {
-            soundManager.ensureLoaded('levelUp');
-            soundManager.ensureLoaded('powerUp');
-            soundManager.ensureLoaded('background');
-        }, 1000);
+        // All sounds are already preloaded
         
         finalScoreDisplay.textContent = `Score: ${score} (Best: ${highestScore})`;
         finalLevelDisplay.textContent = `Level: ${level}`;
