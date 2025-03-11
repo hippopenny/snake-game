@@ -12,15 +12,19 @@ class SoundManager {
         
         // Define all sounds
         this.load('eat', 'sounds/eat.mp3');
-        this.load('gameOver', 'sounds/game_over.mp3');
-        this.load('powerUp', 'sounds/power_up.mp3');
-        this.load('move', 'sounds/move.mp3');
-        this.load('levelUp', 'sounds/level_up.mp3');
-        this.load('collision', 'sounds/collision.mp3');
-        this.load('menuSelect', 'sounds/menu_select.mp3');
-        this.load('menuClick', 'sounds/menu_click.mp3');
-        this.load('teleport', 'sounds/teleport.mp3');
+        this.load('gameOver', 'sounds/gameover.mp3');
+        this.load('powerUp', 'sounds/powerup.wav');
+        this.load('move', 'sounds/click.wav');
+        this.load('levelUp', 'sounds/levelup.mp3');
+        this.load('levelComplete', 'sounds/levelcomplete.mp3');
+        this.load('collision', 'sounds/notification.wav');
+        this.load('menuSelect', 'sounds/menuSelect.wav');
+        this.load('menuClick', 'sounds/click.wav');
+        this.load('teleport', 'sounds/transition.wav');
         this.load('heartbeat', 'sounds/heartbeat.mp3');
+        this.load('background', 'sounds/backgroundMusic.wav');
+        this.load('bonus', 'sounds/bonus.wav');
+        this.load('ambient', 'sounds/ambient.wav');
         
         // Create mute/unmute button
         this.createMuteButton();
