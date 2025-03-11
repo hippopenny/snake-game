@@ -2588,35 +2588,53 @@ function drawEnhancedBackground() {
         ctx.restore();
     });
     
-    // Add enhanced grid pattern that shifts with camera
+    // Draw cosmic web pattern with swirling lines and connecting nodes
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
     ctx.lineWidth = 1;
     
-    const gridStep = 100;
-    const offsetX = -camera.x * 0.1 % gridStep;
-    const offsetY = -camera.y * 0.1 % gridStep;
+    // Create a pseudo-random pattern that appears consistent when scrolling
+    const seed = Math.floor(camera.x * 0.01) + Math.floor(camera.y * 0.01) * 100;
+    const gridSize = 180;
+    const offsetX = -camera.x * 0.1 % gridSize;
+    const offsetY = -camera.y * 0.1 % gridSize;
     
-    // Create hexagonal grid pattern instead of square
-    const hexHeight = gridStep;
-    const hexWidth = gridStep * 0.866; // cos(30°) * 2 * height
-    
-    for (let y = -hexHeight; y < canvas.height + hexHeight; y += hexHeight * 0.75) {
-        const rowOffset = Math.floor(y / (hexHeight * 0.75)) % 2 === 0 ? 0 : hexWidth * 0.5;
-        for (let x = -hexWidth; x < canvas.width + hexWidth; x += hexWidth) {
-            ctx.beginPath();
-            for (let i = 0; i < 6; i++) {
-                const angle = 2 * Math.PI / 6 * i;
-                const hx = x + rowOffset + offsetX + hexWidth * 0.5 * Math.cos(angle);
-                const hy = y + offsetY + hexHeight * 0.5 * Math.sin(angle);
-                if (i === 0) {
-                    ctx.moveTo(hx, hy);
-                } else {
-                    ctx.lineTo(hx, hy);
-                }
-            }
-            ctx.closePath();
-            ctx.stroke();
+    // Draw flowing cosmic web threads
+    for (let i = 0; i < 10; i++) {
+        const loopSeed = (seed + i * 123) % 1000;
+        ctx.beginPath();
+        
+        // Create flowing curves that move through the viewport
+        let x = ((loopSeed * 7) % canvas.width) + offsetX;
+        let y = ((loopSeed * 13) % canvas.height) + offsetY;
+        ctx.moveTo(x, y);
+        
+        // Add curved segments to create flowing lines
+        for (let j = 0; j < 5; j++) {
+            const nextX = x + Math.sin((loopSeed + j * 50) / 100) * 100;
+            const nextY = y + Math.cos((loopSeed + j * 70) / 100) * 100;
+            const cpX1 = x + Math.sin((loopSeed + j * 20) / 100) * 50;
+            const cpY1 = y + Math.cos((loopSeed + j * 30) / 100) * 50;
+            const cpX2 = nextX - Math.sin((loopSeed + j * 40) / 100) * 50;
+            const cpY2 = nextY - Math.cos((loopSeed + j * 60) / 100) * 50;
+            
+            ctx.bezierCurveTo(cpX1, cpY1, cpX2, cpY2, nextX, nextY);
+            x = nextX;
+            y = nextY;
         }
+        ctx.stroke();
+    }
+    
+    // Add connection nodes at intersections
+    for (let i = 0; i < 15; i++) {
+        const nodeSeed = (seed + i * 321) % 1000;
+        const x = ((nodeSeed * 11) % canvas.width) + offsetX;
+        const y = ((nodeSeed * 17) % canvas.height) + offsetY;
+        const size = 1 + (nodeSeed % 3);
+        
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.fill();
     }
 }
 
