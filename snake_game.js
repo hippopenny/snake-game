@@ -2988,7 +2988,7 @@ function drawSafeZone() {
         centerY * CELL_SIZE - SAFE_ZONE_RADIUS * CELL_SIZE * 0.5
     );
     
-    // Draw 'SAFE HAVEN' text in a stylish way
+    // Draw 'SAFE HAVEN' text in a simplified way without shadows
     ctx.font = 'bold 32px Arial';
     ctx.fillStyle = `rgba(150, 255, 180, ${0.7 * remainingTime + 0.3 * Math.sin(time * 2)})`;
     ctx.fillText(
@@ -2997,7 +2997,7 @@ function drawSafeZone() {
         centerY * CELL_SIZE
     );
     
-    // Additional text
+    // Additional text - simplified
     ctx.font = 'bold 18px Arial';
     ctx.fillStyle = `rgba(255, 255, 255, ${0.7 * remainingTime + 0.2 * Math.sin(time * 3 + Math.PI)})`;
     ctx.fillText(
@@ -3005,8 +3005,6 @@ function drawSafeZone() {
         centerX * CELL_SIZE + CELL_SIZE/2,
         centerY * CELL_SIZE + CELL_SIZE * 5
     );
-    
-    ctx.shadowBlur = 0;
     
     // Simplified compass-like design for better performance
     const compassRadius = SAFE_ZONE_RADIUS * CELL_SIZE * 0.2;
@@ -4510,7 +4508,7 @@ function showLoadingScreen(callback) {
     snakeLogo.style.color = '#4CAF50';
     snakeLogo.style.fontWeight = 'bold';
     snakeLogo.style.marginBottom = '30px';
-    snakeLogo.style.textShadow = '0 0 10px rgba(76, 175, 80, 0.7)';
+    snakeLogo.style.fontWeight = 'bold';
     snakeLogo.innerHTML = 'Snake Game';
     loadingScreen.appendChild(snakeLogo);
 
