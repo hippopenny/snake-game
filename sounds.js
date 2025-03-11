@@ -33,9 +33,6 @@ class SoundManager {
             this.load(soundName, this.soundPaths[soundName]);
         }
         
-        // Create mute/unmute button
-        this.createMuteButton();
-        
         this.initialized = true;
     }
     
@@ -167,40 +164,7 @@ class SoundManager {
         muteButton.title = this.muted ? 'Unmute' : 'Mute';
     }
     
-    // Create a mute button in the top-right corner
-    createMuteButton() {
-        // Remove existing button if any
-        const existingButton = document.getElementById('mute-button');
-        if (existingButton) {
-            existingButton.remove();
-        }
-        
-        const muteButton = document.createElement('button');
-        muteButton.id = 'mute-button';
-        muteButton.textContent = this.muted ? '🔇' : '🔊';
-        muteButton.title = this.muted ? 'Unmute' : 'Mute';
-        muteButton.style.position = 'absolute';
-        muteButton.style.top = '10px';
-        muteButton.style.right = '10px';
-        muteButton.style.fontSize = '24px';
-        muteButton.style.width = '40px';
-        muteButton.style.height = '40px';
-        muteButton.style.borderRadius = '50%';
-        muteButton.style.border = 'none';
-        muteButton.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-        muteButton.style.color = 'white';
-        muteButton.style.cursor = 'pointer';
-        muteButton.style.zIndex = '1002';
-        muteButton.style.display = 'flex';
-        muteButton.style.alignItems = 'center';
-        muteButton.style.justifyContent = 'center';
-        
-        muteButton.addEventListener('click', () => {
-            this.toggleMute();
-        });
-        
-        document.body.appendChild(muteButton);
-    }
+    
     
     // Set global volume
     setVolume(level) {
