@@ -2379,6 +2379,24 @@ function drawEnhancedBackground() {
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
+    // Add "Hippo Penny" text in the background
+    ctx.save();
+    ctx.globalAlpha = 0.05; // Very subtle, nearly transparent
+    ctx.font = 'bold 80px Arial';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // Calculate position to display in the center of the viewport
+    const textX = canvas.width / 2;
+    const textY = canvas.height / 2;
+    
+    // Add slight rotation for style
+    ctx.translate(textX, textY);
+    ctx.rotate(Math.PI / 30); // Small angle rotation
+    ctx.fillText('Hippo Penny', 0, 0);
+    ctx.restore();
+    
     // Add subtle pulsing to background
     const pulseIntensity = 0.03 * Math.sin(Date.now() / 3000);
     
