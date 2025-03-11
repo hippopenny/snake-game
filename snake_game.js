@@ -701,6 +701,11 @@ function initGame() {
         soundManager.init();
     }
     
+    // Preload game sounds that will be needed shortly
+    soundManager.ensureLoaded('eat');
+    soundManager.ensureLoaded('move');
+    soundManager.ensureLoaded('teleport');
+    
     // Start the snake at a reasonable position in the larger map
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
@@ -2009,8 +2014,9 @@ function gameOver(reason = 'collision') {
     
     console.log("Game Over called with reason:", reason);
     
-    // Play game over sound
+    // Play game over sound - preload the full sound for future use
     soundManager.play('gameOver');
+    soundManager.ensureLoaded('gameOverFull');
     
     // Store the final snake position to ensure consistency
     const finalPosition = [...snake];

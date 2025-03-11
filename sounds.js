@@ -5,28 +5,36 @@ class SoundManager {
         this.muted = false;
         this.volume = 0.5; // Default volume (0.0 to 1.0)
         this.initialized = false;
+        this.soundPaths = {
+            'eat': 'sounds/eat.mp3',
+            'gameOver': 'sounds/gameover.mp3',
+            'gameOverFull': 'sounds/gameoverFull.wav',
+            'powerUp': 'sounds/powerup.wav',
+            'move': 'sounds/click.wav',
+            'select': 'sounds/select.wav',
+            'levelUp': 'sounds/levelup.mp3',
+            'levelComplete': 'sounds/levelcomplete.mp3',
+            'collision': 'sounds/notification.wav',
+            'menuSelect': 'sounds/menuSelect.wav',
+            'menuClick': 'sounds/click.wav',
+            'teleport': 'sounds/transition.wav',
+            'heartbeat': 'sounds/heartbeat.mp3',
+            'background': 'sounds/backgroundMusic.wav',
+            'bonus': 'sounds/bonus.wav',
+            'ambient': 'sounds/ambient.wav'
+        };
+        
+        // Preload common UI sounds
+        this.commonSounds = ['menuClick', 'menuSelect', 'select'];
     }
 
     init() {
         if (this.initialized) return;
         
-        // Define all sounds
-        this.load('eat', 'sounds/eat.mp3');
-        this.load('gameOver', 'sounds/gameover.mp3');
-        this.load('gameOverFull', 'sounds/gameoverFull.wav');
-        this.load('powerUp', 'sounds/powerup.wav');
-        this.load('move', 'sounds/click.wav');
-        this.load('select', 'sounds/select.wav');
-        this.load('levelUp', 'sounds/levelup.mp3');
-        this.load('levelComplete', 'sounds/levelcomplete.mp3');
-        this.load('collision', 'sounds/notification.wav');
-        this.load('menuSelect', 'sounds/menuSelect.wav');
-        this.load('menuClick', 'sounds/click.wav');
-        this.load('teleport', 'sounds/transition.wav');
-        this.load('heartbeat', 'sounds/heartbeat.mp3');
-        this.load('background', 'sounds/backgroundMusic.wav');
-        this.load('bonus', 'sounds/bonus.wav');
-        this.load('ambient', 'sounds/ambient.wav');
+        // Preload only essential sounds initially
+        this.commonSounds.forEach(sound => {
+            this.load(sound, this.soundPaths[sound]);
+        });
         
         // Create mute/unmute button
         this.createMuteButton();
@@ -46,9 +54,22 @@ class SoundManager {
         return audio;
     }
     
+    // Load sound on-demand if needed
+    ensureLoaded(name) {
+        // Check if the sound is already loaded
+        if (!this.sounds[name] && this.soundPaths[name]) {
+            // Load it now
+            this.load(name, this.soundPaths[name]);
+        }
+        return this.sounds[name];
+    }
+    
     // Play a sound by name
     play(name, options = {}) {
         if (this.muted) return;
+        
+        // Load the sound if it's not already loaded
+        this.ensureLoaded(name);
         
         const sound = this.sounds[name];
         if (!sound) return;
