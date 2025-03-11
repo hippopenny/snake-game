@@ -2982,8 +2982,6 @@ function drawSafeZone() {
     ctx.font = 'bold 24px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-    ctx.shadowBlur = 5;
     ctx.fillText(
         `SAFE ZONE: ${Math.ceil(remainingTime * SAFE_ZONE_DURATION / 1000)}s`,
         centerX * CELL_SIZE + CELL_SIZE/2,
@@ -3010,7 +3008,7 @@ function drawSafeZone() {
     
     ctx.shadowBlur = 0;
     
-    // Draw a decorative compass-like design in the center
+    // Simplified compass-like design for better performance
     const compassRadius = SAFE_ZONE_RADIUS * CELL_SIZE * 0.2;
     
     // Draw compass circle
@@ -3026,8 +3024,8 @@ function drawSafeZone() {
     ctx.lineWidth = 2;
     ctx.stroke();
     
-    // Draw compass directions
-    const directions = 8;
+    // Draw fewer compass directions for better performance
+    const directions = 4; // Reduced from 8 to 4
     for (let i = 0; i < directions; i++) {
         const angle = (i / directions) * Math.PI * 2;
         const x1 = centerX * CELL_SIZE + CELL_SIZE/2 + Math.cos(angle) * compassRadius * 0.7;
