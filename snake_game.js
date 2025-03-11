@@ -1766,10 +1766,23 @@ function showFoodEffect(food) {
 }
 
 // Update heat map with current positions of all snakes
+// Counter to reduce heat map update frequency
+let heatMapUpdateCounter = 0;
+const HEAT_MAP_UPDATE_INTERVAL = 10; // Update every 10 frames for better performance
+
+// Update heat map with current positions of all snakes
 function updateHeatMap() {
+    // Only update every few frames for better performance
+    if (heatMapUpdateCounter < HEAT_MAP_UPDATE_INTERVAL) {
+        heatMapUpdateCounter++;
+        return;
+    }
+    
+    heatMapUpdateCounter = 0;
+    
     // Decay all heat values
-    for (let x = 0; x < GRID_SIZE; x++) {
-        for (let y = 0; y < GRID_SIZE; y++) {
+    for (let x = 0; x < GRID_SIZE; x += 4) {   // Skip every 4 cells for better performance
+        for (let y = 0; y < GRID_SIZE; y += 4) {
             if (heatMap[x][y] > 0) {
                 heatMap[x][y] *= HEAT_DECAY;
                 if (heatMap[x][y] < 0.1) heatMap[x][y] = 0;
@@ -1779,9 +1792,11 @@ function updateHeatMap() {
     
     // Add heat for current player's snake
     snake.forEach((segment, index) => {
-        const heatValue = index === 0 ? HEAT_MAX : HEAT_MAX * 0.7;
-        if (segment.x >= 0 && segment.x < GRID_SIZE && segment.y >= 0 && segment.y < GRID_SIZE) {
-            heatMap[segment.x][segment.y] = heatValue;
+        if (index % 3 === 0) {  // Process every third segment for performance
+            const heatValue = index === 0 ? HEAT_MAX : HEAT_MAX * 0.7;
+            if (segment.x >= 0 && segment.x < GRID_SIZE && segment.y >= 0 && segment.y < GRID_SIZE) {
+                heatMap[segment.x][segment.y] = heatValue;
+            }
         }
     });
     
@@ -1789,9 +1804,11 @@ function updateHeatMap() {
     for (const id in players) {
         if (id !== playerId && players[id].snake) {
             players[id].snake.forEach((segment, index) => {
-                const heatValue = index === 0 ? HEAT_MAX * 0.8 : HEAT_MAX * 0.5;
-                if (segment.x >= 0 && segment.x < GRID_SIZE && segment.y >= 0 && segment.y < GRID_SIZE) {
-                    heatMap[segment.x][segment.y] = Math.max(heatMap[segment.x][segment.y], heatValue);
+                if (index % 3 === 0) {  // Process every third segment for performance
+                    const heatValue = index === 0 ? HEAT_MAX * 0.8 : HEAT_MAX * 0.5;
+                    if (segment.x >= 0 && segment.x < GRID_SIZE && segment.y >= 0 && segment.y < GRID_SIZE) {
+                        heatMap[segment.x][segment.y] = Math.max(heatMap[segment.x][segment.y], heatValue);
+                    }
                 }
             });
         }
