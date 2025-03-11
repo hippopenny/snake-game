@@ -99,7 +99,7 @@ const POWER_UP_EFFECTS = {
 // Add this after the POWER_UP_EFFECTS constant
 // Particle system for visual effects
 const particles = [];
-const MAX_PARTICLES = 50;
+const MAX_PARTICLES = 15;
 
 // Function to create particles
 function createParticles(x, y, color, count, speed, size, lifetime) {
