@@ -698,6 +698,7 @@ function initGame() {
     
     // Initialize sound system
     if (!soundManager.initialized) {
+        console.log("Initializing sound manager");
         soundManager.init();
     }
     
@@ -708,6 +709,7 @@ function initGame() {
     
     // Only play background music when not in test mode
     if (!window.location.href.includes('test') && !window.location.href.includes('localhost:3000')) {
+        console.log("Playing background music");
         soundManager.playBackgroundMusic();
     }
     
@@ -3144,12 +3146,15 @@ function updatePlayersCount() {
 }
 
 
-startBtn.addEventListener('click', () => {
+startBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    console.log("Start button clicked");
     soundManager.play('menuClick');
     startScreen.style.display = 'none';
     canvas.style.display = 'block';
     if (!gameRunning) {
         initGame();
+        detectTouchDevice(); // Initialize touch controls when the game starts
     }
 });
 
@@ -4219,15 +4224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Call the detection function when the game starts
-startBtn.addEventListener('click', () => {
-    startScreen.style.display = 'none';
-    canvas.style.display = 'block';
-    if (!gameRunning) {
-        initGame();
-        detectTouchDevice(); // Initialize touch controls when the game starts
-    }
-});
+// The click handler for startBtn is already defined earlier in the file
 
 function getPowerUpIcon(type) {
     switch (type) {

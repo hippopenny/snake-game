@@ -72,28 +72,39 @@ class SoundManager {
         this.ensureLoaded(name);
         
         const sound = this.sounds[name];
-        if (!sound) return;
-        
-        // Reset the sound to start from beginning if it's already playing
-        sound.currentTime = 0;
-        
-        // Apply options
-        if (options.volume !== undefined) {
-            sound.volume = options.volume * this.volume;
-        } else {
-            sound.volume = this.volume;
+        if (!sound) {
+            console.log(`Sound not found: ${name}`);
+            return;
         }
         
-        if (options.loop !== undefined) {
-            sound.loop = options.loop;
+        try {
+            // Reset the sound to start from beginning if it's already playing
+            sound.currentTime = 0;
+            
+            // Apply options
+            if (options.volume !== undefined) {
+                sound.volume = options.volume * this.volume;
+            } else {
+                sound.volume = this.volume;
+            }
+            
+            if (options.loop !== undefined) {
+                sound.loop = options.loop;
+            }
+            
+            // Play the sound
+            const playPromise = sound.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.log(`Error playing sound ${name}: ${error.message}`);
+                });
+            }
+            
+            return sound;
+        } catch (error) {
+            console.log(`Exception playing sound ${name}: ${error.message}`);
+            return null;
         }
-        
-        // Play the sound
-        sound.play().catch(error => {
-            console.log(`Error playing sound ${name}: ${error.message}`);
-        });
-        
-        return sound;
     }
     
     // Play background music (loops automatically)
