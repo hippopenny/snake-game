@@ -706,6 +706,9 @@ function initGame() {
     soundManager.ensureLoaded('move');
     soundManager.ensureLoaded('teleport');
     
+    // Start background music
+    soundManager.playBackgroundMusic();
+    
     // Start the snake at a reasonable position in the larger map
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
@@ -1441,8 +1444,8 @@ function checkLevelUp() {
         newLevelDisplay.textContent = `Level: ${level}`;
         levelUpScreen.style.display = 'block';
         
-        // Play level-up sound
-        soundManager.play('levelUp');
+        // Play level-up sound (don't interrupt background music)
+        soundManager.play('levelUp', { volume: 0.7 });
         
         setTimeout(() => {
             levelUpScreen.style.display = 'none';
@@ -1989,6 +1992,9 @@ function cleanupGame() {
     powerUpStatus.style.display = 'none';
     powerUpCountdownContainer.style.display = 'none';
     
+    // Stop all sounds
+    soundManager.stopAll();
+    
     // Clean up joystick if it exists
     if (joystick) {
         joystick.destroy();
@@ -2014,9 +2020,13 @@ function gameOver(reason = 'collision') {
     
     console.log("Game Over called with reason:", reason);
     
-    // Play game over sound - preload the full sound for future use
+    // Stop background music and play game over sound
+    if (soundManager.backgroundMusic) {
+        soundManager.stop('background');
+    }
+    
+    // Play game over sound
     soundManager.play('gameOver');
-    soundManager.ensureLoaded('gameOverFull');
     
     // Store the final snake position to ensure consistency
     const finalPosition = [...snake];
@@ -2116,6 +2126,7 @@ function gameOver(reason = 'collision') {
         setTimeout(() => {
             soundManager.ensureLoaded('levelUp');
             soundManager.ensureLoaded('powerUp');
+            soundManager.ensureLoaded('background');
         }, 1000);
         
         finalScoreDisplay.textContent = `Score: ${score} (Best: ${highestScore})`;

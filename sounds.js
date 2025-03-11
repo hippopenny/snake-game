@@ -7,8 +7,7 @@ class SoundManager {
         this.initialized = false;
         this.soundPaths = {
             'eat': 'sounds/eat.mp3',
-            'gameOver': 'sounds/gameover.mp3',
-            'gameOverFull': 'sounds/gameoverFull.wav',
+            'gameOver': 'sounds/gameoverFull.wav',
             'powerUp': 'sounds/powerup.wav',
             'move': 'sounds/click.wav',
             'select': 'sounds/select.wav',
@@ -24,8 +23,9 @@ class SoundManager {
             'ambient': 'sounds/ambient.wav'
         };
         
-        // Preload common UI sounds
-        this.commonSounds = ['menuClick', 'menuSelect', 'select'];
+        // Preload common UI sounds and background music
+        this.commonSounds = ['menuClick', 'menuSelect', 'select', 'background'];
+        this.backgroundMusic = null; // Store reference to background music
     }
 
     init() {
@@ -94,6 +94,31 @@ class SoundManager {
         });
         
         return sound;
+    }
+    
+    // Play background music (loops automatically)
+    playBackgroundMusic() {
+        if (this.muted) return;
+        
+        // Stop any currently playing background music
+        if (this.backgroundMusic) {
+            this.stop('background');
+        }
+        
+        // Load and play the background music
+        this.ensureLoaded('background');
+        const music = this.sounds['background'];
+        if (!music) return;
+        
+        music.loop = true;
+        music.volume = this.volume * 0.3; // Lower volume for background music
+        
+        music.play().catch(error => {
+            console.log(`Error playing background music: ${error.message}`);
+        });
+        
+        this.backgroundMusic = music;
+        return music;
     }
     
     // Stop a sound
