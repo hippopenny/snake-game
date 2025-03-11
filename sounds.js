@@ -90,6 +90,11 @@ class SoundManager {
             if (!callbackFired && callback) {
                 callbackFired = true;
                 callback();
+                
+                // Dispatch a custom event to notify the loading screen
+                window.dispatchEvent(new CustomEvent('assetLoaded', { 
+                    detail: { sound: name } 
+                }));
             }
         }, { once: true });
         
@@ -99,6 +104,11 @@ class SoundManager {
             if (!callbackFired && callback) {
                 callbackFired = true;
                 callback();
+                
+                // Dispatch an asset loaded event even on error so we don't hang the loading screen
+                window.dispatchEvent(new CustomEvent('assetLoaded', { 
+                    detail: { sound: name, error: true } 
+                }));
             }
         });
         
@@ -107,6 +117,11 @@ class SoundManager {
             if (!callbackFired && callback) {
                 callbackFired = true;
                 callback();
+                
+                // Dispatch an asset loaded event for the fallback case
+                window.dispatchEvent(new CustomEvent('assetLoaded', { 
+                    detail: { sound: name, fallback: true } 
+                }));
             }
         }, 3000);
         

@@ -4574,53 +4574,71 @@ function showLoadingScreen(callback) {
     progressBar.style.transition = 'width 0.3s ease';
     progressContainer.appendChild(progressBar);
 
-    // Simulate loading progress
+    // Use actual asset loading progress
     let progress = 0;
-    const updateProgress = () => {
-        const increment = Math.random() * 15;
-        progress += increment;
-        
-        if (progress > 100) progress = 100;
+    let totalAssets = Object.keys(soundManager.soundPaths).length;
+    let loadedAssets = 0;
+    
+    // Set up a listener for asset loading progress
+    window.addEventListener('assetLoaded', () => {
+        loadedAssets++;
+        progress = Math.min(100, (loadedAssets / totalAssets) * 100);
         progressBar.style.width = `${progress}%`;
         loadingText.textContent = `Loading... ${Math.floor(progress)}%`;
-
-        if (progress < 100) {
-            const delay = 200 + Math.random() * 300;
-            setTimeout(updateProgress, delay);
-        } else {
-            // When loading is complete
-            loadingText.textContent = 'Ready!';
-            if (snakeAnimationInterval) {
-                clearInterval(snakeAnimationInterval);
-            }
-            
-            // Set the global loading state to true
-            gameAssetsLoaded = true;
-            
-            const transitionDelay = 500;
-            
-            setTimeout(() => {
-                // Fade out loading screen
-                loadingScreen.style.transition = 'opacity 0.5s ease';
-                loadingScreen.style.opacity = '0';
-                setTimeout(() => {
-                    if (document.body.contains(loadingScreen)) {
-                        document.body.removeChild(loadingScreen);
-                    }
-                    
-                    // Re-enable the start button
-                    startBtn.disabled = false;
-                    startBtn.style.opacity = "1";
-                    startBtn.style.cursor = "pointer";
-                    
-                    // Execute callback if provided
-                    if (typeof callback === 'function') {
-                        callback();
-                    }
-                }, 500);
-            }, transitionDelay);
+        
+        if (loadedAssets >= totalAssets) {
+            // All assets loaded
+            completeLoading();
         }
-    };
+    });
+    
+    // Start the asset loading
+    soundManager.init();
+    
+    // Set a timeout to ensure we don't wait forever
+    const loadingTimeout = setTimeout(() => {
+        if (progress < 100) {
+            console.log("Loading taking too long, proceeding anyway");
+            completeLoading();
+        }
+    }, 10000); // 10 second timeout
+    
+    // Function to handle completion of loading
+    function completeLoading() {
+        clearTimeout(loadingTimeout);
+        
+        // When loading is complete
+        loadingText.textContent = 'Ready!';
+        if (snakeAnimationInterval) {
+            clearInterval(snakeAnimationInterval);
+        }
+        
+        // Set the global loading state to true
+        gameAssetsLoaded = true;
+        
+        const transitionDelay = 500;
+        
+        setTimeout(() => {
+            // Fade out loading screen
+            loadingScreen.style.transition = 'opacity 0.5s ease';
+            loadingScreen.style.opacity = '0';
+            setTimeout(() => {
+                if (document.body.contains(loadingScreen)) {
+                    document.body.removeChild(loadingScreen);
+                }
+                
+                // Re-enable the start button
+                startBtn.disabled = false;
+                startBtn.style.opacity = "1";
+                startBtn.style.cursor = "pointer";
+                
+                // Execute callback if provided
+                if (typeof callback === 'function') {
+                    callback();
+                }
+            }, 500);
+        }, transitionDelay);
+    }
 
     // Start progress updates
     setTimeout(updateProgress, 500);
