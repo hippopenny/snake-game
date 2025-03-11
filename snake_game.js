@@ -2599,14 +2599,13 @@ function drawEnhancedBackground() {
                 ctx.arc(parallaxX, parallaxY, starSize, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // Add glow to brighter stars
+                // Add glow effect without using shadows
                 if (element.size > 2) {
-                    ctx.shadowColor = element.color;
-                    ctx.shadowBlur = starSize * 2;
+                    const glowColor = element.color.replace(')', ', 0.5)').replace('rgb', 'rgba');
                     ctx.beginPath();
-                    ctx.arc(parallaxX, parallaxY, starSize * 0.5, 0, Math.PI * 2);
+                    ctx.arc(parallaxX, parallaxY, starSize * 0.8, 0, Math.PI * 2);
+                    ctx.fillStyle = glowColor;
                     ctx.fill();
-                    ctx.shadowBlur = 0;
                 }
                 break;
                 
@@ -2948,14 +2947,16 @@ function drawSafeZone() {
         ctx.fillStyle = `rgba(150, 255, 150, ${0.7 * remainingTime})`;
         ctx.fill();
         
-        // Add glow effect
-        ctx.shadowColor = 'rgba(76, 255, 80, 0.8)';
-        ctx.shadowBlur = 10;
+        // Draw glowing particle without shadows
         ctx.beginPath();
-        ctx.arc(x, y, particleSize * 0.6, 0, Math.PI * 2);
+        ctx.arc(x, y, particleSize * 0.8, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(150, 255, 150, 0.6)';
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.arc(x, y, particleSize * 0.4, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(200, 255, 200, 0.8)';
         ctx.fill();
-        ctx.shadowBlur = 0;
         
         // Connect with glowing lines to center
         ctx.beginPath();
@@ -4049,19 +4050,18 @@ function drawMagnetOrbits(x, y) {
         const orbitX = (x * CELL_SIZE + CELL_SIZE / 2) + orbitRadius * Math.cos(angle);
         const orbitY = (y * CELL_SIZE + CELL_SIZE / 2) + orbitRadius * Math.sin(angle);
         
-        // Draw larger, more visible orbiting particles
+        // Draw orbiting particles without glow effect for better performance
         ctx.fillStyle = POWER_UP_EFFECTS.magnet.visualEffect;
         ctx.beginPath();
         ctx.arc(orbitX, orbitY, 4, 0, Math.PI * 2);
         ctx.fill();
         
-        // Add glow effect
-        ctx.shadowColor = POWER_UP_EFFECTS.magnet.visualEffect;
-        ctx.shadowBlur = 8;
+        // Add a second layer for glow-like effect without shadow
+        const glowColor = POWER_UP_EFFECTS.magnet.visualEffect.replace(')', ', 0.4)').replace('rgb', 'rgba');
+        ctx.fillStyle = glowColor;
         ctx.beginPath();
-        ctx.arc(orbitX, orbitY, 3, 0, Math.PI * 2);
+        ctx.arc(orbitX, orbitY, 6, 0, Math.PI * 2);
         ctx.fill();
-        ctx.shadowBlur = 0;
         
         // Connect particles to snake head with faint lines
         ctx.strokeStyle = `rgba(255, 235, 59, 0.4)`;
@@ -4741,11 +4741,10 @@ function drawRock(element) {
     ctx.closePath();
     ctx.fill();
     
-    // Add shadow
-    ctx.shadowColor = 'rgba(0,0,0,0.2)';
-    ctx.shadowBlur = 5;
-    ctx.shadowOffsetX = 3;
-    ctx.shadowOffsetY = 3;
+    // Add dark edge instead of shadow
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
     
     ctx.restore();
 }
