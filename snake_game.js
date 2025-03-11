@@ -2387,7 +2387,7 @@ function drawEnhancedBackground() {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     
-    // Calculate position to display in the center of the viewport
+    // Position to display in the center of the viewport
     const textX = canvas.width / 2;
     const textY = canvas.height / 2;
     
@@ -2395,6 +2395,42 @@ function drawEnhancedBackground() {
     ctx.translate(textX, textY);
     ctx.rotate(Math.PI / 30); // Small angle rotation
     ctx.fillText('Hippo Penny', 0, 0);
+    ctx.restore();
+    
+    // Add "Grok" text in the top-left area
+    ctx.save();
+    ctx.globalAlpha = 0.04; // Very subtle, nearly transparent
+    ctx.font = 'bold 60px Arial';
+    ctx.fillStyle = '#8A2BE2'; // Blue-violet color
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.translate(30, 40);
+    ctx.rotate(-Math.PI / 40); // Slight counter-clockwise rotation
+    ctx.fillText('Grok', 0, 0);
+    ctx.restore();
+    
+    // Add "Wacky Wisher" text in the bottom-right corner
+    ctx.save();
+    ctx.globalAlpha = 0.05; // Very subtle, nearly transparent
+    ctx.font = 'italic bold 45px Arial';
+    ctx.fillStyle = '#FF6347'; // Tomato color
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.translate(canvas.width - 40, canvas.height - 30);
+    ctx.rotate(Math.PI / 25); // Slight clockwise rotation
+    ctx.fillText('Wacky Wisher', 0, 0);
+    ctx.restore();
+    
+    // Add "McDonald" text at the top-right
+    ctx.save();
+    ctx.globalAlpha = 0.04; // Very subtle, nearly transparent
+    ctx.font = 'bold 50px Arial';
+    ctx.fillStyle = '#FFD700'; // Gold color
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.translate(canvas.width - 25, 35);
+    ctx.rotate(Math.PI / 35);
+    ctx.fillText('McDonald', 0, 0);
     ctx.restore();
     
     // Add subtle pulsing to background
