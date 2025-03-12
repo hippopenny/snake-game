@@ -119,6 +119,12 @@ const MAX_PARTICLES = 15;
 
 // Function to create particles
 function createParticles(x, y, color, count, speed, size, lifetime) {
+    if (isMobile) {
+        // Either skip particles entirely or use minimal count
+        if (Math.random() > 0.5) return; // Only create 30% of particles
+        count = Math.min(2, count); // Never more than 2 particles
+    }
+
     // Limit count if we're approaching MAX_PARTICLES
     if (particles.length > MAX_PARTICLES * 0.8) {
         count = Math.min(count, 5); // Reduce particle count when near limit
