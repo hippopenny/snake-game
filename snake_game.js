@@ -2874,24 +2874,24 @@ function generateBasePattern() {
     patternCtx.fillStyle = '#060614';
     patternCtx.fillRect(0, 0, width, height);
     
-    // Add simple stars
-    patternCtx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-    for (let i = 0; i < 50; i++) {
+    // Add simple stars with reduced opacity
+    patternCtx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    for (let i = 0; i < 40; i++) {  // Reduced from 50 to 40 stars
         const x = Math.random() * width;
         const y = Math.random() * height;
-        const size = Math.random() * 1.5 + 0.5;
+        const size = Math.random() * 1.2 + 0.3;  // Reduced size range
         
         patternCtx.beginPath();
         patternCtx.arc(x, y, size, 0, Math.PI * 2);
         patternCtx.fill();
     }
     
-    // Add a few brighter stars
-    patternCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    for (let i = 0; i < 10; i++) {
+    // Add a few brighter stars, but less bright than before
+    patternCtx.fillStyle = 'rgba(255, 255, 255, 0.5)';  // Reduced from 0.8 to 0.5
+    for (let i = 0; i < 7; i++) {  // Reduced from 10 to 7
         const x = Math.random() * width;
         const y = Math.random() * height;
-        const size = Math.random() * 2 + 1;
+        const size = Math.random() * 1.5 + 0.8;  // Reduced max size
         
         patternCtx.beginPath();
         patternCtx.arc(x, y, size, 0, Math.PI * 2);
@@ -2926,8 +2926,8 @@ function updateBackgroundCache() {
     backgroundCache.lastCameraX = camera.x;
     backgroundCache.lastCameraY = camera.y;
     
-    // Clear the background
-    bgCtx.fillStyle = '#0f0f1a';
+    // Clear the background with slightly darker color for better contrast with stars
+    bgCtx.fillStyle = '#0c0c16';
     bgCtx.fillRect(0, 0, canvas.width, canvas.height);
     
     // Calculate pattern offset based on camera position for parallax effect
@@ -2942,25 +2942,25 @@ function updateBackgroundCache() {
     }
     
     // Draw a few larger animated elements for visual interest
-    // Limit to 10-15 elements for performance
+    // Reduced count and opacity for less distraction
     const time = Date.now() / 3000;
-    const elementsCount = isMobile ? 5 : 15;
+    const elementsCount = isMobile ? 3 : 10;  // Reduced from 5:15 to 3:10
     
     for (let i = 0; i < elementsCount; i++) {
         const seed = (i * 123 + Math.floor(time)) % 1000;
         const x = ((seed * 17) % canvas.width);
         const y = ((seed * 13) % canvas.height);
-        const size = 30 + (seed % 30);
+        const size = 25 + (seed % 25);  // Reduced size
         
-        // Simple nebula or cloud effect
+        // Simple nebula or cloud effect with reduced opacity
         const gradient = bgCtx.createRadialGradient(
             x, y, 0,
             x, y, size
         );
         
-        // Use different colors for variety
+        // Use different colors for variety but with reduced saturation and opacity
         const hue = (i * 30 + time * 10) % 360;
-        gradient.addColorStop(0, `hsla(${hue}, 70%, 20%, 0.1)`);
+        gradient.addColorStop(0, `hsla(${hue}, 50%, 20%, 0.07)`);  // Reduced opacity from 0.1 to 0.07
         gradient.addColorStop(1, 'rgba(0,0,0,0)');
         
         bgCtx.fillStyle = gradient;
