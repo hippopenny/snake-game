@@ -913,29 +913,22 @@ function addPacManTeleportTunnels() {
     const roomStartY = centerY - roomSize / 2;
     
     // Create teleport tunnel on the right side of the main room
-    // Reduce tunnel height from 8 to 4 for a narrower opening
-    const tunnelHeight = 4;
     const tunnelY = roomStartY + Math.floor(roomSize / 2);
     
-    // Right tunnel entrance in the room
-    for (let y = tunnelY - tunnelHeight; y <= tunnelY + tunnelHeight; y++) {
-        // Create tunnel opening
-        walls = walls.filter(w => !(w.x === roomStartX + roomSize && w.y === y));
-    }
+    // Right tunnel entrance in the room - just one cell
+    walls = walls.filter(w => !(w.x === roomStartX + roomSize && w.y === tunnelY));
     
-    // Left tunnel entrance to match
-    for (let y = tunnelY - tunnelHeight; y <= tunnelY + tunnelHeight; y++) {
-        // Create tunnel opening
-        walls = walls.filter(w => !(w.x === roomStartX && w.y === y));
-    }
+    // Left tunnel entrance to match - just one cell
+    walls = walls.filter(w => !(w.x === roomStartX && w.y === tunnelY));
+
     
     // Add decorative walls around the teleport areas
     for (let i = 1; i <= 3; i++) {
-        walls.push({x: roomStartX + roomSize + i, y: tunnelY - tunnelHeight - 1});
-        walls.push({x: roomStartX + roomSize + i, y: tunnelY + tunnelHeight + 1});
+        walls.push({x: roomStartX + roomSize + i, y: tunnelY - 1});
+        walls.push({x: roomStartX + roomSize + i, y: tunnelY + 1});
         
-        walls.push({x: roomStartX - i, y: tunnelY - tunnelHeight - 1});
-        walls.push({x: roomStartX - i, y: tunnelY + tunnelHeight + 1});
+        walls.push({x: roomStartX - i, y: tunnelY - 1});
+        walls.push({x: roomStartX - i, y: tunnelY + 1});
     }
 }
 
