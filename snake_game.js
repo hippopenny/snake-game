@@ -55,6 +55,22 @@ let safeZoneActive = false;
 let safeZoneExpiry = 0;
 const SAFE_ZONE_DURATION = 7000; // Safe zone protection lasts 7 seconds
 
+const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+// 1. Completely disable shadows on mobile
+function applyGraphicsSettings() {
+    if (isMobile) {
+        // Replace ALL shadow operations with this empty function
+        const originalShadowBlur = ctx.__proto__.__lookupSetter__('shadowBlur');
+        Object.defineProperty(ctx.__proto__, 'shadowBlur', {
+            set: function(val) { /* Do nothing - shadows disabled */ },
+            get: function() { return 0; }
+        });
+    }
+}
+applyGraphicsSettings();
+
+
 // Add easing function for smoother animations
 function easeInOutCubic(t) {
     return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
