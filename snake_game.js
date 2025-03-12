@@ -304,9 +304,11 @@ function drawBackgroundText() {
     const cameraDeltaX = Math.abs(camera.x - bgTextCache.lastCameraX);
     const cameraDeltaY = Math.abs(camera.y - bgTextCache.lastCameraY);
     
-    if (cameraDeltaX < bgTextCache.cameraThreshold && 
-        cameraDeltaY < bgTextCache.cameraThreshold) {
-        return; // Skip redrawing if camera hasn't moved much
+    // Always draw at least once by forcing redraw if lastCameraX is still at default value
+    if ((cameraDeltaX < bgTextCache.cameraThreshold && 
+        cameraDeltaY < bgTextCache.cameraThreshold) && 
+        bgTextCache.lastCameraX !== 0) {
+        return; // Skip redrawing if camera hasn't moved much and we've drawn before
     }
     
     // Update camera position cache
