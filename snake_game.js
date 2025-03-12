@@ -210,37 +210,37 @@ function initBackgroundTextCache() {
     
     // Define text elements to be rendered
     const textElements = [
-        { text: 'Hippo Penny', size: 80, color: '#ffffff', opacity: 0.05, positions: [
+        { text: 'Hippo Penny', size: 80, color: '#ffffff', opacity: 0.15, positions: [
             { x: 200 * CELL_SIZE, y: 200 * CELL_SIZE, rotation: Math.PI / 30 },
             { x: 75 * CELL_SIZE, y: 75 * CELL_SIZE, rotation: Math.PI / 20 },
             { x: 325 * CELL_SIZE, y: 325 * CELL_SIZE, rotation: -Math.PI / 25 }
         ]},
-        { text: 'Grok', size: 60, color: '#8A2BE2', opacity: 0.04, positions: [
+        { text: 'Grok', size: 80, color: '#8A2BE2', opacity: 0.14, positions: [
             { x: 50 * CELL_SIZE, y: 50 * CELL_SIZE, rotation: -Math.PI / 40 }
         ]},
-        { text: 'Pepsi', size: 70, color: '#0000FF', opacity: 0.05, positions: [
+        { text: 'Pepsi', size: 90, color: '#0000FF', opacity: 0.15, positions: [
             { x: 100 * CELL_SIZE, y: 300 * CELL_SIZE, rotation: Math.PI / 45 }
         ]},
-        { text: 'Suika', size: 65, color: '#50C878', opacity: 0.045, positions: [
+        { text: 'Suika', size: 85, color: '#50C878', opacity: 0.145, positions: [
             { x: 300 * CELL_SIZE, y: 200 * CELL_SIZE, rotation: -Math.PI / 30 }
         ]},
-        { text: 'Wacky Wisher', size: 45, color: '#FF6347', opacity: 0.05, positions: [
+        { text: 'Wacky Wisher', size: 65, color: '#FF6347', opacity: 0.15, positions: [
             { x: 350 * CELL_SIZE, y: 350 * CELL_SIZE, rotation: Math.PI / 25 }
         ]},
-        { text: 'Wacky Warper', size: 50, color: '#FF1493', opacity: 0.04, positions: [
+        { text: 'Wacky Warper', size: 70, color: '#FF1493', opacity: 0.14, positions: [
             { x: 200 * CELL_SIZE, y: 75 * CELL_SIZE, rotation: Math.PI / 35 }
         ]},
-        { text: 'McDonald', size: 50, color: '#FFD700', opacity: 0.04, positions: [
+        { text: 'McDonald', size: 70, color: '#FFD700', opacity: 0.14, positions: [
             { x: 350 * CELL_SIZE, y: 50 * CELL_SIZE, rotation: Math.PI / 35 }
         ]},
         // Add a few more interesting texts
-        { text: 'Pixel Party', size: 55, color: '#9C27B0', opacity: 0.05, positions: [
+        { text: 'Pixel Party', size: 75, color: '#9C27B0', opacity: 0.15, positions: [
             { x: 150 * CELL_SIZE, y: 250 * CELL_SIZE, rotation: Math.PI / 25 }
         ]},
-        { text: 'Cosmic Snake', size: 65, color: '#00BCD4', opacity: 0.04, positions: [
+        { text: 'Cosmic Snake', size: 85, color: '#00BCD4', opacity: 0.14, positions: [
             { x: 250 * CELL_SIZE, y: 150 * CELL_SIZE, rotation: -Math.PI / 20 }
         ]},
-        { text: 'ASCII Dreams', size: 48, color: '#FF9800', opacity: 0.045, positions: [
+        { text: 'ASCII Dreams', size: 68, color: '#FF9800', opacity: 0.145, positions: [
             { x: 370 * CELL_SIZE, y: 230 * CELL_SIZE, rotation: Math.PI / 22 }
         ]}
     ];
@@ -257,6 +257,9 @@ function initBackgroundTextCache() {
             tempCanvas.width = element.size * element.text.length + padding;
             tempCanvas.height = element.size * 2 + padding;
             
+            // Clear canvas with transparent background
+            tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+            
             // Set text properties
             tempCtx.save();
             tempCtx.translate(tempCanvas.width / 2, tempCanvas.height / 2);
@@ -266,6 +269,11 @@ function initBackgroundTextCache() {
             tempCtx.font = `${element.size < 65 ? 'italic' : ''} bold ${element.size}px Arial`;
             tempCtx.textAlign = 'center';
             tempCtx.textBaseline = 'middle';
+            
+            // Draw text stroke for better visibility
+            tempCtx.strokeStyle = 'rgba(0,0,0,0.3)';
+            tempCtx.lineWidth = 2;
+            tempCtx.strokeText(element.text, 0, 0);
             
             // Draw text to the canvas
             tempCtx.fillText(element.text, 0, 0);
@@ -320,6 +328,11 @@ function drawBackgroundText() {
         
         // Draw the pre-rendered text canvas
         ctx.drawImage(item.canvas, item.x, item.y);
+        
+        // Debug: add outline to text area to verify it's being drawn
+        // ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+        // ctx.lineWidth = 2;
+        // ctx.strokeRect(item.x, item.y, item.width, item.height);
     });
     
     ctx.restore();
@@ -2818,7 +2831,9 @@ function drawEnhancedBackground() {
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Draw the cached background texts efficiently
+    // Draw stars or other elements first
+    
+    // Draw the cached background texts on top
     drawBackgroundText();
     
     // Add subtle pulsing to background
