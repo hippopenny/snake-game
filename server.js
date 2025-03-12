@@ -616,8 +616,74 @@ function createRoomStructure() {
         foods.push(food);
     }
     
+    // Add a maze of rooms grid
+    addMazeOfRooms();
+    
     // Add random obstacles outside the safe room
     addRandomObstacles();
+}
+
+// Add a grid-like maze of interconnected rooms
+function addMazeOfRooms() {
+    const gridCells = 4;
+    const roomSpacing = Math.floor(GRID_SIZE / gridCells);
+    const roomSize = Math.floor(roomSpacing * 0.6);
+    
+    // Create a maze of interconnected rooms
+    for (let gridX = 0; gridX < gridCells - 1; gridX++) {
+        for (let gridY = 0; gridY < gridCells - 1; gridY++) {
+            // Skip the center area to avoid interfering with the safe zone
+            if ((gridX === 1 || gridX === 2) && (gridY === 1 || gridY === 2)) continue;
+            
+            const startX = gridX * roomSpacing + Math.floor(roomSpacing * 0.2);
+            const startY = gridY * roomSpacing + Math.floor(roomSpacing * 0.2);
+            
+            // Random door position
+            const doorPositions = ['north', 'east', 'south', 'west'];
+            const primaryDoor = doorPositions[Math.floor(Math.random() * doorPositions.length)];
+            
+            // Create room with just one opening
+            const roomWalls = createRoomWithSmallOpening(startX, startY, roomSize, roomSize, primaryDoor);
+            walls.push(...roomWalls);
+            
+            // Add valuable food inside
+            for (let j = 0; j < 2; j++) {
+                const foodX = Math.floor(startX + Math.random() * (roomSize - 2) + 1);
+                const foodY = Math.floor(startY + Math.random() * (roomSize - 2) + 1);
+                
+                const special = Math.random() < 0.3;
+                let food = generateNewFood();
+                food.x = foodX;
+                food.y = foodY;
+                
+                if (special) {
+                    // Random power-up
+                    const powerUpTypes = ['speed_boost', 'invincibility', 'magnet'];
+                    const randomPowerUp = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+                    food.powerUp = randomPowerUp;
+                    food.duration = 10000;
+                    
+                    switch (randomPowerUp) {
+                        case 'speed_boost':
+                            food.color = '#00BCD4';
+                            break;
+                        case 'invincibility':
+                            food.color = '#9C27B0';
+                            break;
+                        case 'magnet':
+                            food.color = '#FFEB3B';
+                            break;
+                    }
+                } else {
+                    // Just valuable food
+                    food.points = 30;
+                    food.color = '#8BC34A';
+                }
+                
+                foods.push(food);
+            }
+        }
+    }
 }
 
 // Add random obstacles throughout the map
