@@ -9,7 +9,6 @@ class SoundManager {
             'eat': 'sounds/eat.mp3',
             'gameOver': 'sounds/gameover.mp3',
             'powerUp': 'sounds/powerup.wav',
-            'move': 'sounds/click.wav',
             'select': 'sounds/select.wav',
             'levelUp': 'sounds/levelcomplete.mp3',
             'collision': 'sounds/notification.wav',
@@ -52,7 +51,7 @@ class SoundManager {
         };
         
         // Preload only essential sounds for initial startup
-        const essentialSounds = ['menuSelect', 'select', 'move'];
+        const essentialSounds = ['menuSelect', 'select'];
         
         // Load essential sounds immediately
         for (const soundName of essentialSounds) {

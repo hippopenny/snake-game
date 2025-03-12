@@ -4403,8 +4403,6 @@ document.addEventListener('keydown', function(e) {
     
     // Play movement sound if direction has actually changed
     if (oldDirection !== nextDirection) {
-        soundManager.play('move', { volume: 0.3 });
-        console.log(`direction: ${nextDirection}`);
     }
 });
 function drawMagnetOrbits(x, y) {
@@ -4615,103 +4613,6 @@ function setNextDirection(newDirection) {
     }
 }
 
-// // Create settings menu
-// const settingsMenu = document.createElement('div');
-// settingsMenu.id = 'settings-menu';
-// settingsMenu.style.position = 'fixed';
-// settingsMenu.style.top = '50%';
-// settingsMenu.style.left = '50%';
-// settingsMenu.style.transform = 'translate(-50%, -50%)';
-// settingsMenu.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
-// settingsMenu.style.padding = '20px';
-// settingsMenu.style.borderRadius = '10px';
-// settingsMenu.style.zIndex = '2000';
-// settingsMenu.style.color = 'white';
-// settingsMenu.style.fontFamily = 'Arial, sans-serif';
-// settingsMenu.style.width = '300px';
-// settingsMenu.style.boxShadow = '0 0 20px rgba(0, 0, 0, 0.5)';
-// settingsMenu.style.border = '2px solid #4CAF50';
-// settingsMenu.style.display = 'none';
-// document.body.appendChild(settingsMenu);
-
-// Add settings content
-// settingsMenu.innerHTML = `
-//     <h2 style="text-align: center; margin-top: 0; color: #4CAF50;">Game Settings</h2>
-//     <div style="margin: 15px 0;">
-//         <label for="swipe-sensitivity" style="display: block; margin-bottom: 5px;">
-//             Swipe Sensitivity: <span id="sensitivity-value">1.0</span>
-//         </label>
-//         <input type="range" id="swipe-sensitivity" min="0.5" max="1.5" step="0.1" value="1.0" 
-//                style="width: 100%; accent-color: #4CAF50;">
-//         <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 5px;">
-//             <span>Less sensitive</span>
-//             <span>More sensitive</span>
-//         </div>
-//     </div>
-//     <button id="save-settings" style="display: block; width: 100%; padding: 10px; margin-top: 15px; 
-//                                      background-color: #4CAF50; color: white; border: none; 
-//                                      border-radius: 5px; cursor: pointer;">
-//         Save Settings
-//     </button>
-//     <button id="close-settings" style="display: block; width: 100%; padding: 10px; margin-top: 10px; 
-//                                       background-color: #555; color: white; border: none; 
-//                                       border-radius: 5px; cursor: pointer;">
-//         Close
-//     </button>
-// `;
-
-// Initialize settings
-function initSettings() {
-    // Load saved swipe sensitivity
-    const savedSensitivity = localStorage.getItem('snake_swipe_sensitivity') || "1.0";
-    document.getElementById('swipe-sensitivity').value = savedSensitivity;
-    document.getElementById('sensitivity-value').textContent = savedSensitivity;
-    
-    // Update sensitivity label when slider changes
-    document.getElementById('swipe-sensitivity').addEventListener('input', function() {
-        document.getElementById('sensitivity-value').textContent = this.value;
-    });
-    
-    // Save settings
-    document.getElementById('save-settings').addEventListener('click', function() {
-        const sensitivity = document.getElementById('swipe-sensitivity').value;
-        localStorage.setItem('snake_swipe_sensitivity', sensitivity);
-        
-        // Apply changes immediately
-        swipeSensitivity = parseFloat(sensitivity);
-        
-        // Close settings menu
-        settingsMenu.style.display = 'none';
-        
-        // Show confirmation
-        const confirmation = document.createElement('div');
-        confirmation.textContent = 'Settings saved!';
-        confirmation.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(76, 175, 80, 0.9);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
-            z-index: 2000;
-            font-family: Arial, sans-serif;
-        `;
-        document.body.appendChild(confirmation);
-        setTimeout(() => document.body.removeChild(confirmation), 2000);
-    });
-    
-    // Close settings menu
-    document.getElementById('close-settings').addEventListener('click', function() {
-        settingsMenu.style.display = 'none';
-    });
-}
-
-// Open settings menu function
-// function openSettingsMenu() {
-//     settingsMenu.style.display = 'block';
-// }
 
 // Add CSS for mobile controls
 const mobileControlsStyle = document.createElement('style');
@@ -4856,14 +4757,14 @@ const domElements = {
     heartIcon: null
 };
 
+// function initSettings() {
+// }
+
 // Call the detection function when the document is loaded
 document.addEventListener('DOMContentLoaded', () => {
     // Cache all DOM elements for better performance
     cacheDomElements();
-    
-    // Initialize settings
-    initSettings();
-    
+    // initSettings();
     // Show loading screen
     showLoadingScreen();
     
@@ -5130,9 +5031,6 @@ function showLoadingScreen(callback) {
             }, 500);
         }, transitionDelay);
     }
-
-    // Start progress updates
-    setTimeout(updateProgress, 500);
 }
 
 // The click handler for startBtn is already defined earlier in the file
