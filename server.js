@@ -633,8 +633,8 @@ function addRandomObstacles() {
         return Math.sqrt(dx*dx + dy*dy) < SAFE_ZONE_RADIUS * 2.5;
     };
     
-    // Add random rectangular obstacles
-    for (let i = 0; i < 12; i++) {
+    // Add random rectangular obstacles - reduced count to make room for new room types
+    for (let i = 0; i < 8; i++) {
         const obstacleWidth = Math.floor(Math.random() * 15) + 5;
         const obstacleHeight = Math.floor(Math.random() * 15) + 5;
         
@@ -668,6 +668,72 @@ function addRandomObstacles() {
             food.points = 30;
             food.color = '#FFC107';
             foods.push(food);
+        }
+    }
+    
+    // Add rooms with small openings
+    for (let i = 0; i < 6; i++) {
+        const roomWidth = Math.floor(Math.random() * 15) + 10;
+        const roomHeight = Math.floor(Math.random() * 15) + 10;
+        
+        // Place rooms away from the center
+        let roomX, roomY;
+        do {
+            roomX = Math.floor(Math.random() * (GRID_SIZE - roomWidth - 40)) + 20;
+            roomY = Math.floor(Math.random() * (GRID_SIZE - roomHeight - 40)) + 20;
+        } while (isSafe(roomX, roomY));
+        
+        // Choose random door position
+        const doorPositions = ['north', 'east', 'south', 'west'];
+        const doorPosition = doorPositions[Math.floor(Math.random() * doorPositions.length)];
+        
+        // Create room with small opening
+        const roomWalls = createRoomWithSmallOpening(roomX, roomY, roomWidth, roomHeight, doorPosition);
+        walls.push(...roomWalls);
+        
+        // Add some valuable food inside the room
+        for (let j = 0; j < 3; j++) {
+            const foodX = Math.floor(roomX + 1 + Math.random() * (roomWidth - 2));
+            const foodY = Math.floor(roomY + 1 + Math.random() * (roomHeight - 2));
+            
+            let food = generateNewFood();
+            food.x = foodX;
+            food.y = foodY;
+            // Make room food more valuable
+            food.points = 40;
+            food.color = '#FFC107';
+            foods.push(food);
+        }
+        
+        // 30% chance to add a power-up in the room
+        if (Math.random() < 0.3) {
+            const powerUpX = Math.floor(roomX + roomWidth / 2);
+            const powerUpY = Math.floor(roomY + roomHeight / 2);
+            
+            let powerUpFood = generateNewFood();
+            powerUpFood.x = powerUpX;
+            powerUpFood.y = powerUpY;
+            
+            // Randomly select a power-up type
+            const powerUpTypes = ['speed_boost', 'invincibility', 'magnet'];
+            const randomPowerUp = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+            
+            powerUpFood.powerUp = randomPowerUp;
+            powerUpFood.duration = 10000;
+            
+            switch (randomPowerUp) {
+                case 'speed_boost':
+                    powerUpFood.color = '#00BCD4';
+                    break;
+                case 'invincibility':
+                    powerUpFood.color = '#9C27B0';
+                    break;
+                case 'magnet':
+                    powerUpFood.color = '#FFEB3B';
+                    break;
+            }
+            
+            foods.push(powerUpFood);
         }
     }
     
@@ -804,6 +870,48 @@ function addPacManTeleportTunnels() {
         walls.push({x: roomStartX - i, y: tunnelY - tunnelHeight - 1});
         walls.push({x: roomStartX - i, y: tunnelY + tunnelHeight + 1});
     }
+}
+
+// Function to create room with a small 1-cell opening
+function createRoomWithSmallOpening(startX, startY, width, height, doorPosition = 'north', doorOffset = null) {
+    const roomWalls = [];
+    
+    // Calculate door offset if not specified
+    if (doorOffset === null) {
+        // Default door to middle of the wall
+        if (doorPosition === 'north' || doorPosition === 'south') {
+            doorOffset = Math.floor(width / 2);
+        } else {
+            doorOffset = Math.floor(height / 2);
+        }
+    }
+    
+    // Create walls for all four sides of the room with a 1-cell opening
+    for (let i = 0; i < width; i++) {
+        // North wall with gap
+        if (doorPosition !== 'north' || i !== doorOffset) {
+            roomWalls.push({x: startX + i, y: startY});
+        }
+        
+        // South wall with gap
+        if (doorPosition !== 'south' || i !== doorOffset) {
+            roomWalls.push({x: startX + i, y: startY + height - 1});
+        }
+    }
+    
+    for (let i = 0; i < height; i++) {
+        // West wall with gap
+        if (doorPosition !== 'west' || i !== doorOffset) {
+            roomWalls.push({x: startX, y: startY + i});
+        }
+        
+        // East wall with gap
+        if (doorPosition !== 'east' || i !== doorOffset) {
+            roomWalls.push({x: startX + width - 1, y: startY + i});
+        }
+    }
+    
+    return roomWalls;
 }
 
 
