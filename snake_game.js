@@ -536,6 +536,11 @@ socket.onmessage = (event) => {
         }
         if (data.walls) {
             WALLS = data.walls; // Update walls from server
+            
+            // Rebuild wall index when walls are updated
+            if (wallIndex.initialized) {
+                wallIndex.rebuild(WALLS);
+            }
         }
         // Check if our player has a power-up from the server
         if (players[playerId] && players[playerId].activePowerUp) {
@@ -862,6 +867,13 @@ function initGame() {
     if (!soundManager.initialized) {
         console.log("Initializing sound manager");
         soundManager.init();
+    }
+    
+    // Initialize wall cache and spatial index
+    wallCache.init();
+    wallIndex.init();
+    if (WALLS.length > 0) {
+        wallIndex.rebuild(WALLS);
     }
     
     // All sounds are already preloaded during sound manager initialization
@@ -2199,14 +2211,11 @@ function moveSnake() {
     // Check if this is a valid move for speed boosted snake
     // Speed boosted snakes still can't go through other snakes or walls
     if (activePowerUp && activePowerUp.type === 'speed_boost') {
-        // Check collision with walls
-        for (let i = 0; i < WALLS.length; i++) {
-            if (head.x === WALLS[i].x && head.y === WALLS[i].y) {
-                // Return to previous position if we'd hit a wall
-                head.x = snake[0].x;
-                head.y = snake[0].y;
-                break;
-            }
+        // Check collision with walls using spatial index
+        if (wallIndex.initialized && wallIndex.hasWall(head.x, head.y)) {
+            // Return to previous position if we'd hit a wall
+            head.x = snake[0].x;
+            head.y = snake[0].y;
         }
         
         // Check collision with other players' snakes
@@ -2262,10 +2271,14 @@ function checkCollisions() {
     
     // Check wall object collisions - invincibility can bypass this
     if (!(activePowerUp && activePowerUp.type === 'invincibility')) {
-        for (let i = 0; i < WALLS.length; i++) {
-            if (head.x === WALLS[i].x && head.y === WALLS[i].y) {
-                return {collision: true, reason: 'collision', message: 'You crashed into a wall!'};
-            }
+        // Initialize wall index if needed
+        if (!wallIndex.initialized) {
+            wallIndex.init();
+            wallIndex.rebuild(WALLS);
+        }
+        
+        if (wallIndex.hasWall(head.x, head.y)) {
+            return {collision: true, reason: 'collision', message: 'You crashed into a wall!'};
         }
     }
     
@@ -2992,7 +3005,100 @@ function updateBackgroundCache() {
 
 // Wall formation functions removed - now handled by the server
 
+// Wall caching system to improve performance
+const wallCache = {
+    initialized: false,
+    canvas: null,
+    ctx: null,
+    size: CELL_SIZE,
+    init: function() {
+        if (this.initialized) return;
+        
+        // Create offscreen canvas for wall rendering
+        this.canvas = document.createElement('canvas');
+        this.canvas.width = this.size;
+        this.canvas.height = this.size;
+        this.ctx = this.canvas.getContext('2d');
+        
+        // Pre-render wall with 3D effect
+        this.ctx.fillStyle = WALL_COLOR;
+        this.ctx.fillRect(0, 0, this.size, this.size);
+        
+        // Add highlights
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        this.ctx.fillRect(0, 0, this.size, this.size / 4);
+        this.ctx.fillRect(0, 0, this.size / 4, this.size);
+        
+        // Add shadows
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        this.ctx.fillRect(0, this.size - this.size / 4, this.size, this.size / 4);
+        this.ctx.fillRect(this.size - this.size / 4, 0, this.size / 4, this.size);
+        
+        this.initialized = true;
+    }
+};
+
+// Wall spatial index for faster collision detection
+const wallIndex = {
+    grid: null,
+    cellSize: 20, // Grid cell size for spatial indexing
+    initialized: false,
+    
+    init: function() {
+        if (this.initialized) return;
+        this.grid = {};
+        this.initialized = true;
+    },
+    
+    // Add a wall to the spatial index
+    add: function(x, y) {
+        const cellX = Math.floor(x / this.cellSize);
+        const cellY = Math.floor(y / this.cellSize);
+        const key = `${cellX},${cellY}`;
+        
+        if (!this.grid[key]) {
+            this.grid[key] = [];
+        }
+        this.grid[key].push({x, y});
+    },
+    
+    // Check if a position has a wall using spatial index
+    hasWall: function(x, y) {
+        const cellX = Math.floor(x / this.cellSize);
+        const cellY = Math.floor(y / this.cellSize);
+        const key = `${cellX},${cellY}`;
+        
+        if (!this.grid[key]) return false;
+        
+        for (const wall of this.grid[key]) {
+            if (wall.x === x && wall.y === y) {
+                return true;
+            }
+        }
+        return false;
+    },
+    
+    // Rebuild the index from the full wall array
+    rebuild: function(walls) {
+        this.grid = {};
+        for (const wall of walls) {
+            this.add(wall.x, wall.y);
+        }
+    }
+};
+
 function drawWalls() {
+    // Initialize wall cache if needed
+    if (!wallCache.initialized) {
+        wallCache.init();
+    }
+    
+    // Calculate visible grid range
+    const startX = Math.floor(camera.x / CELL_SIZE);
+    const startY = Math.floor(camera.y / CELL_SIZE);
+    const endX = startX + Math.ceil(VIEWPORT_WIDTH / CELL_SIZE) + 1;
+    const endY = startY + Math.ceil(VIEWPORT_HEIGHT / CELL_SIZE) + 1;
+    
     // Only draw walls that are in viewport
     for (const wall of WALLS) {
         const wallX = wall.x * CELL_SIZE;
@@ -3004,19 +3110,8 @@ function drawWalls() {
             continue;
         }
         
-        // Draw wall with 3D effect
-        ctx.fillStyle = WALL_COLOR;
-        ctx.fillRect(wallX, wallY, CELL_SIZE, CELL_SIZE);
-        
-        // Add highlights
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-        ctx.fillRect(wallX, wallY, CELL_SIZE, CELL_SIZE / 4);
-        ctx.fillRect(wallX, wallY, CELL_SIZE / 4, CELL_SIZE);
-        
-        // Add shadows
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-        ctx.fillRect(wallX, wallY + CELL_SIZE - CELL_SIZE / 4, CELL_SIZE, CELL_SIZE / 4);
-        ctx.fillRect(wallX + CELL_SIZE - CELL_SIZE / 4, wallY, CELL_SIZE / 4, CELL_SIZE);
+        // Draw using pre-rendered wall cache
+        ctx.drawImage(wallCache.canvas, wallX, wallY);
     }
 }
 
