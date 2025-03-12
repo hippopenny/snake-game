@@ -195,6 +195,136 @@ function hexToRgb(hex) {
     return `${r}, ${g}, ${b}`;
 }
 
+// Background text cache system
+const bgTextCache = {
+    initialized: false,
+    canvases: [],
+    lastCameraX: 0,
+    lastCameraY: 0,
+    cameraThreshold: 50 // Only redraw when camera moves by this many pixels
+};
+
+// Initialize the text canvases once
+function initBackgroundTextCache() {
+    if (bgTextCache.initialized) return;
+    
+    // Define text elements to be rendered
+    const textElements = [
+        { text: 'Hippo Penny', size: 80, color: '#ffffff', opacity: 0.05, positions: [
+            { x: 200 * CELL_SIZE, y: 200 * CELL_SIZE, rotation: Math.PI / 30 },
+            { x: 75 * CELL_SIZE, y: 75 * CELL_SIZE, rotation: Math.PI / 20 },
+            { x: 325 * CELL_SIZE, y: 325 * CELL_SIZE, rotation: -Math.PI / 25 }
+        ]},
+        { text: 'Grok', size: 60, color: '#8A2BE2', opacity: 0.04, positions: [
+            { x: 50 * CELL_SIZE, y: 50 * CELL_SIZE, rotation: -Math.PI / 40 }
+        ]},
+        { text: 'Pepsi', size: 70, color: '#0000FF', opacity: 0.05, positions: [
+            { x: 100 * CELL_SIZE, y: 300 * CELL_SIZE, rotation: Math.PI / 45 }
+        ]},
+        { text: 'Suika', size: 65, color: '#50C878', opacity: 0.045, positions: [
+            { x: 300 * CELL_SIZE, y: 200 * CELL_SIZE, rotation: -Math.PI / 30 }
+        ]},
+        { text: 'Wacky Wisher', size: 45, color: '#FF6347', opacity: 0.05, positions: [
+            { x: 350 * CELL_SIZE, y: 350 * CELL_SIZE, rotation: Math.PI / 25 }
+        ]},
+        { text: 'Wacky Warper', size: 50, color: '#FF1493', opacity: 0.04, positions: [
+            { x: 200 * CELL_SIZE, y: 75 * CELL_SIZE, rotation: Math.PI / 35 }
+        ]},
+        { text: 'McDonald', size: 50, color: '#FFD700', opacity: 0.04, positions: [
+            { x: 350 * CELL_SIZE, y: 50 * CELL_SIZE, rotation: Math.PI / 35 }
+        ]},
+        // Add a few more interesting texts
+        { text: 'Pixel Party', size: 55, color: '#9C27B0', opacity: 0.05, positions: [
+            { x: 150 * CELL_SIZE, y: 250 * CELL_SIZE, rotation: Math.PI / 25 }
+        ]},
+        { text: 'Cosmic Snake', size: 65, color: '#00BCD4', opacity: 0.04, positions: [
+            { x: 250 * CELL_SIZE, y: 150 * CELL_SIZE, rotation: -Math.PI / 20 }
+        ]},
+        { text: 'ASCII Dreams', size: 48, color: '#FF9800', opacity: 0.045, positions: [
+            { x: 370 * CELL_SIZE, y: 230 * CELL_SIZE, rotation: Math.PI / 22 }
+        ]}
+    ];
+    
+    // Create a canvas for each text position
+    textElements.forEach(element => {
+        element.positions.forEach(position => {
+            // Create canvas sized to contain the text
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            // Set canvas size based on text size (with padding)
+            const padding = element.size * 2;
+            tempCanvas.width = element.size * element.text.length + padding;
+            tempCanvas.height = element.size * 2 + padding;
+            
+            // Set text properties
+            tempCtx.save();
+            tempCtx.translate(tempCanvas.width / 2, tempCanvas.height / 2);
+            tempCtx.rotate(position.rotation);
+            tempCtx.globalAlpha = element.opacity;
+            tempCtx.fillStyle = element.color;
+            tempCtx.font = `${element.size < 65 ? 'italic' : ''} bold ${element.size}px Arial`;
+            tempCtx.textAlign = 'center';
+            tempCtx.textBaseline = 'middle';
+            
+            // Draw text to the canvas
+            tempCtx.fillText(element.text, 0, 0);
+            tempCtx.restore();
+            
+            // Store the pre-rendered text
+            bgTextCache.canvases.push({
+                canvas: tempCanvas,
+                x: position.x - tempCanvas.width / 2,
+                y: position.y - tempCanvas.height / 2,
+                width: tempCanvas.width,
+                height: tempCanvas.height
+            });
+        });
+    });
+    
+    bgTextCache.initialized = true;
+}
+
+// Function to draw background text efficiently
+function drawBackgroundText() {
+    // Initialize cache if needed
+    if (!bgTextCache.initialized) {
+        initBackgroundTextCache();
+    }
+    
+    // Check if we need to redraw (has camera moved enough?)
+    const cameraDeltaX = Math.abs(camera.x - bgTextCache.lastCameraX);
+    const cameraDeltaY = Math.abs(camera.y - bgTextCache.lastCameraY);
+    
+    if (cameraDeltaX < bgTextCache.cameraThreshold && 
+        cameraDeltaY < bgTextCache.cameraThreshold) {
+        return; // Skip redrawing if camera hasn't moved much
+    }
+    
+    // Update camera position cache
+    bgTextCache.lastCameraX = camera.x;
+    bgTextCache.lastCameraY = camera.y;
+    
+    // Draw only the text canvases that would be visible on screen
+    ctx.save();
+    
+    // Apply camera transformation to place texts at fixed world positions
+    ctx.translate(-Math.floor(camera.x), -Math.floor(camera.y));
+    
+    bgTextCache.canvases.forEach(item => {
+        // Check if this text would be visible in the viewport
+        if (item.x + item.width < camera.x || item.x > camera.x + VIEWPORT_WIDTH ||
+            item.y + item.height < camera.y || item.y > camera.y + VIEWPORT_HEIGHT) {
+            return; // Skip drawing this text if not visible
+        }
+        
+        // Draw the pre-rendered text canvas
+        ctx.drawImage(item.canvas, item.x, item.y);
+    });
+    
+    ctx.restore();
+}
+
 let heatMap = [];
 const HEAT_DECAY = 0.92; // Increased decay rate (was 0.98) - Makes heat fade away faster
 const HEAT_MAX = 100; // Maximum heat value
