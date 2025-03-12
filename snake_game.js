@@ -4757,21 +4757,28 @@ const domElements = {
     heartIcon: null
 };
 
-// function initSettings() {
-// }
-
 // Call the detection function when the document is loaded
 document.addEventListener('DOMContentLoaded', () => {
     // Cache all DOM elements for better performance
     cacheDomElements();
-    // initSettings();
-    // Show loading screen
-    showLoadingScreen();
+
+    // // Show loading screen
+    // showLoadingScreen(() => {
+    //     // This callback runs when loading completes
+    //     console.log("Loading completed, starting game automatically");
+    //     startGameHandler(); // Automatically start the game when loading is done
+    // });
     
     // Disable the start button until loading is complete
-    domElements.startBtn.disabled = true;
-    domElements.startBtn.style.opacity = "0.5";
-    domElements.startBtn.style.cursor = "not-allowed";
+    domElements.startBtn.disabled = false;
+    domElements.startBtn.style.opacity = "1";
+    domElements.startBtn.style.cursor = "pointer";
+
+    // Make sure start screen is visible
+    if (domElements.startScreen) {
+        domElements.startScreen.style.display = 'block';
+    }
+    
 });
 
 // Cache all DOM elements for better performance
