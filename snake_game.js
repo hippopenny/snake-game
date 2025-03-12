@@ -201,7 +201,6 @@ const bgTextCache = {
     canvases: [],
     lastCameraX: 0,
     lastCameraY: 0,
-    cameraThreshold: 50 // Only redraw when camera moves by this many pixels
 };
 
 // Initialize the text canvases once
@@ -307,14 +306,7 @@ function drawBackgroundText() {
         initBackgroundTextCache();
     }
     
-    // We should always draw the background text regardless of camera movement
-    // This ensures the text is consistently visible and not blinking
-    
-    // Update camera position cache
-    bgTextCache.lastCameraX = camera.x;
-    bgTextCache.lastCameraY = camera.y;
-    
-    // Draw only the text canvases that would be visible on screen
+    // Draw text canvases that are visible on screen, every frame
     ctx.save();
     
     // Apply camera transformation to place texts at fixed world positions
@@ -332,11 +324,6 @@ function drawBackgroundText() {
         
         // Draw the pre-rendered text canvas
         ctx.drawImage(item.canvas, item.x, item.y);
-        
-        // Debug: add outline to text area to verify it's being drawn
-        // ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-        // ctx.lineWidth = 2;
-        // ctx.strokeRect(item.x, item.y, item.width, item.height);
     });
     
     ctx.restore();
