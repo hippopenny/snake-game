@@ -56,18 +56,22 @@ const SAFE_ZONE_DURATION = 7000; // Safe zone protection lasts 7 seconds
 
 const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-// 1. Completely disable shadows on mobile
+// 1. Completely disable shadows on mobile - will be called after ctx is initialized
 function applyGraphicsSettings() {
-    if (isMobile) {
-        // Replace ALL shadow operations with this empty function
-        const originalShadowBlur = ctx.__proto__.__lookupSetter__('shadowBlur');
-        Object.defineProperty(ctx.__proto__, 'shadowBlur', {
-            set: function(val) { /* Do nothing - shadows disabled */ },
-            get: function() { return 0; }
-        });
+    if (isMobile && ctx) {
+        try {
+            // Replace ALL shadow operations with this empty function
+            const originalShadowBlur = ctx.__proto__.__lookupSetter__('shadowBlur');
+            Object.defineProperty(ctx.__proto__, 'shadowBlur', {
+                set: function(val) { /* Do nothing - shadows disabled */ },
+                get: function() { return 0; }
+            });
+        } catch (e) {
+            console.log("Failed to modify canvas shadows:", e);
+        }
     }
 }
-applyGraphicsSettings();
+// Will call this after canvas is initialized
 
 
 // Add easing function for smoother animations
@@ -835,6 +839,9 @@ const ctx = canvas.getContext('2d');
 // Set canvas size based on viewport dimensions
 canvas.width = VIEWPORT_WIDTH;
 canvas.height = VIEWPORT_HEIGHT;
+
+// Now that ctx is initialized, apply graphics settings
+applyGraphicsSettings();
 
 // Initialize leaderboard when the document is loaded
 document.addEventListener('DOMContentLoaded', () => {
@@ -3644,8 +3651,9 @@ function updatePlayersCount() {
 }
 
 
-startBtn.addEventListener('click', function(e) {
-    e.preventDefault();
+// Add both click and touch handlers for better mobile compatibility
+function startGameHandler(e) {
+    if (e) e.preventDefault();
     
     // Prevent starting the game if button is disabled
     if (startBtn.disabled) {
@@ -3675,12 +3683,27 @@ startBtn.addEventListener('click', function(e) {
             detectTouchDevice(); // Initialize touch controls when the game starts
         }
     }
+}
+
+// Add both regular click and touch events for the start button
+startBtn.addEventListener('click', startGameHandler);
+startBtn.addEventListener('touchend', function(e) {
+    e.preventDefault();
+    startGameHandler(e);
 });
 
-restartBtn.addEventListener('click', () => {
+function restartGameHandler(e) {
+    if (e) e.preventDefault();
     soundManager.play('menuSelect');
     gameOverScreen.style.display = 'none';
     initGame();
+}
+
+// Add both regular click and touch events for the restart button
+restartBtn.addEventListener('click', restartGameHandler);
+restartBtn.addEventListener('touchend', function(e) {
+    e.preventDefault();
+    restartGameHandler(e);
 });
 
 function checkPowerUpExpiration() {
