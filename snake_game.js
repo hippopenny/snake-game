@@ -1899,11 +1899,48 @@ function sendPlayerState() {
     }
 }
 
+// Function to check for food collision and handle food consumption 
+function checkAndEatFood() {
+    // Check for food collisions
+    for (let i = 0; i < foods.length; i++) {
+        const food = foods[i];
+        if (snake[0].x === food.x && snake[0].y === food.y) {
+            // Food was eaten
+            score += food.points;
+            
+            // Track significant scores
+            if (food.points >= 10) {
+                trackBestScore(food.x, food.y, food.points);
+            }
+            
+            // Restore hunger when food is eaten
+            hungerTimer = Math.min(MAX_HUNGER, hungerTimer + (food.points * 0.8));
+            updateHungerBar();
+            
+            showFoodEffect(food);
+            
+            // Notify server about the eaten food
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'foodEaten',
+                    id: playerId,
+                    foodIndex: i
+                }));
+            }
+            
+            updateScoreAndLevel();
+            checkLevelUp();
+            
+            return true; // Food was eaten
+        }
+    }
+    return false; // No food eaten
+}
+
 function gameStep() {
     direction = nextDirection;
     
     // Calculate hunger rate based on game speed and level
-    // Increase hunger rate by 2x and scale with game speed
     const baseHungerRate = 0.2; // Reduced from 0.3 to slow down hunger depletion
     const speedFactor = baseGameSpeed / gameSpeed; // Faster game = faster hunger
     const hungerRate = baseHungerRate * speedFactor;
@@ -1932,14 +1969,13 @@ function gameStep() {
     // Always move the snake in game step
     moveSnake();
     
-    // If speed boost is active, move the snake again immediately
-    // This effectively doubles the speed of movement
+    // Check for food after first move
+    let foodEatenFirstMove = checkAndEatFood();
+    
+    // If speed boost is active, make second movement
     if (activePowerUp && activePowerUp.type === 'speed_boost') {
-        // Store whether we're going to eat food on this move
-        const willEatFood = foods.some(food => snake[0].x === food.x && snake[0].y === food.y);
-        
-        // Remove tail for the second movement unless food will be eaten
-        if (!willEatFood) {
+        // Remove tail for the second movement unless food was eaten
+        if (!foodEatenFirstMove) {
             snake.pop();
         }
         
@@ -1954,56 +1990,16 @@ function gameStep() {
         gameOver(collisionResult.reason);
         return;
     }
-        
-    // Initialize mobile controls if needed
-    detectTouchDevice();
-        
-    // Check for food collisions
-    let foodEaten = false;
     
-    // Check each food to see if the snake head collides with it
-    for (let i = 0; i < foods.length; i++) {
-        const food = foods[i];
-        if (snake[0].x === food.x && snake[0].y === food.y) {
-            // Food was eaten
-            foodEaten = true;
-            
-            // Update score and show effects
-            score += food.points;
-            
-            // Track significant scores
-            if (food.points >= 10) {
-                trackBestScore(food.x, food.y, food.points);
-            }
-            
-            // Restore hunger when food is eaten
-            hungerTimer = Math.min(MAX_HUNGER, hungerTimer + (food.points * 0.8));
-            updateHungerBar();
-            
-            showFoodEffect(food);
-            
-            // Notify server about the eaten food
-            if (socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: 'foodEaten',
-                    id: playerId,
-                    foodIndex: i
-                }));
-            }
-            
-            updateScoreAndLevel();
-            checkLevelUp();
-            
-            break; // Exit the loop after eating one food
-        }
+    // Check for food collisions after all movements
+    let foodEatenSecondMove = false;
+    if (activePowerUp && activePowerUp.type === 'speed_boost') {
+        foodEatenSecondMove = checkAndEatFood();
     }
     
-    if (!foodEaten) {
-        // Only remove the tail if no food was eaten
+    // Remove tail if no food was eaten in any move
+    if (!foodEatenFirstMove && !foodEatenSecondMove) {
         snake.pop();
-    } else {
-        // If food was eaten during speed boost, we don't need to grow twice
-        // The extra segment was already added by not removing the tail in the speed boost second move
     }
     
     // Update heat map with current snake position
