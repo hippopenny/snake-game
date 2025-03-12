@@ -36,14 +36,13 @@ const FRAME_INTERVAL = 1000 / FIXED_FRAME_RATE; // ~16.7ms between frames
 let frameAccumulator = 0;
 let interpolationAlpha = 0; // Current interpolation factor
 
-// Parallax background layers
-const BACKGROUND_LAYERS = [
-    { color: '#0d0d2a', speed: 0.05, elements: 150, size: [1, 3], type: 'star' },
-    { color: '#1a1a4f', speed: 0.1, elements: 80, size: [2, 4], type: 'star' },
-    { color: '#7251b5', speed: 0.15, elements: 40, size: [3, 6], type: 'nebula' },
-    { color: '#34346e', speed: 0.2, elements: 15, size: [80, 120], type: 'cloud' }
-];
-let backgroundElements = [];
+// Background configuration (simplified for cached approach)
+const BACKGROUND_CONFIG = {
+    baseColor: '#0f0f1a',
+    starColor: '#ffffff',
+    nebulaColors: ['#7251b5', '#34346e', '#1a1a4f']
+};
+let backgroundElements = []; // Keeping for compatibility
 
 // Wall configuration
 let WALLS = []; // Changed to let so it can be updated from server
@@ -2735,28 +2734,13 @@ const DECORATIVE_TYPES = [
 ];
 
 function initBackgroundElements() {
-    backgroundElements = [];
-    
-    BACKGROUND_LAYERS.forEach(layer => {
-        for (let i = 0; i < layer.elements; i++) {
-            const element = {
-                x: Math.random() * (GRID_SIZE * CELL_SIZE * 1.5) - (GRID_SIZE * CELL_SIZE * 0.25),
-                y: Math.random() * (GRID_SIZE * CELL_SIZE * 1.5) - (GRID_SIZE * CELL_SIZE * 0.25),
-                size: Math.random() * (layer.size[1] - layer.size[0]) + layer.size[0],
-                color: layer.color,
-                speed: layer.speed,
-                type: layer.type,
-                opacity: Math.random() * 0.5 + 0.5,
-                rotation: Math.random() * Math.PI * 2
-            };
-            backgroundElements.push(element);
-        }
-    });
+    // We're not using backgroundElements with the new cached background approach
+    // But we'll still initialize the text cache and decorative elements
     
     // Initialize background text cache system
     initBackgroundTextCache();
     
-    // Initialize decorative elements across the map
+    // Initialize decorative elements across the map (important for gameplay)
     generateDecorativeElements();
 }
 
@@ -2811,153 +2795,193 @@ function generateDecorativeElements() {
     }
 }
 
+// Static background canvas for caching the background
+let backgroundCache = {
+    canvas: null,
+    ctx: null,
+    lastCameraX: 0,
+    lastCameraY: 0,
+    updateInterval: 5, // Only update every 5 frames
+    frameCounter: 0,
+    patternCanvas: null,
+    patternCtx: null
+};
+
 function drawEnhancedBackground() {
-    // Base dark gradient background
-    const gradient = ctx.createRadialGradient(
-        canvas.width / 2, canvas.height / 2, 0,
-        canvas.width / 2, canvas.height / 2, canvas.width
+    // Initialize background cache if needed
+    if (!backgroundCache.canvas) {
+        initBackgroundCache();
+    }
+    
+    // Only update background when camera has moved significantly or on periodic refreshes
+    const cameraDist = Math.sqrt(
+        Math.pow(backgroundCache.lastCameraX - camera.x, 2) + 
+        Math.pow(backgroundCache.lastCameraY - camera.y, 2)
     );
-    gradient.addColorStop(0, '#0f0f1a');
-    gradient.addColorStop(1, '#060614');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Draw stars or other elements first
+    if (cameraDist > 10 || backgroundCache.frameCounter >= backgroundCache.updateInterval) {
+        updateBackgroundCache();
+        backgroundCache.frameCounter = 0;
+    } else {
+        backgroundCache.frameCounter++;
+    }
     
-    // Force initialize background text cache
+    // Draw the cached background
+    ctx.drawImage(backgroundCache.canvas, 0, 0, canvas.width, canvas.height);
+    
+    // Force initialize background text cache for big texts
     if (!bgTextCache.initialized) {
         initBackgroundTextCache();
     }
     
-    // Draw the cached background texts on top with higher visibility
+    // Draw the cached background texts on top
     drawBackgroundText();
+}
+
+function initBackgroundCache() {
+    // Create canvas for background cache
+    backgroundCache.canvas = document.createElement('canvas');
+    backgroundCache.canvas.width = canvas.width;
+    backgroundCache.canvas.height = canvas.height;
+    backgroundCache.ctx = backgroundCache.canvas.getContext('2d');
     
-    // Add subtle pulsing to background
-    const pulseIntensity = 0.03 * Math.sin(Date.now() / 3000);
+    // Create a small canvas for the repeating pattern
+    backgroundCache.patternCanvas = document.createElement('canvas');
+    backgroundCache.patternCanvas.width = 200;
+    backgroundCache.patternCanvas.height = 200;
+    backgroundCache.patternCtx = backgroundCache.patternCanvas.getContext('2d');
     
-    // Draw background elements with enhanced parallax effect
-    backgroundElements.forEach(element => {
-        // Calculate parallax position based on camera movement with enhanced effect
-        const parallaxX = element.x - (camera.x * (element.speed * (1 + pulseIntensity)));
-        const parallaxY = element.y - (camera.y * (element.speed * (1 + pulseIntensity)));
-        
-        // Skip if not in viewport
-        if (parallaxX + element.size < 0 || parallaxX > canvas.width ||
-            parallaxY + element.size < 0 || parallaxY > canvas.height) {
-            return;
-        }
-        
-        ctx.save();
-        
-        // Draw based on element type with enhanced effects
-        switch(element.type) {
-            case 'star':
-                // Add pulsing to stars
-                const starPulse = 1 + 0.2 * Math.sin(Date.now() / 1000 + element.x * element.y);
-                const starSize = element.size * starPulse;
-                
-                ctx.fillStyle = `rgba(${hexToRgb(element.color)}, ${element.opacity})`;
-                ctx.beginPath();
-                ctx.arc(parallaxX, parallaxY, starSize, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Add glow effect without using shadows
-                if (element.size > 2) {
-                    const glowColor = element.color.replace(')', ', 0.5)').replace('rgb', 'rgba');
-                    ctx.beginPath();
-                    ctx.arc(parallaxX, parallaxY, starSize * 0.8, 0, Math.PI * 2);
-                    ctx.fillStyle = glowColor;
-                    ctx.fill();
-                }
-                break;
-                
-            case 'nebula':
-                // Create a more dynamic nebula effect
-                const nebulaGrad = ctx.createRadialGradient(
-                    parallaxX, parallaxY, 0,
-                    parallaxX, parallaxY, element.size
-                );
-                nebulaGrad.addColorStop(0, `rgba(${hexToRgb(element.color)}, ${element.opacity * (1 + pulseIntensity)})`);
-                nebulaGrad.addColorStop(1, 'rgba(0,0,0,0)');
-                    
-                ctx.fillStyle = nebulaGrad;
-                ctx.beginPath();
-                ctx.arc(parallaxX, parallaxY, element.size * (1 + pulseIntensity), 0, Math.PI * 2);
-                ctx.fill();
-                break;
-                
-            case 'cloud':
-                ctx.translate(parallaxX, parallaxY);
-                // Add slow rotation to clouds
-                const cloudRotation = element.rotation + (Date.now() / 30000);
-                ctx.rotate(cloudRotation);
-                ctx.fillStyle = `rgba(${hexToRgb(element.color)}, ${element.opacity * 0.3})`;
-                
-                // Draw cloud shape
-                ctx.beginPath();
-                for (let i = 0; i < 3; i++) {
-                    ctx.ellipse(
-                        (i - 1) * element.size * 0.3, 
-                        Math.sin(i + Date.now()/5000) * element.size * 0.1, 
-                        element.size * 0.4, 
-                        element.size * 0.2, 
-                        0, 0, Math.PI * 2
-                    );
-                }
-                ctx.fill();
-                break;
-        }
-        
-        ctx.restore();
-    });
+    // Generate the base pattern just once
+    generateBasePattern();
     
-    // Draw cosmic web pattern with swirling lines and connecting nodes
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
-    ctx.lineWidth = 1;
+    // Force first update
+    updateBackgroundCache();
+}
+
+function generateBasePattern() {
+    const patternCtx = backgroundCache.patternCtx;
+    const width = backgroundCache.patternCanvas.width;
+    const height = backgroundCache.patternCanvas.height;
     
-    // Create a pseudo-random pattern that appears consistent when scrolling
-    const seed = Math.floor(camera.x * 0.01) + Math.floor(camera.y * 0.01) * 100;
-    const gridSize = 180;
-    const offsetX = -camera.x * 0.1 % gridSize;
-    const offsetY = -camera.y * 0.1 % gridSize;
+    // Clear the pattern canvas
+    patternCtx.fillStyle = '#060614';
+    patternCtx.fillRect(0, 0, width, height);
     
-    // Draw flowing cosmic web threads
-    for (let i = 0; i < 10; i++) {
-        const loopSeed = (seed + i * 123) % 1000;
-        ctx.beginPath();
+    // Add simple stars
+    patternCtx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    for (let i = 0; i < 50; i++) {
+        const x = Math.random() * width;
+        const y = Math.random() * height;
+        const size = Math.random() * 1.5 + 0.5;
         
-        // Create flowing curves that move through the viewport
-        let x = ((loopSeed * 7) % canvas.width) + offsetX;
-        let y = ((loopSeed * 13) % canvas.height) + offsetY;
-        ctx.moveTo(x, y);
-        
-        // Add curved segments to create flowing lines
-        for (let j = 0; j < 5; j++) {
-            const nextX = x + Math.sin((loopSeed + j * 50) / 100) * 100;
-            const nextY = y + Math.cos((loopSeed + j * 70) / 100) * 100;
-            const cpX1 = x + Math.sin((loopSeed + j * 20) / 100) * 50;
-            const cpY1 = y + Math.cos((loopSeed + j * 30) / 100) * 50;
-            const cpX2 = nextX - Math.sin((loopSeed + j * 40) / 100) * 50;
-            const cpY2 = nextY - Math.cos((loopSeed + j * 60) / 100) * 50;
-            
-            ctx.bezierCurveTo(cpX1, cpY1, cpX2, cpY2, nextX, nextY);
-            x = nextX;
-            y = nextY;
-        }
-        ctx.stroke();
+        patternCtx.beginPath();
+        patternCtx.arc(x, y, size, 0, Math.PI * 2);
+        patternCtx.fill();
     }
     
-    // Add connection nodes at intersections
-    for (let i = 0; i < 15; i++) {
-        const nodeSeed = (seed + i * 321) % 1000;
-        const x = ((nodeSeed * 11) % canvas.width) + offsetX;
-        const y = ((nodeSeed * 17) % canvas.height) + offsetY;
-        const size = 1 + (nodeSeed % 3);
+    // Add a few brighter stars
+    patternCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    for (let i = 0; i < 10; i++) {
+        const x = Math.random() * width;
+        const y = Math.random() * height;
+        const size = Math.random() * 2 + 1;
         
-        ctx.beginPath();
-        ctx.arc(x, y, size, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-        ctx.fill();
+        patternCtx.beginPath();
+        patternCtx.arc(x, y, size, 0, Math.PI * 2);
+        patternCtx.fill();
+    }
+    
+    // Add simple grid lines for visual texture
+    patternCtx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+    patternCtx.lineWidth = 1;
+    
+    // Horizontal lines
+    for (let i = 0; i < height; i += 20) {
+        patternCtx.beginPath();
+        patternCtx.moveTo(0, i);
+        patternCtx.lineTo(width, i);
+        patternCtx.stroke();
+    }
+    
+    // Vertical lines
+    for (let i = 0; i < width; i += 20) {
+        patternCtx.beginPath();
+        patternCtx.moveTo(i, 0);
+        patternCtx.lineTo(i, height);
+        patternCtx.stroke();
+    }
+}
+
+function updateBackgroundCache() {
+    const bgCtx = backgroundCache.ctx;
+    
+    // Store current camera position
+    backgroundCache.lastCameraX = camera.x;
+    backgroundCache.lastCameraY = camera.y;
+    
+    // Clear the background
+    bgCtx.fillStyle = '#0f0f1a';
+    bgCtx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Calculate pattern offset based on camera position for parallax effect
+    const patternOffsetX = (camera.x * 0.1) % backgroundCache.patternCanvas.width;
+    const patternOffsetY = (camera.y * 0.1) % backgroundCache.patternCanvas.height;
+    
+    // Draw tiled pattern with parallax effect
+    for (let y = -patternOffsetY; y < canvas.height; y += backgroundCache.patternCanvas.height) {
+        for (let x = -patternOffsetX; x < canvas.width; x += backgroundCache.patternCanvas.width) {
+            bgCtx.drawImage(backgroundCache.patternCanvas, x, y);
+        }
+    }
+    
+    // Draw a few larger animated elements for visual interest
+    // Limit to 10-15 elements for performance
+    const time = Date.now() / 3000;
+    const elementsCount = isMobile ? 5 : 15;
+    
+    for (let i = 0; i < elementsCount; i++) {
+        const seed = (i * 123 + Math.floor(time)) % 1000;
+        const x = ((seed * 17) % canvas.width);
+        const y = ((seed * 13) % canvas.height);
+        const size = 30 + (seed % 30);
+        
+        // Simple nebula or cloud effect
+        const gradient = bgCtx.createRadialGradient(
+            x, y, 0,
+            x, y, size
+        );
+        
+        // Use different colors for variety
+        const hue = (i * 30 + time * 10) % 360;
+        gradient.addColorStop(0, `hsla(${hue}, 70%, 20%, 0.1)`);
+        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+        
+        bgCtx.fillStyle = gradient;
+        bgCtx.beginPath();
+        bgCtx.arc(x, y, size, 0, Math.PI * 2);
+        bgCtx.fill();
+    }
+    
+    // Add minimal cosmic web lines (only 5 lines instead of 10)
+    bgCtx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
+    bgCtx.lineWidth = 1;
+    
+    for (let i = 0; i < 5; i++) {
+        const seed = (i * 345 + Math.floor(time * 0.5)) % 1000;
+        const startX = (seed * 7) % canvas.width;
+        const startY = (seed * 11) % canvas.height;
+        
+        bgCtx.beginPath();
+        bgCtx.moveTo(startX, startY);
+        
+        // Simpler lines - only 2 segments instead of 5
+        for (let j = 0; j < 2; j++) {
+            const endX = startX + Math.cos(seed + j) * 150;
+            const endY = startY + Math.sin(seed + j) * 150;
+            bgCtx.lineTo(endX, endY);
+        }
+        
+        bgCtx.stroke();
     }
 }
 
