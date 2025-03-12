@@ -913,7 +913,8 @@ function addPacManTeleportTunnels() {
     const roomStartY = centerY - roomSize / 2;
     
     // Create teleport tunnel on the right side of the main room
-    const tunnelHeight = 8;
+    // Reduce tunnel height from 8 to 4 for a narrower opening
+    const tunnelHeight = 4;
     const tunnelY = roomStartY + Math.floor(roomSize / 2);
     
     // Right tunnel entrance in the room
