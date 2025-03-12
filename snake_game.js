@@ -2619,6 +2619,9 @@ function initBackgroundElements() {
         }
     });
     
+    // Initialize background text cache system
+    initBackgroundTextCache();
+    
     // Initialize decorative elements across the map
     generateDecorativeElements();
 }
@@ -2685,132 +2688,8 @@ function drawEnhancedBackground() {
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Draw the texts at fixed positions in the world coordinates
-    ctx.save();
-    
-    // Apply camera transformation to place texts at fixed world positions
-    ctx.translate(-Math.floor(camera.x), -Math.floor(camera.y));
-    
-    // "Hippo Penny" text at multiple locations
-    ctx.globalAlpha = 0.05;
-    ctx.font = 'bold 80px Arial';
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    
-    // Center Hippo Penny
-    let hippoPennyX = 200 * CELL_SIZE;
-    let hippoPennyY = 200 * CELL_SIZE;
-    ctx.save();
-    ctx.translate(hippoPennyX, hippoPennyY);
-    ctx.rotate(Math.PI / 30);
-    ctx.fillText('Hippo Penny', 0, 0);
-    ctx.restore();
-    
-    // Top-left Hippo Penny
-    hippoPennyX = 75 * CELL_SIZE;
-    hippoPennyY = 75 * CELL_SIZE;
-    ctx.save();
-    ctx.translate(hippoPennyX, hippoPennyY);
-    ctx.rotate(Math.PI / 20);
-    ctx.fillText('Hippo Penny', 0, 0);
-    ctx.restore();
-    
-    // Bottom-right Hippo Penny
-    hippoPennyX = 325 * CELL_SIZE;
-    hippoPennyY = 325 * CELL_SIZE;
-    ctx.save();
-    ctx.translate(hippoPennyX, hippoPennyY);
-    ctx.rotate(-Math.PI / 25);
-    ctx.fillText('Hippo Penny', 0, 0);
-    ctx.restore();
-    
-    // "Grok" text at top-left area of the map
-    ctx.globalAlpha = 0.04;
-    ctx.font = 'bold 60px Arial';
-    ctx.fillStyle = '#8A2BE2'; // Blue-violet color
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    const grokX = 50 * CELL_SIZE;
-    const grokY = 50 * CELL_SIZE;
-    ctx.save();
-    ctx.translate(grokX, grokY);
-    ctx.rotate(-Math.PI / 40);
-    ctx.fillText('Grok', 0, 0);
-    ctx.restore();
-    
-    // "Pepsi" text at bottom-left area of the map
-    ctx.globalAlpha = 0.05;
-    ctx.font = 'bold 70px Arial';
-    ctx.fillStyle = '#0000FF'; // Blue color
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'bottom';
-    const pepsiX = 100 * CELL_SIZE;
-    const pepsiY = 300 * CELL_SIZE;
-    ctx.save();
-    ctx.translate(pepsiX, pepsiY);
-    ctx.rotate(Math.PI / 45);
-    ctx.fillText('Pepsi', 0, 0);
-    ctx.restore();
-    
-    // "Suika" text at middle-right area of the map
-    ctx.globalAlpha = 0.045;
-    ctx.font = 'bold 65px Arial';
-    ctx.fillStyle = '#50C878'; // Emerald green color
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'middle';
-    const suikaX = 300 * CELL_SIZE;
-    const suikaY = 200 * CELL_SIZE;
-    ctx.save();
-    ctx.translate(suikaX, suikaY);
-    ctx.rotate(-Math.PI / 30);
-    ctx.fillText('Suika', 0, 0);
-    ctx.restore();
-    
-    // "Wacky Wisher" text at bottom-right area of the map
-    ctx.globalAlpha = 0.05;
-    ctx.font = 'italic bold 45px Arial';
-    ctx.fillStyle = '#FF6347'; // Tomato color
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'bottom';
-    const wackyX = 350 * CELL_SIZE;
-    const wackyY = 350 * CELL_SIZE;
-    ctx.save();
-    ctx.translate(wackyX, wackyY);
-    ctx.rotate(Math.PI / 25);
-    ctx.fillText('Wacky Wisher', 0, 0);
-    ctx.restore();
-    
-    // "Wacky Warper" text at top-center area of the map
-    ctx.globalAlpha = 0.04;
-    ctx.font = 'italic bold 50px Arial';
-    ctx.fillStyle = '#FF1493'; // Deep pink color
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    const warperX = 200 * CELL_SIZE;
-    const warperY = 75 * CELL_SIZE;
-    ctx.save();
-    ctx.translate(warperX, warperY);
-    ctx.rotate(Math.PI / 35);
-    ctx.fillText('Wacky Warper', 0, 0);
-    ctx.restore();
-    
-    // "McDonald" text at top-right area of the map
-    ctx.globalAlpha = 0.04;
-    ctx.font = 'bold 50px Arial';
-    ctx.fillStyle = '#FFD700'; // Gold color
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'top';
-    const mcdonaldX = 350 * CELL_SIZE;
-    const mcdonaldY = 50 * CELL_SIZE;
-    ctx.save();
-    ctx.translate(mcdonaldX, mcdonaldY);
-    ctx.rotate(Math.PI / 35);
-    ctx.fillText('McDonald', 0, 0);
-    ctx.restore();
-    
-    // Restore the context to remove translation
-    ctx.restore();
+    // Draw the cached background texts efficiently
+    drawBackgroundText();
     
     // Add subtle pulsing to background
     const pulseIntensity = 0.03 * Math.sin(Date.now() / 3000);
