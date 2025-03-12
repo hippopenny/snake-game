@@ -4045,14 +4045,6 @@ function showSnakeEatenEffect(otherPlayerId, points) {
 
 function updateHungerBar() {
     const percentage = (hungerTimer / MAX_HUNGER) * 100;
-    
-    // Get cached DOM elements
-    const hungerClock = domElements.hungerClock;
-    const heartIcon = domElements.heartIcon;
-    const heartContainer = domElements.heartContainer;
-    
-    if (!hungerClock || !heartIcon || !heartContainer) return;
-    
     const clockCtx = hungerClock.getContext('2d');
     const centerX = hungerClock.width / 2;
     const centerY = hungerClock.height / 2;
@@ -4121,22 +4113,18 @@ function updateHungerBar() {
             heartIcon.style.animation = 'heart-pulse 0.6s infinite alternate';
             heartContainer.style.animation = 'container-pulse 0.6s infinite alternate';
             
-            // Check if style already exists to avoid creating duplicate styles
-            if (!document.getElementById('hunger-pulse-style')) {
-                const style = document.createElement('style');
-                style.id = 'hunger-pulse-style';
-                style.textContent = `
-                    @keyframes heart-pulse {
-                        from { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
-                        to { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
-                    }
-                    @keyframes container-pulse {
-                        from { box-shadow: 0 0 10px rgba(244, 67, 54, 0.3); }
-                        to { box-shadow: 0 0 15px rgba(244, 67, 54, 0.7); }
-                    }
-                `;
-                document.head.appendChild(style);
-            }
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes heart-pulse {
+                    from { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
+                    to { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+                }
+                @keyframes container-pulse {
+                    from { box-shadow: 0 0 10px rgba(244, 67, 54, 0.3); }
+                    to { box-shadow: 0 0 15px rgba(244, 67, 54, 0.7); }
+                }
+            `;
+            document.head.appendChild(style);
         }
     } else {
         heartIcon.style.animation = '';
@@ -4169,15 +4157,15 @@ function showHungerWarning() {
     canvasWarnings.push({
         text: 'HUNGRY!',
         startTime: Date.now(),
-        duration: 1500,
+        duration: 500,
         color: '#F44336'
     });
     
     // Set vignette effect that will be drawn directly on canvas
     currentVignette = {
         startTime: Date.now(),
-        duration: 1500,
-        color: 'rgba(244, 67, 54, 0.3)'
+        duration: 500,
+        color: 'rgba(244, 67, 54, 0.1)'
     };
     
     // Add screen shake effect for critical hunger
