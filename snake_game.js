@@ -307,16 +307,8 @@ function drawBackgroundText() {
         initBackgroundTextCache();
     }
     
-    // Check if we need to redraw (has camera moved enough?)
-    const cameraDeltaX = Math.abs(camera.x - bgTextCache.lastCameraX);
-    const cameraDeltaY = Math.abs(camera.y - bgTextCache.lastCameraY);
-    
-    // Always draw at least once by forcing redraw if lastCameraX is still at default value
-    if ((cameraDeltaX < bgTextCache.cameraThreshold && 
-        cameraDeltaY < bgTextCache.cameraThreshold) && 
-        bgTextCache.lastCameraX !== 0) {
-        return; // Skip redrawing if camera hasn't moved much and we've drawn before
-    }
+    // We should always draw the background text regardless of camera movement
+    // This ensures the text is consistently visible and not blinking
     
     // Update camera position cache
     bgTextCache.lastCameraX = camera.x;
