@@ -3209,9 +3209,10 @@ function drawSafeZone() {
         return;
     }
     
-    // Draw enhanced safe zone with multiple visual effects
+    // Check if it's mobile device for simplified rendering
+    const simplifiedRendering = isMobile;
     
-    // 1. Draw pulsing ground effect
+    // 1. Draw simplified ground effect - single gradient instead of multiple layers
     const groundRadius = SAFE_ZONE_RADIUS * CELL_SIZE;
     const groundGradient = ctx.createRadialGradient(
         centerX * CELL_SIZE + CELL_SIZE/2,
@@ -3222,13 +3223,11 @@ function drawSafeZone() {
         groundRadius
     );
     
-    // Create a colorful, cosmic-like ground effect
-    const pulseSpeed = 300;
-    const pulse = 0.3 + 0.7 * Math.sin(Date.now() / pulseSpeed);
+    // Simple pulse effect with fewer calculations
+    const pulse = 0.3 + 0.5 * Math.sin(Date.now() / 400);
     
+    // Fewer color stops for better performance
     groundGradient.addColorStop(0, `rgba(50, 200, 100, ${0.15 * remainingTime * pulse})`);
-    groundGradient.addColorStop(0.3, `rgba(76, 175, 120, ${0.12 * remainingTime * pulse})`);
-    groundGradient.addColorStop(0.6, `rgba(100, 160, 140, ${0.1 * remainingTime * pulse})`);
     groundGradient.addColorStop(1, 'rgba(76, 175, 80, 0)');
     
     ctx.beginPath();
@@ -3242,46 +3241,10 @@ function drawSafeZone() {
     ctx.fillStyle = groundGradient;
     ctx.fill();
     
-    // 2. Draw multiple layers of circular effects
-    for (let i = 0; i < 5; i++) { // Increased from 3 to 5 layers
-        const pulseSpeed = 300 + i * 100;
-        const pulse = 0.3 + 0.7 * Math.sin(Date.now() / pulseSpeed);
-        const radius = (SAFE_ZONE_RADIUS - i * 2) * CELL_SIZE;
-        
-        ctx.beginPath();
-        ctx.arc(
-            centerX * CELL_SIZE + CELL_SIZE/2,
-            centerY * CELL_SIZE + CELL_SIZE/2,
-            radius * (0.98 + 0.02 * pulse),
-            0,
-            Math.PI * 2
-        );
-        
-        const opacity = (0.2 - i * 0.03) * remainingTime * pulse;
-        
-        // Different color for each layer to create rainbow effect
-        const hue = (120 + i * 30) % 360; // Green to blue range
-        const gradient = ctx.createRadialGradient(
-            centerX * CELL_SIZE + CELL_SIZE/2,
-            centerY * CELL_SIZE + CELL_SIZE/2,
-            0,
-            centerX * CELL_SIZE + CELL_SIZE/2,
-            centerY * CELL_SIZE + CELL_SIZE/2,
-            radius
-        );
-        gradient.addColorStop(0, `hsla(${hue}, 80%, 60%, ${opacity * 0.3})`);
-        gradient.addColorStop(0.7, `hsla(${hue}, 80%, 50%, ${opacity * 0.2})`);
-        gradient.addColorStop(1, `hsla(${hue}, 80%, 40%, 0)`);
-        
-        ctx.fillStyle = gradient;
-        ctx.fill();
-    }
-    
-    // 3. Draw animated spinning border
+    // 2. Draw border (simplified to one or two layers based on device)
     const time = Date.now() / 1000;
-    const spinSpeed = time * 30; // Faster spin
     
-    // Main border
+    // Main border - always draw this
     ctx.beginPath();
     ctx.arc(
         centerX * CELL_SIZE + CELL_SIZE/2,
@@ -3291,126 +3254,100 @@ function drawSafeZone() {
         Math.PI * 2
     );
     ctx.setLineDash([8, 12]);
-    ctx.lineDashOffset = spinSpeed;
-    ctx.strokeStyle = `rgba(76, 235, 80, ${0.5 * remainingTime + 0.5 * Math.sin(time * 3)})`;
+    ctx.lineDashOffset = time * 20; // Simplified animation
+    ctx.strokeStyle = `rgba(76, 235, 80, ${0.6 * remainingTime})`;
     ctx.lineWidth = 4;
     ctx.stroke();
     
-    // Secondary border (spinning the opposite direction)
-    ctx.beginPath();
-    ctx.arc(
-        centerX * CELL_SIZE + CELL_SIZE/2,
-        centerY * CELL_SIZE + CELL_SIZE/2,
-        SAFE_ZONE_RADIUS * CELL_SIZE * 0.95,
-        0,
-        Math.PI * 2
-    );
-    ctx.setLineDash([6, 10]);
-    ctx.lineDashOffset = -spinSpeed * 0.7;
-    ctx.strokeStyle = `rgba(100, 255, 130, ${0.4 * remainingTime + 0.3 * Math.sin(time * 2.5)})`;
-    ctx.lineWidth = 3;
-    ctx.stroke();
+    // Second border only for non-mobile
+    if (!simplifiedRendering) {
+        ctx.beginPath();
+        ctx.arc(
+            centerX * CELL_SIZE + CELL_SIZE/2,
+            centerY * CELL_SIZE + CELL_SIZE/2,
+            SAFE_ZONE_RADIUS * CELL_SIZE * 0.95,
+            0,
+            Math.PI * 2
+        );
+        ctx.setLineDash([6, 10]);
+        ctx.lineDashOffset = -time * 15; // Simplified animation
+        ctx.strokeStyle = `rgba(100, 255, 130, ${0.4 * remainingTime})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
     
     // Reset line dash
     ctx.setLineDash([]);
     
-    // 4. Add celestial-like particles orbiting the safe zone
-    const particleCount = 12;
+    // 3. Add minimal particles for mobile, more for desktop
+    const particleCount = simplifiedRendering ? 4 : 8; // Reduced from 12 to 4/8
+    
     for (let i = 0; i < particleCount; i++) {
-        const angle = (i / particleCount) * Math.PI * 2 + time * (i % 3 + 1);
-        const distance = SAFE_ZONE_RADIUS * CELL_SIZE * (0.9 + 0.2 * Math.sin(time * 2 + i));
+        const angle = (i / particleCount) * Math.PI * 2 + time;
+        const distance = SAFE_ZONE_RADIUS * CELL_SIZE;
         
         const x = centerX * CELL_SIZE + CELL_SIZE/2 + Math.cos(angle) * distance;
         const y = centerY * CELL_SIZE + CELL_SIZE/2 + Math.sin(angle) * distance;
         
-        const particleSize = 3 + 2 * Math.sin(time * 3 + i * 2);
-        
-        // Draw glowing particle
+        // Single circle instead of multiple for each particle
         ctx.beginPath();
-        ctx.arc(x, y, particleSize, 0, Math.PI * 2);
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(150, 255, 150, ${0.7 * remainingTime})`;
         ctx.fill();
         
-        // Draw glowing particle without shadows
-        ctx.beginPath();
-        ctx.arc(x, y, particleSize * 0.8, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(150, 255, 150, 0.6)';
-        ctx.fill();
-        
-        ctx.beginPath();
-        ctx.arc(x, y, particleSize * 0.4, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(200, 255, 200, 0.8)';
-        ctx.fill();
-        
-        // Connect with glowing lines to center
-        ctx.beginPath();
-        ctx.moveTo(centerX * CELL_SIZE + CELL_SIZE/2, centerY * CELL_SIZE + CELL_SIZE/2);
-        ctx.lineTo(x, y);
-        ctx.strokeStyle = `rgba(100, 255, 100, ${0.15 * remainingTime})`;
-        ctx.lineWidth = 1 + Math.sin(time + i) * 0.5;
-        ctx.stroke();
+        // Only draw connecting lines for non-mobile
+        if (!simplifiedRendering) {
+            ctx.beginPath();
+            ctx.moveTo(centerX * CELL_SIZE + CELL_SIZE/2, centerY * CELL_SIZE + CELL_SIZE/2);
+            ctx.lineTo(x, y);
+            ctx.strokeStyle = `rgba(100, 255, 100, ${0.15 * remainingTime})`;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
     }
     
-    // 5. Add text indicators with improved styling
-    // Time remaining
-    ctx.fillStyle = `rgba(255, 255, 255, ${0.8 * remainingTime + 0.2 * Math.sin(time * 3)})`;
+    // 4. Text - always show countdown text, but fewer decorative texts on mobile
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.8 * remainingTime})`;
     ctx.font = 'bold 24px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(
-        `SAFE ZONE: ${Math.ceil(remainingTime * SAFE_ZONE_DURATION / 1000)}s`,
+        `SAFE: ${Math.ceil(remainingTime * SAFE_ZONE_DURATION / 1000)}s`,
         centerX * CELL_SIZE + CELL_SIZE/2,
         centerY * CELL_SIZE - SAFE_ZONE_RADIUS * CELL_SIZE * 0.5
     );
     
-    // Draw 'SAFE HAVEN' text in a simplified way without shadows
-    ctx.font = 'bold 32px Arial';
-    ctx.fillStyle = `rgba(150, 255, 180, ${0.7 * remainingTime + 0.3 * Math.sin(time * 2)})`;
+    // Main "SAFE HAVEN" text - always show
+    ctx.font = simplifiedRendering ? 'bold 28px Arial' : 'bold 32px Arial';
+    ctx.fillStyle = `rgba(150, 255, 180, ${0.7 * remainingTime})`;
     ctx.fillText(
         'SAFE HAVEN',
         centerX * CELL_SIZE + CELL_SIZE/2,
         centerY * CELL_SIZE
     );
     
-    // Additional text - simplified
-    ctx.font = 'bold 18px Arial';
-    ctx.fillStyle = `rgba(255, 255, 255, ${0.7 * remainingTime + 0.2 * Math.sin(time * 3 + Math.PI)})`;
-    ctx.fillText(
-        'COLLISION FREE ZONE',
-        centerX * CELL_SIZE + CELL_SIZE/2,
-        centerY * CELL_SIZE + CELL_SIZE * 5
-    );
-    
-    // Simplified compass-like design for better performance
-    const compassRadius = SAFE_ZONE_RADIUS * CELL_SIZE * 0.2;
-    
-    // Draw compass circle
-    ctx.beginPath();
-    ctx.arc(
-        centerX * CELL_SIZE + CELL_SIZE/2,
-        centerY * CELL_SIZE + CELL_SIZE/2,
-        compassRadius,
-        0,
-        Math.PI * 2
-    );
-    ctx.strokeStyle = `rgba(150, 255, 150, ${0.5 * remainingTime})`;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    
-    // Draw fewer compass directions for better performance
-    const directions = 4; // Reduced from 8 to 4
-    for (let i = 0; i < directions; i++) {
-        const angle = (i / directions) * Math.PI * 2;
-        const x1 = centerX * CELL_SIZE + CELL_SIZE/2 + Math.cos(angle) * compassRadius * 0.7;
-        const y1 = centerY * CELL_SIZE + CELL_SIZE/2 + Math.sin(angle) * compassRadius * 0.7;
-        const x2 = centerX * CELL_SIZE + CELL_SIZE/2 + Math.cos(angle) * compassRadius * 1.3;
-        const y2 = centerY * CELL_SIZE + CELL_SIZE/2 + Math.sin(angle) * compassRadius * 1.3;
+    // Skip additional text and compass for mobile
+    if (!simplifiedRendering) {
+        ctx.font = 'bold 18px Arial';
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.7 * remainingTime})`;
+        ctx.fillText(
+            'COLLISION FREE ZONE',
+            centerX * CELL_SIZE + CELL_SIZE/2,
+            centerY * CELL_SIZE + CELL_SIZE * 5
+        );
         
+        // Simple compass - only on desktop
+        const compassRadius = SAFE_ZONE_RADIUS * CELL_SIZE * 0.2;
         ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.strokeStyle = `rgba(200, 255, 200, ${0.6 * remainingTime})`;
-        ctx.lineWidth = 2;
+        ctx.arc(
+            centerX * CELL_SIZE + CELL_SIZE/2,
+            centerY * CELL_SIZE + CELL_SIZE/2,
+            compassRadius,
+            0,
+            Math.PI * 2
+        );
+        ctx.strokeStyle = `rgba(150, 255, 150, ${0.5 * remainingTime})`;
+        ctx.lineWidth = 1;
         ctx.stroke();
     }
 }
