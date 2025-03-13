@@ -585,63 +585,77 @@ function generateWalls() {
         if (!isSafe(GRID_SIZE - border - 1, y)) walls.push({x: GRID_SIZE - border - 1, y});
     }
     
-    // Add walls around the safe zone to create a traditional snake game room
+    // Create the safe zone at the center
     const safeZoneX = Math.floor(GRID_SIZE / 2);
     const safeZoneY = Math.floor(GRID_SIZE / 2);
     // This creates a square room that's slightly larger than the safe zone
-    const roomSize = SAFE_ZONE_RADIUS * 2; // Now 60x60 instead of 100x100
-    const roomStartX = safeZoneX - roomSize / 2;
-    const roomStartY = safeZoneY - roomSize / 2;
+    const safeRoomSize = SAFE_ZONE_RADIUS * 2; // Now 60x60 instead of 100x100
+    const safeRoomStartX = safeZoneX - safeRoomSize / 2;
+    const safeRoomStartY = safeZoneY - safeRoomSize / 2;
     
-    // Add horizontal walls for the room
-    for (let x = roomStartX; x < roomStartX + roomSize; x++) {
-        walls.push({x, y: roomStartY});
-        walls.push({x, y: roomStartY + roomSize});
+    // Add horizontal walls for the safe room
+    for (let x = safeRoomStartX; x < safeRoomStartX + safeRoomSize; x++) {
+        walls.push({x, y: safeRoomStartY});
+        walls.push({x, y: safeRoomStartY + safeRoomSize});
     }
     
-    // Add vertical walls for the room
-    for (let y = roomStartY; y < roomStartY + roomSize; y++) {
-        walls.push({x: roomStartX, y});
-        walls.push({x: roomStartX + roomSize, y});
+    // Add vertical walls for the safe room
+    for (let y = safeRoomStartY; y < safeRoomStartY + safeRoomSize; y++) {
+        walls.push({x: safeRoomStartX, y});
+        walls.push({x: safeRoomStartX + safeRoomSize, y});
     }
 
-    // Create a room-based structure
-    createRoomStructure();
+    // Generate maze-like corridors and room structures
+    generateMazeStructure();
+    
+    // Add themed areas with special challenges
+    createThemedAreas();
+    
+    // Add narrow passages with high-value rewards
+    createNarrowPassages();
+    
+    // Create interconnecting tunnels between regions
+    createConnectingTunnels();
     
     // Keep teleport tunnels for gameplay value
     addPacManTeleportTunnels();
 }
 
-// Create a room-based structure with connecting corridors
-function createRoomStructure() {
-    // Since we're creating a traditional snake game with just walls around the safe zone,
-    // this function will be simplified to not create additional rooms outside the main one
+// Generate the main maze structure with interconnected corridors and rooms
+function generateMazeStructure() {
+    console.log("Generating maze structure...");
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
-    const border = 20;
     
-    // Keep track of the room we already created around the safe zone
-    const roomSize = SAFE_ZONE_RADIUS * 2;
-    const roomStartX = centerX - roomSize / 2;
-    const roomStartY = centerY - roomSize / 2;
+    // Divide the map into regions for different maze patterns
+    const regions = [
+        // Four quadrants around the safe zone
+        { name: "northwest", x: 30, y: 30, width: centerX - 60, height: centerY - 60 },
+        { name: "northeast", x: centerX + 30, y: 30, width: GRID_SIZE - centerX - 60, height: centerY - 60 },
+        { name: "southwest", x: 30, y: centerY + 30, width: centerX - 60, height: GRID_SIZE - centerY - 60 },
+        { name: "southeast", x: centerX + 30, y: centerY + 30, width: GRID_SIZE - centerX - 60, height: GRID_SIZE - centerY - 60 }
+    ];
     
-    // Add some food inside the room
-    for (let i = 0; i < 10; i++) {
-        const x = Math.floor(roomStartX + Math.random() * roomSize);
-        const y = Math.floor(roomStartY + Math.random() * roomSize);
-        
-        // Request food creation at this position
-        let food = generateNewFood();
-        food.x = x;
-        food.y = y;
-        foods.push(food);
-    }
+    // Create different maze patterns in each region
+    regions.forEach(region => {
+        switch(region.name) {
+            case "northwest":
+                createSpiralMaze(region.x, region.y, region.width, region.height);
+                break;
+            case "northeast": 
+                createGridRooms(region.x, region.y, region.width, region.height);
+                break;
+            case "southwest":
+                createRandomCurvedPaths(region.x, region.y, region.width, region.height);
+                break;
+            case "southeast":
+                createLabyrinth(region.x, region.y, region.width, region.height);
+                break;
+        }
+    });
     
-    // Add a maze of rooms grid
-    addMazeOfRooms();
-    
-    // Add random obstacles outside the safe room
-    addRandomObstacles();
+    // Create corridors connecting the safe zone to each region
+    createMainCorridors(centerX, centerY);
 }
 
 // Add a grid-like maze of interconnected rooms
@@ -924,33 +938,183 @@ function addRandomObstacles() {
 
 
 
-// Function to add teleport tunnels 
+// Function to add teleport tunnels throughout the map
 function addPacManTeleportTunnels() {
+    console.log("Adding teleport tunnels...");
+    
     // For traditional snake game, we'll add teleport tunnels to the main room
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
-    const roomSize = SAFE_ZONE_RADIUS * 2;
-    const roomStartX = centerX - roomSize / 2;
-    const roomStartY = centerY - roomSize / 2;
+    const safeRoomSize = SAFE_ZONE_RADIUS * 2;
+    const safeRoomStartX = centerX - safeRoomSize / 2;
+    const safeRoomStartY = centerY - safeRoomSize / 2;
     
     // Create teleport tunnel on the right side of the main room
-    const tunnelY = roomStartY + Math.floor(roomSize / 2);
+    const tunnelY = safeRoomStartY + Math.floor(safeRoomSize / 2);
     
     // Right tunnel entrance in the room - just one cell
-    walls = walls.filter(w => !(w.x === roomStartX + roomSize && w.y === tunnelY));
+    walls = walls.filter(w => !(w.x === safeRoomStartX + safeRoomSize && w.y === tunnelY));
     
     // Left tunnel entrance to match - just one cell
-    walls = walls.filter(w => !(w.x === roomStartX && w.y === tunnelY));
-
+    walls = walls.filter(w => !(w.x === safeRoomStartX && w.y === tunnelY));
     
     // Add decorative walls around the teleport areas
     for (let i = 1; i <= 3; i++) {
-        walls.push({x: roomStartX + roomSize + i, y: tunnelY - 1});
-        walls.push({x: roomStartX + roomSize + i, y: tunnelY + 1});
+        walls.push({x: safeRoomStartX + safeRoomSize + i, y: tunnelY - 1});
+        walls.push({x: safeRoomStartX + safeRoomSize + i, y: tunnelY + 1});
         
-        walls.push({x: roomStartX - i, y: tunnelY - 1});
-        walls.push({x: roomStartX - i, y: tunnelY + 1});
+        walls.push({x: safeRoomStartX - i, y: tunnelY - 1});
+        walls.push({x: safeRoomStartX - i, y: tunnelY + 1});
     }
+    
+    // Add more teleport tunnels throughout the map (map edges)
+    addEdgeTeleports();
+    
+    // Add secret warp tunnels at key points
+    addSecretWarps();
+}
+
+// Add teleport tunnels at map edges
+function addEdgeTeleports() {
+    const border = 20; // Border position
+    
+    // Create horizontal teleports (top to bottom)
+    for (let x = border + 20; x < GRID_SIZE - border - 20; x += 80) {
+        // Top teleport
+        const topY = border;
+        
+        // Bottom teleport
+        const bottomY = GRID_SIZE - border - 1;
+        
+        // Create openings
+        walls = walls.filter(w => !(w.x === x && w.y === topY));
+        walls = walls.filter(w => !(w.x === x && w.y === bottomY));
+        
+        // Add visual indicators
+        for (let i = 1; i <= 2; i++) {
+            // Top teleport indicators
+            walls.push({x: x-i, y: topY+1});
+            walls.push({x: x+i, y: topY+1});
+            
+            // Bottom teleport indicators
+            walls.push({x: x-i, y: bottomY-1});
+            walls.push({x: x+i, y: bottomY-1});
+        }
+        
+        // Add special food near teleports
+        let topFood = generateNewFood();
+        topFood.x = x;
+        topFood.y = topY + 3;
+        topFood.points = 25;
+        topFood.color = '#FF9800';
+        foods.push(topFood);
+        
+        let bottomFood = generateNewFood();
+        bottomFood.x = x;
+        bottomFood.y = bottomY - 3;
+        bottomFood.points = 25;
+        bottomFood.color = '#FF9800';
+        foods.push(bottomFood);
+    }
+    
+    // Create vertical teleports (left to right)
+    for (let y = border + 20; y < GRID_SIZE - border - 20; y += 80) {
+        // Left teleport
+        const leftX = border;
+        
+        // Right teleport
+        const rightX = GRID_SIZE - border - 1;
+        
+        // Create openings
+        walls = walls.filter(w => !(w.x === leftX && w.y === y));
+        walls = walls.filter(w => !(w.x === rightX && w.y === y));
+        
+        // Add visual indicators
+        for (let i = 1; i <= 2; i++) {
+            // Left teleport indicators
+            walls.push({x: leftX+1, y: y-i});
+            walls.push({x: leftX+1, y: y+i});
+            
+            // Right teleport indicators
+            walls.push({x: rightX-1, y: y-i});
+            walls.push({x: rightX-1, y: y+i});
+        }
+        
+        // Add special food near teleports
+        let leftFood = generateNewFood();
+        leftFood.x = leftX + 3;
+        leftFood.y = y;
+        leftFood.points = 25;
+        leftFood.color = '#FF9800';
+        foods.push(leftFood);
+        
+        let rightFood = generateNewFood();
+        rightFood.x = rightX - 3;
+        rightFood.y = y;
+        rightFood.points = 25;
+        rightFood.color = '#FF9800';
+        foods.push(rightFood);
+    }
+}
+
+// Add secret warp tunnels at key points in the map
+function addSecretWarps() {
+    // Define pairs of secret warp points
+    const warpPairs = [
+        // Pair 1: From treasure vault to ice rink
+        {from: {x: GRID_SIZE - 110 + 30, y: 50 + 30}, to: {x: 50 + 30, y: 50 + 30}},
+        
+        // Pair 2: From dark forest to fractal maze
+        {from: {x: GRID_SIZE - 110 + 40, y: GRID_SIZE - 120 + 40}, to: {x: 50 + 30, y: GRID_SIZE - 120 + 30}},
+        
+        // Pair 3: Secret warp from spiral maze center to a distant location
+        {from: {x: 130, y: 130}, to: {x: GRID_SIZE - 130, y: GRID_SIZE - 130}}
+    ];
+    
+    // Process each warp pair
+    warpPairs.forEach(pair => {
+        // Clear walls at warp points
+        const clearRadius = 2;
+        
+        // Clear "from" point
+        for (let dx = -clearRadius; dx <= clearRadius; dx++) {
+            for (let dy = -clearRadius; dy <= clearRadius; dy++) {
+                walls = walls.filter(w => 
+                    !(w.x === pair.from.x + dx && w.y === pair.from.y + dy));
+            }
+        }
+        
+        // Clear "to" point
+        for (let dx = -clearRadius; dx <= clearRadius; dx++) {
+            for (let dy = -clearRadius; dy <= clearRadius; dy++) {
+                walls = walls.filter(w => 
+                    !(w.x === pair.to.x + dx && w.y === pair.to.y + dy));
+            }
+        }
+        
+        // Add visual indicators for secret warps
+        const createWarpIndicator = (x, y) => {
+            // Create a star-like pattern
+            const starRadius = 4;
+            for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
+                const starX = Math.floor(x + starRadius * Math.cos(angle));
+                const starY = Math.floor(y + starRadius * Math.sin(angle));
+                walls.push({x: starX, y: starY});
+            }
+            
+            // Add power-up in the center
+            let powerUp = generateNewFood();
+            powerUp.x = x;
+            powerUp.y = y;
+            powerUp.powerUp = 'invincibility';  // Secret warps grant invincibility
+            powerUp.duration = 12000;
+            powerUp.color = '#9C27B0';
+            foods.push(powerUp);
+        };
+        
+        createWarpIndicator(pair.from.x, pair.from.y);
+        createWarpIndicator(pair.to.x, pair.to.y);
+    });
 }
 
 // Function to create room with a small 1-cell opening
@@ -994,6 +1158,9 @@ function createRoomWithSmallOpening(startX, startY, width, height, doorPosition 
     
     return roomWalls;
 }
+
+// Global variable for wall thickness needed by some functions
+const wallThickness = 3;
 
 
 // Generate walls once during server initialization
