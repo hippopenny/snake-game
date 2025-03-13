@@ -375,6 +375,15 @@ function toggleBestScores() {
     }
 }
 
+// Initialize bestScoresVisible based on device
+document.addEventListener('DOMContentLoaded', () => {
+    // Check if it's a mobile device
+    if (isMobile) {
+        bestScoresVisible = false;
+        bestScoresCanvas.style.display = 'none';
+    }
+});
+
 // Initialize heat map
 function initHeatMap() {
     heatMap = new Array(GRID_SIZE);
@@ -851,6 +860,10 @@ applyGraphicsSettings();
 // Initialize leaderboard when the document is loaded
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize mini leaderboard
+    if (isMobile) {
+        bestScoresVisible = false;
+        bestScoresCanvas.style.display = 'none';
+    }
     
     // Initialize heat map
     initHeatMap();
@@ -4609,40 +4622,44 @@ mobileControlsStyle.textContent = `
         #game-canvas {
             touch-action: none;
         }
-        
+            
         .mobile-control-button:active,
         .mobile-menu-button:active {
             transform: scale(0.95);
             background-color: rgba(76, 175, 80, 0.7) !important;
         }
-        
+            
         #mobile-controls {
             opacity: 0.8;
         }
-        
+            
         #mobile-menu {
             opacity: 0.8;
         }
-        
+            
         .game-container {
             transform: scale(0.9);
             transform-origin: top center;
         }
-        
+            
         #leaderboard-container {
             max-width: 90vw;
             max-height: 80vh;
             overflow-y: auto;
         }
-        
+            
         #mini-leaderboard {
             max-height: 120px;
             overflow-y: auto;
         }
-        
+            
         #power-up-status {
             font-size: 16px;
             padding: 5px 10px;
+        }
+            
+        #bestscores-container {
+            display: none;
         }
     }
 `;
