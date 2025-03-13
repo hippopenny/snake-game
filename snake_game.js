@@ -3176,53 +3176,67 @@ function spawnStartingFood() {
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
     
+    // Function to request food creation with a delay
+    const requestFoodWithDelay = (i, isSafeZoneFood) => {
+        setTimeout(() => {
+            // Create food in multiple concentric spiral patterns for better distribution
+            const angle = (i / 10) * Math.PI * 2;
+            
+            // Alternate between inner and outer food - adjusted distances for smaller safe zone
+            let distance;
+            if (i % 2 === 0) {
+                distance = 2 + (i / 2); // Closer food (2-7 cells from center)
+            } else {
+                distance = 8 + (i / 2); // Farther food (8-13 cells from center)
+            }
+            
+            const x = Math.floor(centerX + Math.cos(angle) * distance);
+            const y = Math.floor(centerY + Math.sin(angle) * distance);
+            
+            // Request food creation at this position
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'requestFood',
+                    x: x,
+                    y: y,
+                    safeZoneFood: true // Flag for server to prioritize this food
+                }));
+            }
+        }, i * 50); // Stagger the requests by 50ms
+    };
+    
+    // Function to request special food creation with a delay
+    const requestSpecialFoodWithDelay = (i) => {
+        setTimeout(() => {
+            const angle = (i / 8) * Math.PI * 2;
+            const distance = 20 + Math.random() * 5; // 20-25 cells away
+            
+            const x = Math.floor(centerX + Math.cos(angle) * distance);
+            const y = Math.floor(centerY + Math.sin(angle) * distance);
+            
+            // Request special food creation
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'requestFood',
+                    x: x,
+                    y: y,
+                    specialFood: true, // Flag for server to create higher value food
+                    points: i % 3 === 0 ? 50 : 20, // Alternate between 50 and 20 points
+                    powerUp: i % 4 === 0 // Every 4th special food is a power-up
+                }));
+            }
+        }, i * 75 + 500); // Stagger the requests by 75ms, starting after 500ms
+    };
+    
     // Send request to server to create more food in starting area
     // Reduced from 15 to 10 food items for the smaller safe zone
     for (let i = 0; i < 10; i++) {
-        // Create food in multiple concentric spiral patterns for better distribution
-        const angle = (i / 10) * Math.PI * 2;
-        
-        // Alternate between inner and outer food - adjusted distances for smaller safe zone
-        let distance;
-        if (i % 2 === 0) {
-            distance = 2 + (i / 2); // Closer food (2-7 cells from center)
-        } else {
-            distance = 8 + (i / 2); // Farther food (8-13 cells from center)
-        }
-        
-        const x = Math.floor(centerX + Math.cos(angle) * distance);
-        const y = Math.floor(centerY + Math.sin(angle) * distance);
-        
-        // Request food creation at this position
-        if (socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({
-                type: 'requestFood',
-                x: x,
-                y: y,
-                safeZoneFood: true // Flag for server to prioritize this food
-            }));
-        }
+        requestFoodWithDelay(i, true);
     }
     
     // Add higher value foods including power-ups slightly further away as incentive
     for (let i = 0; i < 8; i++) { // Increased from 4 to 8
-        const angle = (i / 8) * Math.PI * 2;
-        const distance = 20 + Math.random() * 5; // 20-25 cells away
-        
-        const x = Math.floor(centerX + Math.cos(angle) * distance);
-        const y = Math.floor(centerY + Math.sin(angle) * distance);
-        
-        // Request special food creation
-        if (socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({
-                type: 'requestFood',
-                x: x,
-                y: y,
-                specialFood: true, // Flag for server to create higher value food
-                points: i % 3 === 0 ? 50 : 20, // Alternate between 50 and 20 points
-                powerUp: i % 4 === 0 // Every 4th special food is a power-up
-            }));
-        }
+        requestSpecialFoodWithDelay(i);
     }
 }
 
@@ -3241,32 +3255,19 @@ function drawSafeZone() {
     
     // 1. Draw simplified ground effect - single gradient instead of multiple layers
     const groundRadius = SAFE_ZONE_RADIUS * CELL_SIZE;
-    const groundGradient = ctx.createRadialGradient(
-        centerX * CELL_SIZE + CELL_SIZE/2,
-        centerY * CELL_SIZE + CELL_SIZE/2,
-        0,
-        centerX * CELL_SIZE + CELL_SIZE/2,
-        centerY * CELL_SIZE + CELL_SIZE/2,
-        groundRadius
+    
+    // Use a pre-rendered ground effect for better performance
+    if (!safeZoneGroundCache.canvas) {
+        createSafeZoneGroundCache(groundRadius);
+    }
+    
+    ctx.globalAlpha = 0.3 * remainingTime;
+    ctx.drawImage(
+        safeZoneGroundCache.canvas,
+        centerX * CELL_SIZE + CELL_SIZE/2 - groundRadius,
+        centerY * CELL_SIZE + CELL_SIZE/2 - groundRadius
     );
-    
-    // Simple pulse effect with fewer calculations
-    const pulse = 0.3 + 0.5 * Math.sin(Date.now() / 400);
-    
-    // Fewer color stops for better performance
-    groundGradient.addColorStop(0, `rgba(50, 200, 100, ${0.15 * remainingTime * pulse})`);
-    groundGradient.addColorStop(1, 'rgba(76, 175, 80, 0)');
-    
-    ctx.beginPath();
-    ctx.arc(
-        centerX * CELL_SIZE + CELL_SIZE/2,
-        centerY * CELL_SIZE + CELL_SIZE/2,
-        groundRadius,
-        0,
-        Math.PI * 2
-    );
-    ctx.fillStyle = groundGradient;
-    ctx.fill();
+    ctx.globalAlpha = 1;
     
     // 2. Draw border (simplified to one or two layers based on device)
     const time = Date.now() / 1000;
@@ -3377,6 +3378,45 @@ function drawSafeZone() {
         ctx.lineWidth = 1;
         ctx.stroke();
     }
+}
+
+// Add a cache for the safe zone ground effect
+const safeZoneGroundCache = {
+    canvas: null,
+    ctx: null
+};
+
+function createSafeZoneGroundCache(radius) {
+    safeZoneGroundCache.canvas = document.createElement('canvas');
+    safeZoneGroundCache.canvas.width = radius * 2;
+    safeZoneGroundCache.canvas.height = radius * 2;
+    safeZoneGroundCache.ctx = safeZoneGroundCache.canvas.getContext('2d');
+    
+    const ctx = safeZoneGroundCache.ctx;
+    const groundRadius = radius;
+    
+    const groundGradient = ctx.createRadialGradient(
+        radius,
+        radius,
+        0,
+        radius,
+        radius,
+        groundRadius
+    );
+    
+    groundGradient.addColorStop(0, 'rgba(50, 200, 100, 0.15)');
+    groundGradient.addColorStop(1, 'rgba(76, 175, 80, 0)');
+    
+    ctx.beginPath();
+    ctx.arc(
+        radius,
+        radius,
+        groundRadius,
+        0,
+        Math.PI * 2
+    );
+    ctx.fillStyle = groundGradient;
+    ctx.fill();
 }
 
 function drawMagnetField() {
