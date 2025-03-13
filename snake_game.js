@@ -928,6 +928,8 @@ function initGame() {
     updateScoreAndLevel();
     updateSpeedDisplay();
     updateHungerBar(); // Initialize hunger bar
+
+    activateSafeZone();
     
     gameOverScreen.style.display = 'none';
     levelUpScreen.style.display = 'none';
@@ -3185,9 +3187,9 @@ function spawnStartingFood() {
     }
     
     // Create special food requests
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 3; i++) {
         const angle = (i / 8) * Math.PI * 2;
-        const distance = 20 + Math.random() * 5; // 20-25 cells away
+        const distance = 7 + Math.random() * 5; 
         
         const x = Math.floor(centerX + Math.cos(angle) * distance);
         const y = Math.floor(centerY + Math.sin(angle) * distance);
@@ -5028,9 +5030,6 @@ function showLoadingScreen(callback) {
     
     // Initialize parallax background elements
     initBackgroundElements();
-    
-    // Activate safe zone for new player
-    activateSafeZone();
     
     // Spawn starting food around player
     spawnStartingFood();
