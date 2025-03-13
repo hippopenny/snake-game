@@ -570,55 +570,53 @@ function generateWalls() {
         return Math.sqrt(dx*dx + dy*dy) < SAFE_ZONE_RADIUS * 1.2;
     };
     
-    // Create outer border walls only (with padded space)
-    const border = 20; // Increased border size for larger gameplay area
+    // Create outer border walls with simpler structure
+    const border = 20; 
     
     // Add horizontal border walls
-    for (let x = border; x < GRID_SIZE - border; x++) {
+    for (let x = border; x < GRID_SIZE - border; x += 2) { // Add gaps by incrementing by 2
         if (!isSafe(x, border)) walls.push({x, y: border});
         if (!isSafe(x, GRID_SIZE - border - 1)) walls.push({x, y: GRID_SIZE - border - 1});
     }
     
     // Add vertical border walls
-    for (let y = border; y < GRID_SIZE - border; y++) {
+    for (let y = border; y < GRID_SIZE - border; y += 2) { // Add gaps by incrementing by 2
         if (!isSafe(border, y)) walls.push({x: border, y});
         if (!isSafe(GRID_SIZE - border - 1, y)) walls.push({x: GRID_SIZE - border - 1, y});
     }
     
     // Create the safe zone at the center
-    const safeZoneX = Math.floor(GRID_SIZE / 2);
-    const safeZoneY = Math.floor(GRID_SIZE / 2);
-    // This creates a square room that's slightly larger than the safe zone
-    const safeRoomSize = SAFE_ZONE_RADIUS * 2; // Now 60x60 instead of 100x100
-    const safeRoomStartX = safeZoneX - safeRoomSize / 2;
-    const safeRoomStartY = safeZoneY - safeRoomSize / 2;
+    const safeRoomSize = SAFE_ZONE_RADIUS * 2; 
+    const safeRoomStartX = centerX - safeRoomSize / 2;
+    const safeRoomStartY = centerY - safeRoomSize / 2;
     
-    // Add horizontal walls for the safe room
+    // Add safe room walls with large entrances on all sides
+    
+    // Top and bottom walls with openings
+    const topEntranceStart = safeRoomStartX + Math.floor(safeRoomSize * 0.4);
+    const topEntranceEnd = safeRoomStartX + Math.floor(safeRoomSize * 0.6);
     for (let x = safeRoomStartX; x < safeRoomStartX + safeRoomSize; x++) {
-        walls.push({x, y: safeRoomStartY});
-        walls.push({x, y: safeRoomStartY + safeRoomSize});
+        if (x < topEntranceStart || x > topEntranceEnd) {
+            walls.push({x, y: safeRoomStartY});
+            walls.push({x, y: safeRoomStartY + safeRoomSize});
+        }
     }
     
-    // Add vertical walls for the safe room
+    // Left and right walls with openings
+    const sideEntranceStart = safeRoomStartY + Math.floor(safeRoomSize * 0.4);
+    const sideEntranceEnd = safeRoomStartY + Math.floor(safeRoomSize * 0.6);
     for (let y = safeRoomStartY; y < safeRoomStartY + safeRoomSize; y++) {
-        walls.push({x: safeRoomStartX, y});
-        walls.push({x: safeRoomStartX + safeRoomSize, y});
+        if (y < sideEntranceStart || y > sideEntranceEnd) {
+            walls.push({x: safeRoomStartX, y});
+            walls.push({x: safeRoomStartX + safeRoomSize, y});
+        }
     }
 
-    // Generate maze-like corridors and room structures
-    generateMazeStructure();
+    // Generate simpler room-based layout
+    createRoomBasedLayout();
     
-    // Add themed areas with special challenges
-    createThemedAreas();
-    
-    // Add narrow passages with high-value rewards
-    createNarrowPassages();
-    
-    // Create interconnecting tunnels between regions
-    createConnectingTunnels();
-    
-    // Keep teleport tunnels for gameplay value
-    addPacManTeleportTunnels();
+    // Add teleport tunnels for quick travel around the map
+    addTeleportTunnels();
 }
 
 // Create interconnecting tunnels between different regions of the map
@@ -738,46 +736,45 @@ function addTunnelMarkers(startX, startY, endX, endY) {
     createMarker(endMarkerX, endMarkerY);
 }
 
-// Generate the main maze structure with interconnected corridors and rooms
-function generateMazeStructure() {
-    console.log("Generating maze structure...");
+// Create a room-based layout with simpler navigation
+function createRoomBasedLayout() {
+    console.log("Creating room-based layout...");
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
     
-    // Divide the map into regions for different maze patterns
+    // Define the main room regions
     const regions = [
-        // Four quadrants around the safe zone
-        { name: "northwest", x: 30, y: 30, width: centerX - 60, height: centerY - 60 },
-        { name: "northeast", x: centerX + 30, y: 30, width: GRID_SIZE - centerX - 60, height: centerY - 60 },
-        { name: "southwest", x: 30, y: centerY + 30, width: centerX - 60, height: GRID_SIZE - centerY - 60 },
-        { name: "southeast", x: centerX + 30, y: centerY + 30, width: GRID_SIZE - centerX - 60, height: GRID_SIZE - centerY - 60 }
+        { name: "northwest", x: 40, y: 40, width: centerX - 70, height: centerY - 70 },
+        { name: "northeast", x: centerX + 30, y: 40, width: GRID_SIZE - centerX - 70, height: centerY - 70 },
+        { name: "southwest", x: 40, y: centerY + 30, width: centerX - 70, height: GRID_SIZE - centerY - 70 },
+        { name: "southeast", x: centerX + 30, y: centerY + 30, width: GRID_SIZE - centerX - 70, height: GRID_SIZE - centerY - 70 }
     ];
     
-    // Create different maze patterns in each region
+    // Create different room layouts in each region
     regions.forEach(region => {
         switch(region.name) {
             case "northwest":
-                createSpiralMaze(region.x, region.y, region.width, region.height);
+                createCircularRoomLayout(region.x, region.y, region.width, region.height);
                 break;
             case "northeast": 
-                createGridRooms(region.x, region.y, region.width, region.height);
+                createGridRoomsSimplified(region.x, region.y, region.width, region.height);
                 break;
             case "southwest":
-                createRandomCurvedPaths(region.x, region.y, region.width, region.height);
+                createOpenAreaWithObstacles(region.x, region.y, region.width, region.height);
                 break;
             case "southeast":
-                createLabyrinth(region.x, region.y, region.width, region.height);
+                createSimpleLabyrinth(region.x, region.y, region.width, region.height);
                 break;
         }
     });
     
-    // Create corridors connecting the safe zone to each region
-    createMainCorridors(centerX, centerY);
+    // Create wide corridors connecting the safe zone to each region
+    createWideCorridors(centerX, centerY);
 }
 
-// Function to create main corridors connecting safe zone to each region
-function createMainCorridors(centerX, centerY) {
-    console.log("Creating main corridors from safe zone to regions...");
+// Function to create wider corridors connecting safe zone to each region
+function createWideCorridors(centerX, centerY) {
+    console.log("Creating wide corridors from safe zone to regions...");
     
     // Define corridor directions and endpoints (relative to center)
     const corridors = [
@@ -790,14 +787,14 @@ function createMainCorridors(centerX, centerY) {
     // Create each corridor
     corridors.forEach(corridor => {
         const angle = Math.atan2(corridor.dy, corridor.dx);
-        const corridorWidth = 3; // Make corridors 3 cells wide
+        const corridorWidth = 5; // Make corridors wider (5 cells instead of 3)
         
         // Start offset from center to avoid overlapping with safe zone
         const safeZoneRadius = SAFE_ZONE_RADIUS;
         const startOffset = safeZoneRadius + 5;
         
         // Create corridor
-        for (let i = startOffset; i <= corridor.length + startOffset; i++) {
+        for (let i = startOffset; i <= corridor.length + startOffset; i += 2) { // Skip every other cell for a more open feel
             const x = Math.floor(centerX + i * corridor.dx);
             const y = Math.floor(centerY + i * corridor.dy);
             
@@ -822,51 +819,57 @@ function createMainCorridors(centerX, centerY) {
     });
 }
 
-// Create a spiral maze in the given region
-function createSpiralMaze(startX, startY, width, height) {
-    console.log(`Creating spiral maze at (${startX},${startY}) with size ${width}x${height}`);
+// Create a circular room layout with concentric rings
+function createCircularRoomLayout(startX, startY, width, height) {
+    console.log(`Creating circular room layout at (${startX},${startY}) with size ${width}x${height}`);
     
-    // Parameters for the spiral
+    // Parameters for the concentric rings
     const centerX = startX + Math.floor(width / 2);
     const centerY = startY + Math.floor(height / 2);
-    const maxRadius = Math.min(width, height) / 2 - 5;
-    const spiralSpacing = 8; // Space between spiral walls
-    const spiralSegments = Math.floor(maxRadius / spiralSpacing);
+    const maxRadius = Math.min(width, height) / 2 - 10;
+    const ringSpacing = 20; // Wider spaces between rings
+    const rings = Math.floor(maxRadius / ringSpacing);
     
-    // Create spiral walls
-    for (let i = 0; i < spiralSegments; i++) {
-        const radius = (i + 1) * spiralSpacing;
-        const angleStart = i * 0.5 * Math.PI;
-        const angleEnd = angleStart + 2 * Math.PI - 0.1;
+    // Create rings with large gaps at cardinal directions
+    for (let i = 1; i <= rings; i++) {
+        const radius = i * ringSpacing;
         
-        // Create a spiral segment
-        for (let angle = angleStart; angle <= angleEnd; angle += 0.05) {
-            const x = Math.floor(centerX + radius * Math.cos(angle));
-            const y = Math.floor(centerY + radius * Math.sin(angle));
+        // Place ring segments with gaps at cardinal directions
+        for (let angle = 0; angle < 2 * Math.PI; angle += 0.05) {
+            // Skip segments at cardinal directions to create gaps
+            const cardinalGap = 0.3; // Gap size
+            const isNearCardinal = (
+                Math.abs(angle % (Math.PI/2)) < cardinalGap/2 || 
+                Math.abs(angle % (Math.PI/2) - Math.PI/2) < cardinalGap/2
+            );
             
-            // Ensure we're within bounds
-            if (x >= startX && x < startX + width && y >= startY && y < startY + height) {
-                walls.push({x, y});
+            if (!isNearCardinal) {
+                const x = Math.floor(centerX + radius * Math.cos(angle));
+                const y = Math.floor(centerY + radius * Math.sin(angle));
+                
+                // Ensure we're within bounds
+                if (x >= startX && x < startX + width && y >= startY && y < startY + height) {
+                    walls.push({x, y});
+                }
             }
         }
-        
-        // Create an opening in each spiral layer
-        const openingAngle = angleStart + Math.PI / 2;
-        const openX1 = Math.floor(centerX + radius * Math.cos(openingAngle));
-        const openY1 = Math.floor(centerY + radius * Math.sin(openingAngle));
-        const openX2 = Math.floor(centerX + (radius - spiralSpacing) * Math.cos(openingAngle));
-        const openY2 = Math.floor(centerY + (radius - spiralSpacing) * Math.sin(openingAngle));
-        
-        // Remove walls at the opening
-        walls = walls.filter(wall => 
-            !(wall.x >= Math.min(openX1, openX2) && wall.x <= Math.max(openX1, openX2) && 
-              wall.y >= Math.min(openY1, openY2) && wall.y <= Math.max(openY1, openY2)));
     }
     
-    // Add valuable rewards at the center of the spiral
+    // Add ring-crossing paths at 45-degree angles
+    for (let angle = Math.PI/4; angle < 2 * Math.PI; angle += Math.PI/2) {
+        for (let r = 0; r < maxRadius; r += 3) { // Skip cells to make paths wider
+            const x = Math.floor(centerX + r * Math.cos(angle));
+            const y = Math.floor(centerY + r * Math.sin(angle));
+            
+            // Remove any walls at this position
+            walls = walls.filter(wall => !(wall.x === x && wall.y === y));
+        }
+    }
+    
+    // Add valuable rewards in the center
     for (let i = 0; i < 3; i++) {
-        const foodX = centerX + Math.floor(Math.random() * 4) - 2;
-        const foodY = centerY + Math.floor(Math.random() * 4) - 2;
+        const foodX = centerX + Math.floor(Math.random() * 6) - 3;
+        const foodY = centerY + Math.floor(Math.random() * 6) - 3;
         
         let food = generateNewFood();
         food.x = foodX;
@@ -880,47 +883,42 @@ function createSpiralMaze(startX, startY, width, height) {
         food.points = 30;
         
         switch (randomPowerUp) {
-            case 'speed_boost':
-                food.color = '#00BCD4';
-                break;
-            case 'invincibility':
-                food.color = '#9C27B0';
-                break;
-            case 'magnet':
-                food.color = '#FFEB3B';
-                break;
+            case 'speed_boost': food.color = '#00BCD4'; break;
+            case 'invincibility': food.color = '#9C27B0'; break;
+            case 'magnet': food.color = '#FFEB3B'; break;
         }
         
         foods.push(food);
     }
     
-    // Add treasure along the spiral path
-    for (let i = 1; i < spiralSegments; i++) {
-        const radius = (i + 0.5) * spiralSpacing;
-        const angle = i * 0.7 * Math.PI;
-        const foodX = Math.floor(centerX + radius * Math.cos(angle));
-        const foodY = Math.floor(centerY + radius * Math.sin(angle));
+    // Add treasure along each ring
+    for (let i = 1; i <= rings; i++) {
+        const radius = i * ringSpacing;
         
-        let food = generateNewFood();
-        food.x = foodX;
-        food.y = foodY;
-        food.points = 15 + i * 5;
-        food.color = '#FFC107';
-        foods.push(food);
+        // Place food at 8 positions around each ring
+        for (let j = 0; j < 8; j++) {
+            const angle = j * Math.PI / 4;
+            const foodX = Math.floor(centerX + radius * Math.cos(angle));
+            const foodY = Math.floor(centerY + radius * Math.sin(angle));
+            
+            let food = generateNewFood();
+            food.x = foodX;
+            food.y = foodY;
+            food.points = 10 + i * 5;
+            food.color = '#FFC107';
+            foods.push(food);
+        }
     }
 }
 
-// Create grid of interconnected rooms
-function createGridRooms(startX, startY, width, height) {
+// Create simplified grid of interconnected rooms with wider doorways
+function createGridRoomsSimplified(startX, startY, width, height) {
     console.log(`Creating grid rooms at (${startX},${startY}) with size ${width}x${height}`);
     
-    const roomsX = 3;
-    const roomsY = 3; 
+    const roomsX = 2; // Fewer, larger rooms
+    const roomsY = 2; 
     const roomWidth = Math.floor(width / roomsX);
     const roomHeight = Math.floor(height / roomsY);
-    
-    // Track which rooms have been connected
-    const connectedRooms = new Set();
     
     // Create rooms
     for (let x = 0; x < roomsX; x++) {
@@ -928,41 +926,33 @@ function createGridRooms(startX, startY, width, height) {
             const roomStartX = startX + x * roomWidth;
             const roomStartY = startY + y * roomHeight;
             
-            // Create room walls
-            for (let wx = roomStartX; wx < roomStartX + roomWidth; wx++) {
+            // Create room walls with gaps (don't make solid walls)
+            // Top and bottom walls with some gaps
+            for (let wx = roomStartX; wx < roomStartX + roomWidth; wx += 3) { // Add a wall, skip 2
                 walls.push({x: wx, y: roomStartY});
                 walls.push({x: wx, y: roomStartY + roomHeight - 1});
             }
             
-            for (let wy = roomStartY; wy < roomStartY + roomHeight; wy++) {
+            // Left and right walls with some gaps
+            for (let wy = roomStartY; wy < roomStartY + roomHeight; wy += 3) { // Add a wall, skip 2
                 walls.push({x: roomStartX, y: wy});
                 walls.push({x: roomStartX + roomWidth - 1, y: wy});
             }
             
-            // Add room identifier to the set
-            const roomId = `${x},${y}`;
-            connectedRooms.add(roomId);
-            
-            // Add a special feature to each room
-            const featureType = Math.floor(Math.random() * 4);
+            // Add a simple feature to each room
+            const featureType = Math.floor(Math.random() * 2); // Only 2 simple feature types
             switch(featureType) {
-                case 0: // Center obstacle with food
-                    createRoomCenterObstacle(roomStartX, roomStartY, roomWidth, roomHeight);
+                case 0: // Center platform with food
+                    createSimpleCenterPlatform(roomStartX, roomStartY, roomWidth, roomHeight);
                     break;
-                case 1: // Cross pattern
-                    createRoomCrossPattern(roomStartX, roomStartY, roomWidth, roomHeight);
-                    break;
-                case 2: // Diagonal walls
-                    createRoomDiagonalWalls(roomStartX, roomStartY, roomWidth, roomHeight);
-                    break;
-                case 3: // Island with treasure
-                    createRoomIsland(roomStartX, roomStartY, roomWidth, roomHeight);
+                case 1: // Cross paths 
+                    createSimpleCrossPaths(roomStartX, roomStartY, roomWidth, roomHeight);
                     break;
             }
         }
     }
     
-    // Create doorways between adjacent rooms
+    // Create wide doorways between adjacent rooms
     for (let x = 0; x < roomsX; x++) {
         for (let y = 0; y < roomsY; y++) {
             const roomStartX = startX + x * roomWidth;
@@ -971,94 +961,214 @@ function createGridRooms(startX, startY, width, height) {
             // Create east doorway (if not on edge)
             if (x < roomsX - 1) {
                 const doorY = roomStartY + Math.floor(roomHeight / 2);
-                // Remove wall sections to create door
-                walls = walls.filter(wall => 
-                    !(wall.x === roomStartX + roomWidth - 1 && wall.y === doorY) &&
-                    !(wall.x === roomStartX + roomWidth && wall.y === doorY));
+                const doorHeight = Math.floor(roomHeight / 5); // 20% of room height
+                
+                // Remove wall sections to create wide door
+                for (let dy = -doorHeight; dy <= doorHeight; dy++) {
+                    walls = walls.filter(wall => 
+                        !(wall.x === roomStartX + roomWidth - 1 && wall.y === doorY + dy) &&
+                        !(wall.x === roomStartX + roomWidth && wall.y === doorY + dy));
+                }
             }
             
             // Create south doorway (if not on edge)
             if (y < roomsY - 1) {
                 const doorX = roomStartX + Math.floor(roomWidth / 2);
-                // Remove wall sections to create door
-                walls = walls.filter(wall => 
-                    !(wall.x === doorX && wall.y === roomStartY + roomHeight - 1) &&
-                    !(wall.x === doorX && wall.y === roomStartY + roomHeight));
+                const doorWidth = Math.floor(roomWidth / 5); // 20% of room width
+                
+                // Remove wall sections to create wide door
+                for (let dx = -doorWidth; dx <= doorWidth; dx++) {
+                    walls = walls.filter(wall => 
+                        !(wall.x === doorX + dx && wall.y === roomStartY + roomHeight - 1) &&
+                        !(wall.x === doorX + dx && wall.y === roomStartY + roomHeight));
+                }
             }
         }
     }
 }
 
-// Create random curved paths in the given region
-function createRandomCurvedPaths(startX, startY, width, height) {
-    console.log(`Creating random curved paths at (${startX},${startY}) with size ${width}x${height}`);
+// Create a simple center platform with food
+function createSimpleCenterPlatform(startX, startY, width, height) {
+    const centerX = startX + Math.floor(width / 2);
+    const centerY = startY + Math.floor(height / 2);
+    const platformSize = Math.floor(Math.min(width, height) * 0.2);
     
-    // Create a grid overlay for placing paths
-    const gridSize = 10;
-    const gridCellsX = Math.floor(width / gridSize);
-    const gridCellsY = Math.floor(height / gridSize);
-    
-    // Generate random path points
-    const pathPoints = [];
-    const numPoints = 10;
-    
-    for (let i = 0; i < numPoints; i++) {
-        pathPoints.push({
-            x: startX + Math.floor(Math.random() * width),
-            y: startY + Math.floor(Math.random() * height)
-        });
+    // Create simple central platform
+    for (let x = centerX - platformSize; x <= centerX + platformSize; x += 2) { // Skip walls to make it more open
+        for (let y = centerY - platformSize; y <= centerY + platformSize; y += 2) {
+            // Only create walls at the perimeter
+            if (x === centerX - platformSize || x === centerX + platformSize || 
+                y === centerY - platformSize || y === centerY + platformSize) {
+                walls.push({x, y});
+            }
+        }
     }
     
-    // Connect the path points with curved walls
-    for (let i = 0; i < pathPoints.length - 1; i++) {
-        const p1 = pathPoints[i];
-        const p2 = pathPoints[i + 1];
-        
-        // Create a curved wall between points
-        createCurvedWall(p1.x, p1.y, p2.x, p2.y);
-        
-        // Add food along the path
-        const midX = Math.floor((p1.x + p2.x) / 2);
-        const midY = Math.floor((p1.y + p2.y) / 2);
-        
-        let food = generateNewFood();
-        food.x = midX;
-        food.y = midY;
-        food.points = 20;
-        food.color = '#FFC107';
-        foods.push(food);
+    // Add power-up in the center
+    let powerUp = generateNewFood();
+    powerUp.x = centerX;
+    powerUp.y = centerY;
+    
+    const powerUpTypes = ['speed_boost', 'invincibility', 'magnet'];
+    const randomPowerUp = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+    powerUp.powerUp = randomPowerUp;
+    powerUp.duration = 12000;
+    
+    switch (randomPowerUp) {
+        case 'speed_boost': powerUp.color = '#00BCD4'; break;
+        case 'invincibility': powerUp.color = '#9C27B0'; break;
+        case 'magnet': powerUp.color = '#FFEB3B'; break;
     }
     
-    // Create some pockets of food surrounded by walls
-    for (let i = 0; i < 5; i++) {
-        const pocketX = startX + Math.floor(Math.random() * (width - 15));
-        const pocketY = startY + Math.floor(Math.random() * (height - 15));
-        const pocketSize = 5 + Math.floor(Math.random() * 7);
+    foods.push(powerUp);
+    
+    // Create multiple openings in the platform
+    for (let i = 0; i < 4; i++) {
+        const angle = i * (Math.PI / 2); // 4 cardinal directions
+        const openX = Math.floor(centerX + platformSize * Math.cos(angle));
+        const openY = Math.floor(centerY + platformSize * Math.sin(angle));
         
-        // Create circular wall
-        for (let angle = 0; angle < 2 * Math.PI; angle += 0.1) {
-            const wallX = Math.floor(pocketX + pocketSize * Math.cos(angle));
-            const wallY = Math.floor(pocketY + pocketSize * Math.sin(angle));
-            walls.push({x: wallX, y: wallY});
+        // Create wider openings (remove multiple adjacent walls)
+        for (let offset = -1; offset <= 1; offset++) {
+            const offsetX = Math.round(offset * Math.sin(angle)); // Perpendicular to angle
+            const offsetY = Math.round(-offset * Math.cos(angle)); // Perpendicular to angle
+            walls = walls.filter(wall => !(wall.x === openX + offsetX && wall.y === openY + offsetY));
+        }
+    }
+}
+
+// Create simple cross paths in a room
+function createSimpleCrossPaths(startX, startY, width, height) {
+    const centerX = startX + Math.floor(width / 2);
+    const centerY = startY + Math.floor(height / 2);
+    
+    // Place food at the intersection
+    let centerFood = generateNewFood();
+    centerFood.x = centerX;
+    centerFood.y = centerY;
+    centerFood.points = 30;
+    centerFood.color = '#FF5722';
+    foods.push(centerFood);
+    
+    // Place food along the paths
+    for (let i = 1; i <= 3; i++) {
+        // Horizontal path foods
+        let eastFood = generateNewFood();
+        eastFood.x = centerX + (i * 10);
+        eastFood.y = centerY;
+        eastFood.points = 10 + i * 5;
+        eastFood.color = '#FFC107';
+        foods.push(eastFood);
+        
+        let westFood = generateNewFood();
+        westFood.x = centerX - (i * 10);
+        westFood.y = centerY;
+        westFood.points = 10 + i * 5;
+        westFood.color = '#FFC107';
+        foods.push(westFood);
+        
+        // Vertical path foods
+        let northFood = generateNewFood();
+        northFood.x = centerX;
+        northFood.y = centerY - (i * 10);
+        northFood.points = 10 + i * 5;
+        northFood.color = '#FFC107';
+        foods.push(northFood);
+        
+        let southFood = generateNewFood();
+        southFood.x = centerX;
+        southFood.y = centerY + (i * 10);
+        southFood.points = 10 + i * 5;
+        southFood.color = '#FFC107';
+        foods.push(southFood);
+    }
+}
+
+// Create an open area with scattered obstacles
+function createOpenAreaWithObstacles(startX, startY, width, height) {
+    console.log(`Creating open area with obstacles at (${startX},${startY}) with size ${width}x${height}`);
+    
+    // Create perimeter markers instead of walls (just corner posts)
+    walls.push({x: startX, y: startY}); // Top-left
+    walls.push({x: startX + width - 1, y: startY}); // Top-right
+    walls.push({x: startX, y: startY + height - 1}); // Bottom-left
+    walls.push({x: startX + width - 1, y: startY + height - 1}); // Bottom-right
+    
+    // Generate random obstacle points
+    const obstaclePoints = [];
+    const numObstacles = 8;
+    
+    // Place obstacles away from edges and not too close together
+    for (let i = 0; i < numObstacles; i++) {
+        const obX = startX + 20 + Math.floor(Math.random() * (width - 40));
+        const obY = startY + 20 + Math.floor(Math.random() * (height - 40));
+        
+        // Check distance from existing obstacles
+        let tooClose = false;
+        for (const existing of obstaclePoints) {
+            const dx = obX - existing.x;
+            const dy = obY - existing.y;
+            const distSq = dx * dx + dy * dy;
+            if (distSq < 400) { // Minimum 20 cells apart
+                tooClose = true;
+                break;
+            }
         }
         
-        // Create opening
-        const openingAngle = Math.random() * 2 * Math.PI;
-        const openX1 = Math.floor(pocketX + pocketSize * Math.cos(openingAngle));
-        const openY1 = Math.floor(pocketY + pocketSize * Math.sin(openingAngle));
-        const openX2 = Math.floor(pocketX + pocketSize * Math.cos(openingAngle + 0.3));
-        const openY2 = Math.floor(pocketY + pocketSize * Math.sin(openingAngle + 0.3));
+        if (!tooClose) {
+            obstaclePoints.push({x: obX, y: obY});
+        }
+    }
+    
+    // Create varied obstacle shapes
+    obstaclePoints.forEach((point, index) => {
+        const shapeType = index % 3;
         
-        walls = walls.filter(wall => 
-            !(wall.x >= Math.min(openX1, openX2) && wall.x <= Math.max(openX1, openX2) && 
-              wall.y >= Math.min(openY1, openY2) && wall.y <= Math.max(openY1, openY2)));
+        switch (shapeType) {
+            case 0: // Square obstacle
+                createSquareObstacle(point.x, point.y, 5 + Math.floor(Math.random() * 5));
+                break;
+            case 1: // Diamond obstacle
+                createDiamondObstacle(point.x, point.y, 4 + Math.floor(Math.random() * 4));
+                break;
+            case 2: // L-shaped obstacle
+                createLShapedObstacle(point.x, point.y, 6 + Math.floor(Math.random() * 4));
+                break;
+        }
+    });
+    
+    // Add food or power-ups near obstacles
+    obstaclePoints.forEach(point => {
+        // Place food around obstacle
+        for (let i = 0; i < 4; i++) {
+            const angle = i * Math.PI / 2;
+            const distance = 8 + Math.floor(Math.random() * 4);
+            const foodX = Math.floor(point.x + distance * Math.cos(angle));
+            const foodY = Math.floor(point.y + distance * Math.sin(angle));
+            
+            // Check if position is within bounds
+            if (foodX > startX && foodX < startX + width - 1 && 
+                foodY > startY && foodY < startY + height - 1) {
+                
+                // Check if position isn't a wall
+                const isWall = walls.some(wall => wall.x === foodX && wall.y === foodY);
+                if (!isWall) {
+                    let food = generateNewFood();
+                    food.x = foodX;
+                    food.y = foodY;
+                    food.points = 20;
+                    food.color = '#FFC107';
+                    foods.push(food);
+                }
+            }
+        }
         
-        // Add food or power-up inside
-        if (Math.random() < 0.3) {
+        // Small chance of power-up in center of obstacles
+        if (Math.random() < 0.25) {
             // Add power-up
             let food = generateNewFood();
-            food.x = pocketX;
-            food.y = pocketY;
+            food.x = point.x;
+            food.y = point.y;
             
             const powerUpTypes = ['speed_boost', 'invincibility', 'magnet'];
             const randomPowerUp = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
@@ -1066,44 +1176,167 @@ function createRandomCurvedPaths(startX, startY, width, height) {
             food.duration = 12000;
             
             switch (randomPowerUp) {
-                case 'speed_boost':
-                    food.color = '#00BCD4';
-                    break;
-                case 'invincibility':
-                    food.color = '#9C27B0';
-                    break;
-                case 'magnet':
-                    food.color = '#FFEB3B';
-                    break;
+                case 'speed_boost': food.color = '#00BCD4'; break;
+                case 'invincibility': food.color = '#9C27B0'; break;
+                case 'magnet': food.color = '#FFEB3B'; break;
             }
             
             foods.push(food);
-        } else {
-            // Add high value food
-            for (let j = 0; j < 3; j++) {
-                const foodX = pocketX + Math.floor(Math.random() * 3) - 1;
-                const foodY = pocketY + Math.floor(Math.random() * 3) - 1;
-                
-                let food = generateNewFood();
-                food.x = foodX;
-                food.y = foodY;
-                food.points = 25;
-                food.color = '#8BC34A';
-                foods.push(food);
+        }
+    });
+    
+    // Add bonus food in the center of the area
+    const centerFood = generateNewFood();
+    centerFood.x = startX + Math.floor(width / 2);
+    centerFood.y = startY + Math.floor(height / 2);
+    centerFood.points = 50;
+    centerFood.color = '#FF5722';
+    foods.push(centerFood);
+}
+
+// Create a square obstacle
+function createSquareObstacle(centerX, centerY, size) {
+    for (let dx = -size; dx <= size; dx++) {
+        for (let dy = -size; dy <= size; dy++) {
+            // Only add walls around the perimeter
+            if (dx === -size || dx === size || dy === -size || dy === size) {
+                walls.push({x: centerX + dx, y: centerY + dy});
             }
         }
+    }
+    
+    // Create opening in the square
+    const openingSide = Math.floor(Math.random() * 4);
+    if (openingSide === 0) { // Top
+        walls = walls.filter(w => !(w.x === centerX && w.y === centerY - size));
+    } else if (openingSide === 1) { // Right
+        walls = walls.filter(w => !(w.x === centerX + size && w.y === centerY));
+    } else if (openingSide === 2) { // Bottom
+        walls = walls.filter(w => !(w.x === centerX && w.y === centerY + size));
+    } else { // Left
+        walls = walls.filter(w => !(w.x === centerX - size && w.y === centerY));
+    }
+}
+
+// Create a diamond obstacle
+function createDiamondObstacle(centerX, centerY, size) {
+    for (let i = -size; i <= size; i++) {
+        // Calculate diamond width at this height
+        const width = size - Math.abs(i);
+        
+        // Only place walls at the edges
+        walls.push({x: centerX - width, y: centerY + i});
+        walls.push({x: centerX + width, y: centerY + i});
+    }
+    
+    // Create opening in the diamond
+    const openingPos = Math.floor(Math.random() * 4);
+    if (openingPos === 0) { // Top
+        walls = walls.filter(w => !(w.x === centerX && w.y === centerY - size));
+    } else if (openingPos === 1) { // Right
+        walls = walls.filter(w => !(w.x === centerX + size && w.y === centerY));
+    } else if (openingPos === 2) { // Bottom
+        walls = walls.filter(w => !(w.x === centerX && w.y === centerY + size));
+    } else { // Left
+        walls = walls.filter(w => !(w.x === centerX - size && w.y === centerY));
+    }
+}
+
+// Create an L-shaped obstacle
+function createLShapedObstacle(cornerX, cornerY, size) {
+    // Horizontal segment
+    for (let x = cornerX; x < cornerX + size; x++) {
+        walls.push({x, y: cornerY});
+    }
+    
+    // Vertical segment
+    for (let y = cornerY; y < cornerY + size; y++) {
+        walls.push({x: cornerX, y});
     }
 }
 
 // Create a labyrinth structure
-function createLabyrinth(startX, startY, width, height) {
-    console.log(`Creating labyrinth at (${startX},${startY}) with size ${width}x${height}`);
+// Create a simple labyrinth with wider paths and clear navigation
+function createSimpleLabyrinth(startX, startY, width, height) {
+    console.log(`Creating simple labyrinth at (${startX},${startY}) with size ${width}x${height}`);
     
-    // Use a modified recursive division algorithm
-    createRecursiveDivisionMaze(startX, startY, width, height, 4);
+    // Use a more generous grid size with wider paths
+    const gridSize = 20; // Larger grid cells
+    const gridWidth = Math.floor(width / gridSize);
+    const gridHeight = Math.floor(height / gridSize);
     
-    // Add some treasures in dead ends
-    addTreasuresInDeadEnds(startX, startY, width, height);
+    // Create a simple grid-based maze with wider corridors
+    for (let x = 0; x < gridWidth; x++) {
+        for (let y = 0; y < gridHeight; y++) {
+            // Only place walls at even grid positions to create larger rooms
+            if (x % 2 === 0 && y % 2 === 0) {
+                // Place walls with deliberate gaps
+                if (Math.random() < 0.7) {
+                    const wallX = startX + x * gridSize;
+                    const wallY = startY + y * gridSize;
+                    const wallLength = Math.floor(gridSize * 0.7); // Leave gaps
+                    
+                    // Randomly choose horizontal or vertical wall
+                    if (Math.random() < 0.5) {
+                        // Horizontal wall
+                        for (let i = 0; i < wallLength; i++) {
+                            walls.push({x: wallX + i, y: wallY});
+                        }
+                    } else {
+                        // Vertical wall
+                        for (let i = 0; i < wallLength; i++) {
+                            walls.push({x: wallX, y: wallY + i});
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Add treasures throughout the labyrinth
+    addTreasureChests(startX, startY, width, height);
+}
+
+// Add treasure chests throughout the area
+function addTreasureChests(startX, startY, width, height) {
+    // Place treasures at regular intervals
+    for (let x = 0; x < width; x += 40) {
+        for (let y = 0; y < height; y += 40) {
+            if (Math.random() < 0.7) {
+                const treasureX = startX + x + Math.floor(Math.random() * 10);
+                const treasureY = startY + y + Math.floor(Math.random() * 10);
+                
+                let powerChance = Math.random();
+                if (powerChance < 0.3) {
+                    // Power-up
+                    const powerUpTypes = ['speed_boost', 'invincibility', 'magnet'];
+                    const randomPowerUp = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+                    
+                    let food = generateNewFood();
+                    food.x = treasureX;
+                    food.y = treasureY;
+                    food.powerUp = randomPowerUp;
+                    food.duration = 15000;
+                    
+                    switch (randomPowerUp) {
+                        case 'speed_boost': food.color = '#00BCD4'; break;
+                        case 'invincibility': food.color = '#9C27B0'; break;
+                        case 'magnet': food.color = '#FFEB3B'; break;
+                    }
+                    
+                    foods.push(food);
+                } else {
+                    // High value food
+                    let food = generateNewFood();
+                    food.x = treasureX;
+                    food.y = treasureY;
+                    food.points = 25 + Math.floor(Math.random() * 25);
+                    food.color = '#FF5722';
+                    foods.push(food);
+                }
+            }
+        }
+    }
 }
 
 // Helper to create curved walls between points
@@ -1873,52 +2106,46 @@ function createHTree(centerX, centerY, size, depth) {
     }
 }
 
-// Create narrow passages with high-value rewards
-function createNarrowPassages() {
-    console.log("Creating narrow passages with rewards...");
+// Create wide reward passages between major areas
+function createRewardPassages() {
+    console.log("Creating reward passages...");
     
-    // Function to create a narrow passage between two points
-    const createNarrowPassage = (x1, y1, x2, y2, width) => {
+    // Function to create a wide passage between two points
+    const createWideBonusPassage = (x1, y1, x2, y2, width) => {
         // Determine direction
         const dx = x2 - x1;
         const dy = y2 - y1;
         const distance = Math.sqrt(dx * dx + dy * dy);
         
-        // Create walls along path
-        for (let i = 0; i <= distance; i++) {
+        // Create markers for the path (instead of walls)
+        for (let i = 0; i <= distance; i += 8) { // Place markers every 8 cells
             const t = i / distance;
             const x = Math.floor(x1 + dx * t);
             const y = Math.floor(y1 + dy * t);
             
-            // Create walls on both sides of the path
+            // Place markers on both sides of path
             const perpX = -dy / distance;
             const perpY = dx / distance;
             
-            for (let j = 1; j <= width; j++) {
-                // Left wall
-                walls.push({x: Math.floor(x + perpX * j), y: Math.floor(y + perpY * j)});
-                
-                // Right wall
-                walls.push({x: Math.floor(x - perpX * j), y: Math.floor(y - perpY * j)});
+            // Add marker walls as dots
+            if (i % 16 === 0) { // Every other marker
+                walls.push({x: Math.floor(x + perpX * width), y: Math.floor(y + perpY * width)});
+                walls.push({x: Math.floor(x - perpX * width), y: Math.floor(y - perpY * width)});
             }
         }
         
         // Place rewards along the passage
-        for (let i = 0; i < distance; i += Math.max(3, Math.floor(distance / 10))) {
+        for (let i = 5; i < distance; i += 10) {
             const t = i / distance;
             const foodX = Math.floor(x1 + dx * t);
             const foodY = Math.floor(y1 + dy * t);
             
-            // Skip if position is a wall
-            const isWall = walls.some(wall => wall.x === foodX && wall.y === foodY);
-            if (!isWall) {
-                let food = generateNewFood();
-                food.x = foodX;
-                food.y = foodY;
-                food.points = 10 + Math.floor(i / distance * 40); // Value increases as you go deeper
-                food.color = '#FF9800';
-                foods.push(food);
-            }
+            let food = generateNewFood();
+            food.x = foodX;
+            food.y = foodY;
+            food.points = 10 + Math.floor(i / distance * 40); // Value increases as you go deeper
+            food.color = '#FF9800';
+            foods.push(food);
         }
         
         // Special reward at the end
@@ -1933,15 +2160,9 @@ function createNarrowPassages() {
             powerUp.duration = 15000;
             
             switch (randomPowerUp) {
-                case 'speed_boost':
-                    powerUp.color = '#00BCD4';
-                    break;
-                case 'invincibility':
-                    powerUp.color = '#9C27B0';
-                    break;
-                case 'magnet':
-                    powerUp.color = '#FFEB3B';
-                    break;
+                case 'speed_boost': powerUp.color = '#00BCD4'; break;
+                case 'invincibility': powerUp.color = '#9C27B0'; break;
+                case 'magnet': powerUp.color = '#FFEB3B'; break;
             }
             
             foods.push(powerUp);
@@ -1955,26 +2176,22 @@ function createNarrowPassages() {
         }
     };
     
-    // Create 5 narrow passages in different parts of the map
+    // Create wider passages with better spacing
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
     const safeZoneRadius = SAFE_ZONE_RADIUS * 2;
     
     const passageEndpoints = [
-        // From edges to about halfway to center
-        {start: {x: 30, y: 30}, end: {x: centerX - safeZoneRadius, y: centerY - safeZoneRadius}},
-        {start: {x: GRID_SIZE - 30, y: 30}, end: {x: centerX + safeZoneRadius, y: centerY - safeZoneRadius}},
-        {start: {x: 30, y: GRID_SIZE - 30}, end: {x: centerX - safeZoneRadius, y: centerY + safeZoneRadius}},
-        {start: {x: GRID_SIZE - 30, y: GRID_SIZE - 30}, end: {x: centerX + safeZoneRadius, y: centerY + safeZoneRadius}},
-        
-        // One diagonal passage across the map
-        {start: {x: 30, y: GRID_SIZE - 30}, end: {x: GRID_SIZE - 30, y: 30}}
+        // From edges toward center regions
+        {start: {x: 50, y: 50}, end: {x: centerX - safeZoneRadius - 10, y: centerY - safeZoneRadius - 10}},
+        {start: {x: GRID_SIZE - 50, y: 50}, end: {x: centerX + safeZoneRadius + 10, y: centerY - safeZoneRadius - 10}},
+        {start: {x: 50, y: GRID_SIZE - 50}, end: {x: centerX - safeZoneRadius - 10, y: centerY + safeZoneRadius + 10}},
+        {start: {x: GRID_SIZE - 50, y: GRID_SIZE - 50}, end: {x: centerX + safeZoneRadius + 10, y: centerY + safeZoneRadius + 10}}
     ];
     
-    // Create each passage
-    passageEndpoints.forEach((passage, index) => {
-        const width = index === 4 ? 3 : 2; // Last passage is wider
-        createNarrowPassage(passage.start.x, passage.start.y, passage.end.x, passage.end.y, width);
+    // Create each passage with increased width
+    passageEndpoints.forEach(passage => {
+        createWideBonusPassage(passage.start.x, passage.start.y, passage.end.x, passage.end.y, 4); // Width of 4 instead of 2-3
     });
 }
 
@@ -2028,8 +2245,8 @@ function createRoomCenterObstacle(startX, startY, width, height) {
 
 
 
-// Function to add teleport tunnels throughout the map
-function addPacManTeleportTunnels() {
+// Function to add simplified teleport tunnels throughout the map
+function addTeleportTunnels() {
     console.log("Adding teleport tunnels...");
     
     // For traditional snake game, we'll add teleport tunnels to the main room
@@ -2042,26 +2259,112 @@ function addPacManTeleportTunnels() {
     // Create teleport tunnel on the right side of the main room
     const tunnelY = safeRoomStartY + Math.floor(safeRoomSize / 2);
     
-    // Right tunnel entrance in the room - just one cell
-    walls = walls.filter(w => !(w.x === safeRoomStartX + safeRoomSize && w.y === tunnelY));
-    
-    // Left tunnel entrance to match - just one cell
-    walls = walls.filter(w => !(w.x === safeRoomStartX && w.y === tunnelY));
+    // Right tunnel entrance in the room - wider opening (3 cells)
+    for (let offset = -1; offset <= 1; offset++) {
+        walls = walls.filter(w => !(w.x === safeRoomStartX + safeRoomSize && w.y === tunnelY + offset));
+        walls = walls.filter(w => !(w.x === safeRoomStartX && w.y === tunnelY + offset));
+    }
     
     // Add decorative walls around the teleport areas
     for (let i = 1; i <= 3; i++) {
-        walls.push({x: safeRoomStartX + safeRoomSize + i, y: tunnelY - 1});
-        walls.push({x: safeRoomStartX + safeRoomSize + i, y: tunnelY + 1});
+        walls.push({x: safeRoomStartX + safeRoomSize + i, y: tunnelY - 2});
+        walls.push({x: safeRoomStartX + safeRoomSize + i, y: tunnelY + 2});
         
-        walls.push({x: safeRoomStartX - i, y: tunnelY - 1});
-        walls.push({x: safeRoomStartX - i, y: tunnelY + 1});
+        walls.push({x: safeRoomStartX - i, y: tunnelY - 2});
+        walls.push({x: safeRoomStartX - i, y: tunnelY + 2});
     }
     
-    // Add more teleport tunnels throughout the map (map edges)
-    addEdgeTeleports();
+    // Add more teleport tunnels at the edges of the map
+    addSimpleEdgeTeleports();
+}
+
+// Add teleport tunnels at map edges with clear markers
+function addSimpleEdgeTeleports() {
+    const border = 20; // Border position
+    const teleportGap = 100; // Space between teleports
     
-    // Add secret warp tunnels at key points
-    addSecretWarps();
+    // Create horizontal teleports (top to bottom)
+    for (let x = border + 40; x < GRID_SIZE - border - 40; x += teleportGap) {
+        // Top teleport
+        const topY = border;
+        
+        // Bottom teleport
+        const bottomY = GRID_SIZE - border - 1;
+        
+        // Create wider openings (3 cells wide)
+        for (let offset = -1; offset <= 1; offset++) {
+            // Clear walls at teleport locations
+            walls = walls.filter(w => !(w.x === x + offset && w.y === topY));
+            walls = walls.filter(w => !(w.x === x + offset && w.y === bottomY));
+        }
+        
+        // Add visual markers for teleports
+        for (let i = 1; i <= 3; i++) {
+            // Mark top teleport
+            walls.push({x: x - 3, y: topY + i});
+            walls.push({x: x + 3, y: topY + i});
+            
+            // Mark bottom teleport
+            walls.push({x: x - 3, y: bottomY - i});
+            walls.push({x: x + 3, y: bottomY - i});
+        }
+        
+        // Add food near teleports
+        let topFood = generateNewFood();
+        topFood.x = x;
+        topFood.y = topY + 5;
+        topFood.points = 25;
+        topFood.color = '#FF9800';
+        foods.push(topFood);
+        
+        let bottomFood = generateNewFood();
+        bottomFood.x = x;
+        bottomFood.y = bottomY - 5;
+        bottomFood.points = 25;
+        bottomFood.color = '#FF9800';
+        foods.push(bottomFood);
+    }
+    
+    // Create vertical teleports (left to right) similarly
+    for (let y = border + 40; y < GRID_SIZE - border - 40; y += teleportGap) {
+        // Left teleport
+        const leftX = border;
+        
+        // Right teleport
+        const rightX = GRID_SIZE - border - 1;
+        
+        // Create wider openings
+        for (let offset = -1; offset <= 1; offset++) {
+            walls = walls.filter(w => !(w.x === leftX && w.y === y + offset));
+            walls = walls.filter(w => !(w.x === rightX && w.y === y + offset));
+        }
+        
+        // Add visual markers for teleports
+        for (let i = 1; i <= 3; i++) {
+            // Mark left teleport
+            walls.push({x: leftX + i, y: y - 3});
+            walls.push({x: leftX + i, y: y + 3});
+            
+            // Mark right teleport
+            walls.push({x: rightX - i, y: y - 3});
+            walls.push({x: rightX - i, y: y + 3});
+        }
+        
+        // Add food near teleports
+        let leftFood = generateNewFood();
+        leftFood.x = leftX + 5;
+        leftFood.y = y;
+        leftFood.points = 25;
+        leftFood.color = '#FF9800';
+        foods.push(leftFood);
+        
+        let rightFood = generateNewFood();
+        rightFood.x = rightX - 5;
+        rightFood.y = y;
+        rightFood.points = 25;
+        rightFood.color = '#FF9800';
+        foods.push(rightFood);
+    }
 }
 
 // Add teleport tunnels at map edges
@@ -2255,5 +2558,8 @@ const wallThickness = 3;
 
 // Generate walls once during server initialization
 generateWalls();
+
+// Add our new reward passages
+createRewardPassages();
 
 console.log('Snake game server running on port 8080');
