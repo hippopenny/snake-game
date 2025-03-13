@@ -3156,58 +3156,48 @@ function spawnStartingFood() {
     // Spawn extra food near the starting area for new players
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
-    
+
     // Accumulate food requests
     let safeZoneFoodRequests = [];
     let specialFoodRequests = [];
-    
-    // Create safe zone food requests
-    for (let i = 0; i < 10; i++) {
-        const angle = (i / 10) * Math.PI * 2;
-        let distance;
-        if (i % 2 === 0) {
-            distance = 2 + (i / 2); // Closer food (2-7 cells from center)
-        } else {
-            distance = 8 + (i / 2); // Farther food (8-13 cells from center)
-        }
-        
-        const x = Math.floor(centerX + Math.cos(angle) * distance);
-        const y = Math.floor(centerY + Math.sin(angle) * distance);
-        
+
+    // Configuration
+    const numSafeZoneFood = 8; // Reduced number of safe zone food
+    const numSpecialFood = 3; // Reduced number of special food
+    const safeZoneRadius = 10; // Radius around the center for safe zone food
+
+    // Create safe zone food requests - simplified for performance
+    for (let i = 0; i < numSafeZoneFood; i++) {
+        const x = Math.floor(centerX + (Math.random() * 2 - 1) * safeZoneRadius);
+        const y = Math.floor(centerY + (Math.random() * 2 - 1) * safeZoneRadius);
+
         const foodRequest = {
             x: x,
             y: y,
-            safeZoneFood: true
+            safeZoneFood: true,
+            createdAt: Date.now()
         };
-        
-        // Add createdAt timestamp
-        foodRequest.createdAt = Date.now();
-        
+
         safeZoneFoodRequests.push(foodRequest);
     }
-    
+
     // Create special food requests
-    for (let i = 0; i < 3; i++) {
-        const angle = (i / 8) * Math.PI * 2;
-        const distance = 7 + Math.random() * 5; 
-        
-        const x = Math.floor(centerX + Math.cos(angle) * distance);
-        const y = Math.floor(centerY + Math.sin(angle) * distance);
-        
+    for (let i = 0; i < numSpecialFood; i++) {
+        const x = Math.floor(centerX + (Math.random() * 2 - 1) * 20);
+        const y = Math.floor(centerY + (Math.random() * 2 - 1) * 20);
+
         const foodRequest = {
             x: x,
             y: y,
             specialFood: true,
             points: i % 3 === 0 ? 50 : 20,
-            powerUp: i % 4 === 0
+            powerUp: i % 4 === 0,
+            createdAt: Date.now()
         };
-        
-        // Add createdAt timestamp
-        foodRequest.createdAt = Date.now();
-        
+
         specialFoodRequests.push(foodRequest);
     }
-    
+
     // Send batched food requests with a delay
     const sendBatchedRequests = (requests, delay) => {
         setTimeout(() => {
@@ -3219,7 +3209,7 @@ function spawnStartingFood() {
             }
         }, delay);
     };
-    
+
     // Send batched requests
     sendBatchedRequests(safeZoneFoodRequests, 0);
     sendBatchedRequests(specialFoodRequests, 500);
