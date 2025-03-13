@@ -2292,9 +2292,22 @@ function checkCollisions() {
         }
     }
     
-    // If safe zone is active, we don't die from other snake collisions
+    // If safe zone is active, we don't die from other snake collisions ONLY in the safe zone area
     if (safeZoneActive && Date.now() < safeZoneExpiry) {
-        return {collision: false};
+        // Get positions for checking if we're in the actual safe zone area
+        const centerX = Math.floor(GRID_SIZE / 2);
+        const centerY = Math.floor(GRID_SIZE / 2);
+        
+        // Calculate distance from center to determine if player is in physical safe zone
+        const dx = head.x - centerX;
+        const dy = head.y - centerY;
+        const distanceFromCenter = Math.sqrt(dx * dx + dy * dy);
+        
+        // Only provide protection if physically inside the safe zone radius
+        if (distanceFromCenter <= SAFE_ZONE_RADIUS) {
+            return {collision: false};
+        }
+        // Otherwise, continue with regular collision detection
     }
     
     // If invincibility power-up is active, we don't die from other snake collisions
