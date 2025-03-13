@@ -1644,11 +1644,11 @@ function createMazeWithObstacles(startX, startY, width, height) {
     
     // Now create a path to the center (to ensure it's accessible)
     const createPathToCenter = () => {
-        const centerX = startX + Math.floor(width / 2);
-        const centerY = startY + Math.floor(height / 2);
+        const centerX = x + Math.floor(width / 2);
+        const centerY = y + Math.floor(height / 2);
         
         // Start from a random edge point
-        let startX, startY;
+        let pathStartX, pathStartY;
         const side = Math.floor(Math.random() * 4);
         
         switch (side) {
