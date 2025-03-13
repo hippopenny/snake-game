@@ -658,6 +658,53 @@ function generateMazeStructure() {
     createMainCorridors(centerX, centerY);
 }
 
+// Function to create main corridors connecting safe zone to each region
+function createMainCorridors(centerX, centerY) {
+    console.log("Creating main corridors from safe zone to regions...");
+    
+    // Define corridor directions and endpoints (relative to center)
+    const corridors = [
+        { dx: -1, dy: -1, length: 40 }, // Northwest
+        { dx: 1, dy: -1, length: 40 },  // Northeast
+        { dx: -1, dy: 1, length: 40 },  // Southwest
+        { dx: 1, dy: 1, length: 40 }    // Southeast
+    ];
+    
+    // Create each corridor
+    corridors.forEach(corridor => {
+        const angle = Math.atan2(corridor.dy, corridor.dx);
+        const corridorWidth = 3; // Make corridors 3 cells wide
+        
+        // Start offset from center to avoid overlapping with safe zone
+        const safeZoneRadius = SAFE_ZONE_RADIUS;
+        const startOffset = safeZoneRadius + 5;
+        
+        // Create corridor
+        for (let i = startOffset; i <= corridor.length + startOffset; i++) {
+            const x = Math.floor(centerX + i * corridor.dx);
+            const y = Math.floor(centerY + i * corridor.dy);
+            
+            // Clear walls in a corridor width
+            for (let w = -corridorWidth; w <= corridorWidth; w++) {
+                const perpX = Math.floor(x + w * Math.cos(angle + Math.PI/2));
+                const perpY = Math.floor(y + w * Math.sin(angle + Math.PI/2));
+                
+                walls = walls.filter(wall => !(wall.x === perpX && wall.y === perpY));
+            }
+            
+            // Add food along the corridor
+            if (i % 10 === 0 && Math.random() < 0.5) {
+                let food = generateNewFood();
+                food.x = x;
+                food.y = y;
+                food.points = 15;
+                food.color = '#FF9800';
+                foods.push(food);
+            }
+        }
+    });
+}
+
 // Create a spiral maze in the given region
 function createSpiralMaze(startX, startY, width, height) {
     console.log(`Creating spiral maze at (${startX},${startY}) with size ${width}x${height}`);
