@@ -1653,26 +1653,26 @@ function createMazeWithObstacles(startX, startY, width, height) {
         
         switch (side) {
             case 0: // North
-                startX = startX + Math.floor(width / 3) + Math.floor(Math.random() * (width / 3));
-                startY = startY + 1;
+                pathStartX = x + Math.floor(width / 3) + Math.floor(Math.random() * (width / 3));
+                pathStartY = y + 1;
                 break;
             case 1: // East
-                startX = startX + width - 2;
-                startY = startY + Math.floor(height / 3) + Math.floor(Math.random() * (height / 3));
+                pathStartX = x + width - 2;
+                pathStartY = y + Math.floor(height / 3) + Math.floor(Math.random() * (height / 3));
                 break;
             case 2: // South
-                startX = startX + Math.floor(width / 3) + Math.floor(Math.random() * (width / 3));
-                startY = startY + height - 2;
+                pathStartX = x + Math.floor(width / 3) + Math.floor(Math.random() * (width / 3));
+                pathStartY = y + height - 2;
                 break;
             case 3: // West
-                startX = startX + 1;
-                startY = startY + Math.floor(height / 3) + Math.floor(Math.random() * (height / 3));
+                pathStartX = x + 1;
+                pathStartY = y + Math.floor(height / 3) + Math.floor(Math.random() * (height / 3));
                 break;
         }
         
         // Create a winding path to the center
-        let currentX = startX;
-        let currentY = startY;
+        let currentX = pathStartX;
+        let currentY = pathStartY;
         
         while (!(currentX === centerX && currentY === centerY)) {
             // Clear any walls at the current position
