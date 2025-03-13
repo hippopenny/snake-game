@@ -4897,7 +4897,7 @@ function showLoadingScreen(callback) {
     snakeLogo.style.fontWeight = 'bold';
     snakeLogo.style.marginBottom = '30px';
     snakeLogo.style.fontWeight = 'bold';
-    snakeLogo.innerHTML = 'Snake Game';
+    snakeLogo.innerHTML = 'Snake Vibe';
     loadingScreen.appendChild(snakeLogo);
 
     // Create loading animation - snake
