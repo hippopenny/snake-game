@@ -509,10 +509,15 @@ setInterval(() => {
 
 function updateFoods() {
     const now = Date.now();
-    
+
     // Filter out expired foods based on their individual lifetimes
-    foods = foods.filter(food => now - food.createdAt < food.lifetime);
-    
+    foods = foods.filter(food => {
+        if (food.safeZoneFood) {
+            currentSafeZoneFoodCount--;
+        }
+        return now - food.createdAt < food.lifetime;
+    });
+
     // Add new foods if needed, with reduced spawn rate
     if (foods.length < MAX_FOODS) {
         // Calculate how many foods to add (reduced from 8-12 to 3-6 at a time)
@@ -520,12 +525,12 @@ function updateFoods() {
             MAX_FOODS - foods.length,
             Math.floor(Math.random() * 4) + 3 // Add 3-6 foods at a time
         );
-        
+
         for (let i = 0; i < foodsToAdd; i++) {
             foods.push(generateNewFood());
         }
     }
-    
+
     // Update countdown and blinking state for each food
     foods.forEach(food => {
         food.countdown = Math.max(0, Math.floor((food.lifetime - (now - food.createdAt)) / 1000));
@@ -610,7 +615,7 @@ function generateNewFood() {
 // Wall generation functions
 function generateWalls() {
     walls = [];
-    
+
     // Basic parameters
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
