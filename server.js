@@ -621,6 +621,123 @@ function generateWalls() {
     addPacManTeleportTunnels();
 }
 
+// Create interconnecting tunnels between different regions of the map
+function createConnectingTunnels() {
+    console.log("Creating connecting tunnels between regions...");
+    
+    // Define connection points between different regions of the map
+    const connectionPoints = [
+        // Northwest (spiral) to Northeast (grid rooms)
+        {
+            start: {x: 170, y: 100},
+            end: {x: 230, y: 100},
+            width: 3
+        },
+        // Northwest (spiral) to Southwest (random curved)
+        {
+            start: {x: 100, y: 170},
+            end: {x: 100, y: 230},
+            width: 3
+        },
+        // Northeast (grid) to Southeast (labyrinth)
+        {
+            start: {x: 300, y: 170},
+            end: {x: 300, y: 230},
+            width: 3
+        },
+        // Southwest (curves) to Southeast (labyrinth)
+        {
+            start: {x: 170, y: 300},
+            end: {x: 230, y: 300},
+            width: 3
+        },
+        // Diagonal connection (Northwest to Southeast)
+        {
+            start: {x: 140, y: 140},
+            end: {x: 260, y: 260},
+            width: 2
+        }
+    ];
+    
+    // Create each tunnel connection
+    connectionPoints.forEach(connection => {
+        const {start, end, width} = connection;
+        
+        // Determine direction vector
+        const dx = end.x - start.x;
+        const dy = end.y - start.y;
+        const distance = Math.sqrt(dx*dx + dy*dy);
+        
+        // Create tunnel by removing walls along the path
+        for (let i = 0; i <= distance; i++) {
+            const t = i / distance;
+            const x = Math.floor(start.x + dx * t);
+            const y = Math.floor(start.y + dy * t);
+            
+            // Clear walls in a tunnel of specified width
+            for (let w = -width; w <= width; w++) {
+                // Calculate perpendicular offset
+                const perpX = Math.floor(w * dy / distance);
+                const perpY = Math.floor(-w * dx / distance);
+                
+                // Remove wall at this position
+                walls = walls.filter(wall => 
+                    !(wall.x === x + perpX && wall.y === y + perpY));
+            }
+            
+            // Add food along the tunnel path occasionally
+            if (i % 10 === 0 && Math.random() < 0.4) {
+                let food = generateNewFood();
+                food.x = x;
+                food.y = y;
+                food.points = 15;
+                food.color = '#FF9800';
+                foods.push(food);
+            }
+        }
+        
+        // Add indicator markers at tunnel entrances
+        addTunnelMarkers(start.x, start.y, end.x, end.y);
+    });
+}
+
+// Add visual indicators at tunnel entrances
+function addTunnelMarkers(startX, startY, endX, endY) {
+    // Create distinct markers at both ends of the tunnel
+    const createMarker = (x, y) => {
+        // Create a small diamond pattern
+        walls.push({x: x+2, y});
+        walls.push({x: x-2, y});
+        walls.push({x, y: y+2});
+        walls.push({x, y: y-2});
+        
+        // Add special food as a beacon
+        let food = generateNewFood();
+        food.x = x;
+        food.y = y;
+        food.points = 20;
+        food.color = '#4CAF50'; // Green marker food
+        foods.push(food);
+    };
+    
+    // Create markers slightly offset from the actual tunnel entrances
+    const dx = endX - startX;
+    const dy = endY - startY;
+    const distance = Math.sqrt(dx*dx + dy*dy);
+    const normalizedDx = dx / distance;
+    const normalizedDy = dy / distance;
+    
+    // Place markers 5 units away from the tunnel entrances
+    const startMarkerX = Math.floor(startX - normalizedDx * 5);
+    const startMarkerY = Math.floor(startY - normalizedDy * 5);
+    const endMarkerX = Math.floor(endX + normalizedDx * 5);
+    const endMarkerY = Math.floor(endY + normalizedDy * 5);
+    
+    // Create the markers
+    createMarker(startMarkerX, startMarkerY);
+    createMarker(endMarkerX, endMarkerY);
+}
+
 // Generate the main maze structure with interconnected corridors and rooms
 function generateMazeStructure() {
     console.log("Generating maze structure...");
