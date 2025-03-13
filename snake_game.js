@@ -3162,7 +3162,7 @@ function spawnStartingFood() {
     let specialFoodRequests = [];
 
     // Configuration
-    const numSafeZoneFood = 3; // Reduced number of safe zone food
+    const numSafeZoneFood = 2; // Reduced number of safe zone food
     const numSpecialFood = 2; // Reduced number of special food
     const safeZoneRadius = 10; // Radius around the center for safe zone food
 
