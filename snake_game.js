@@ -884,19 +884,6 @@ function initGame() {
     
     // Initialize wall cache and spatial index
     wallCache.init();
-    wallIndex.init();
-    if (WALLS.length > 0) {
-        wallIndex.rebuild(WALLS);
-    }
-    
-    // All sounds are already preloaded during sound manager initialization
-    
-    // Play background music, but not on mobile by default
-    if (!isMobile) {
-        console.log("Playing background music");
-        soundManager.playBackgroundMusic();
-    }
-    
     // Start the snake at a reasonable position in the larger map
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
@@ -934,17 +921,6 @@ function initGame() {
     
     // Reset heat map
     initHeatMap();
-    
-    // Initialize parallax background elements
-    initBackgroundElements();
-    
-    // Walls are now managed by the server
-    
-    // Activate safe zone for new player
-    activateSafeZone();
-    
-    // Spawn starting food around player
-    spawnStartingFood();
     
     updateScoreAndLevel();
     updateSpeedDisplay();
@@ -5029,6 +5005,22 @@ function showLoadingScreen(callback) {
             completeLoading();
         }
     });
+    
+    // Initialize wall cache and spatial index
+    wallCache.init();
+    wallIndex.init();
+    if (WALLS.length > 0) {
+        wallIndex.rebuild(WALLS);
+    }
+    
+    // Initialize parallax background elements
+    initBackgroundElements();
+    
+    // Activate safe zone for new player
+    activateSafeZone();
+    
+    // Spawn starting food around player
+    spawnStartingFood();
     
     // Start the asset loading
     soundManager.init();
