@@ -3169,11 +3169,16 @@ function spawnStartingFood() {
         const x = Math.floor(centerX + Math.cos(angle) * distance);
         const y = Math.floor(centerY + Math.sin(angle) * distance);
         
-        safeZoneFoodRequests.push({
+        const foodRequest = {
             x: x,
             y: y,
             safeZoneFood: true
-        });
+        };
+        
+        // Add createdAt timestamp
+        foodRequest.createdAt = Date.now();
+        
+        safeZoneFoodRequests.push(foodRequest);
     }
     
     // Create special food requests
@@ -3184,13 +3189,18 @@ function spawnStartingFood() {
         const x = Math.floor(centerX + Math.cos(angle) * distance);
         const y = Math.floor(centerY + Math.sin(angle) * distance);
         
-        specialFoodRequests.push({
+        const foodRequest = {
             x: x,
             y: y,
             specialFood: true,
             points: i % 3 === 0 ? 50 : 20,
             powerUp: i % 4 === 0
-        });
+        };
+        
+        // Add createdAt timestamp
+        foodRequest.createdAt = Date.now();
+        
+        specialFoodRequests.push(foodRequest);
     }
     
     // Send batched food requests with a delay
