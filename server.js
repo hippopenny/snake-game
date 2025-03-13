@@ -1644,29 +1644,37 @@ function createMazeWithObstacles(startX, startY, width, height) {
     
     // Now create a path to the center (to ensure it's accessible)
     const createPathToCenter = () => {
-        const centerX = x + Math.floor(width / 2);
-        const centerY = y + Math.floor(height / 2);
-        
+        // Define region variables before using them
+        const region = {
+            x: startX,
+            y: startY, 
+            width: width,
+            height: height
+        };
+    
+        const centerX = region.x + Math.floor(region.width / 2);
+        const centerY = region.y + Math.floor(region.height / 2);
+    
         // Start from a random edge point
         let pathStartX, pathStartY;
         const side = Math.floor(Math.random() * 4);
         
         switch (side) {
             case 0: // North
-                pathStartX = startX + Math.floor(width / 3) + Math.floor(Math.random() * (width / 3));
-                pathStartY = startY + 1;
+                pathStartX = region.x + Math.floor(region.width / 3) + Math.floor(Math.random() * (region.width / 3));
+                pathStartY = region.y + 1;
                 break;
             case 1: // East
-                pathStartX = startX + width - 2;
-                pathStartY = startY + Math.floor(height / 3) + Math.floor(Math.random() * (height / 3));
+                pathStartX = region.x + region.width - 2;
+                pathStartY = region.y + Math.floor(region.height / 3) + Math.floor(Math.random() * (region.height / 3));
                 break;
             case 2: // South
-                pathStartX = startX + Math.floor(width / 3) + Math.floor(Math.random() * (width / 3));
-                pathStartY = startY + height - 2;
+                pathStartX = region.x + Math.floor(region.width / 3) + Math.floor(Math.random() * (region.width / 3));
+                pathStartY = region.y + region.height - 2;
                 break;
             case 3: // West
-                pathStartX = startX + 1;
-                pathStartY = startY + Math.floor(height / 3) + Math.floor(Math.random() * (height / 3));
+                pathStartX = region.x + 1;
+                pathStartY = region.y + Math.floor(region.height / 3) + Math.floor(Math.random() * (region.height / 3));
                 break;
         }
         
