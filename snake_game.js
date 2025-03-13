@@ -922,6 +922,9 @@ function initGame() {
     // Reset heat map
     initHeatMap();
     
+    // Spawn starting food around player
+    spawnStartingFood();
+    
     updateScoreAndLevel();
     updateSpeedDisplay();
     updateHungerBar(); // Initialize hunger bar
