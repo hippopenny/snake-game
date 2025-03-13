@@ -925,6 +925,9 @@ function initGame() {
     // Spawn starting food around player
     spawnStartingFood();
     
+    // Schedule periodic food spawns at strategic locations
+    scheduleStrategicFoodSpawns();
+    
     updateScoreAndLevel();
     updateSpeedDisplay();
     updateHungerBar(); // Initialize hunger bar
@@ -1344,30 +1347,47 @@ function drawVignetteEffect() {
 }
 
 function drawFood(food) {
-    // Calculate pulse effect
-    const pulse = 1 + 0.1 * Math.sin(Date.now() / 200);
-    const baseSize = CELL_SIZE / 2;
+    // Calculate pulse effect - enhanced for high-value foods
+    const isHighValue = food.points >= 30;
+    const isStrategic = food.points >= 50 || (food.powerUp && food.points >= 20);
+    
+    const pulseSpeed = isStrategic ? 150 : (isHighValue ? 180 : 200);
+    const pulseAmount = isStrategic ? 0.15 : (isHighValue ? 0.12 : 0.1);
+    
+    const pulse = 1 + pulseAmount * Math.sin(Date.now() / pulseSpeed);
+    const baseSize = isStrategic ? CELL_SIZE / 1.7 : (isHighValue ? CELL_SIZE / 1.8 : CELL_SIZE / 2);
     const size = baseSize * pulse;
     
     // Determine color based on blinking state
-    const color = food.blinking ? 
+    let color = food.blinking ? 
         (Math.floor(Date.now() / 250) % 2 === 0 ? food.color : '#FFFFFF') : 
         food.color;
-    
+        
     // Draw food with pulse effect
     ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(
-        food.x * CELL_SIZE + CELL_SIZE / 2,
-        food.y * CELL_SIZE + CELL_SIZE / 2,
-        size,
-        0,
-        Math.PI * 2
-    );
-    ctx.fill();
     
-    // Add glow effect for power-up foods
-    if (food.powerUp) {
+    // Use different shapes for strategic foods
+    if (isStrategic) {
+        // Use star shape for strategic/high-value foods
+        drawFoodStar(food.x * CELL_SIZE + CELL_SIZE / 2, food.y * CELL_SIZE + CELL_SIZE / 2, size, color);
+    } else if (isHighValue) {
+        // Use diamond shape for high-value foods
+        drawFoodDiamond(food.x * CELL_SIZE + CELL_SIZE / 2, food.y * CELL_SIZE + CELL_SIZE / 2, size * 1.2, color);
+    } else {
+        // Regular circular food
+        ctx.beginPath();
+        ctx.arc(
+            food.x * CELL_SIZE + CELL_SIZE / 2,
+            food.y * CELL_SIZE + CELL_SIZE / 2,
+            size,
+            0,
+            Math.PI * 2
+        );
+        ctx.fill();
+    }
+    
+    // Add glow effect for power-up foods or strategic foods
+    if (food.powerUp || isStrategic) {
         // Draw highlight without shadow for better performance
         ctx.beginPath();
         ctx.arc(
@@ -1394,14 +1414,41 @@ function drawFood(food) {
             Math.PI * 2
         );
         ctx.stroke();
+        
+        // Add additional rotating effect for strategic foods
+        if (isStrategic) {
+            const rotationSpeed = Date.now() / 1000;
+            const orbitRadius = size * 0.8;
+            
+            for (let i = 0; i < 3; i++) {
+                const angle = rotationSpeed + (i * Math.PI * 2 / 3);
+                const orbitX = food.x * CELL_SIZE + CELL_SIZE / 2 + Math.cos(angle) * orbitRadius;
+                const orbitY = food.y * CELL_SIZE + CELL_SIZE / 2 + Math.sin(angle) * orbitRadius;
+                
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.beginPath();
+                ctx.arc(orbitX, orbitY, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
     }
     
-    // Draw countdown
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = '10px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(food.countdown, food.x * CELL_SIZE + CELL_SIZE / 2, food.y * CELL_SIZE + CELL_SIZE / 2);
+    // Draw point value for high-value foods instead of countdown
+    if (isHighValue || isStrategic) {
+        const fontSize = isStrategic ? 14 : 12;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = `bold ${fontSize}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(food.points, food.x * CELL_SIZE + CELL_SIZE / 2, food.y * CELL_SIZE + CELL_SIZE / 2);
+    } else {
+        // Draw countdown for regular foods
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(food.countdown, food.x * CELL_SIZE + CELL_SIZE / 2, food.y * CELL_SIZE + CELL_SIZE / 2);
+    }
     
     // Food spawn animation
     if (Date.now() - food.createdAt < 1000) {
@@ -1419,13 +1466,14 @@ function drawFood(food) {
         );
         ctx.stroke();
         
-        // Add spawn particles
+        // Add spawn particles - more for strategic/high-value foods
+        const particleCount = isStrategic ? 3 : (isHighValue ? 2 : 1);
         if (progress < 0.3 && Math.random() < 0.3) {
             createParticles(
                 food.x,
                 food.y,
                 food.color,
-                1,
+                particleCount,
                 1,
                 3,
                 500
@@ -1448,12 +1496,53 @@ function drawFood(food) {
                 break;
         }
         
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 12px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(icon, food.x * CELL_SIZE + CELL_SIZE / 2, food.y * CELL_SIZE + CELL_SIZE / 2);
+        // Only draw icon if not showing point value
+        if (!isHighValue && !isStrategic) {
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(icon, food.x * CELL_SIZE + CELL_SIZE / 2, food.y * CELL_SIZE + CELL_SIZE / 2);
+        }
     }
+}
+
+// Helper function to draw star-shaped food
+function drawFoodStar(x, y, size, color) {
+    const spikes = 5;
+    const outerRadius = size;
+    const innerRadius = size * 0.4;
+    
+    ctx.beginPath();
+    ctx.fillStyle = color;
+    
+    for (let i = 0; i < spikes * 2; i++) {
+        const radius = i % 2 === 0 ? outerRadius : innerRadius;
+        const angle = (Math.PI / spikes) * i;
+        
+        if (i === 0) {
+            ctx.moveTo(x + radius * Math.cos(angle), y + radius * Math.sin(angle));
+        } else {
+            ctx.lineTo(x + radius * Math.cos(angle), y + radius * Math.sin(angle));
+        }
+    }
+    
+    ctx.closePath();
+    ctx.fill();
+}
+
+// Helper function to draw diamond-shaped food
+function drawFoodDiamond(x, y, size, color) {
+    ctx.beginPath();
+    ctx.fillStyle = color;
+    
+    ctx.moveTo(x, y - size/2); // Top
+    ctx.lineTo(x + size/2, y); // Right
+    ctx.lineTo(x, y + size/2); // Bottom
+    ctx.lineTo(x - size/2, y); // Left
+    
+    ctx.closePath();
+    ctx.fill();
 }
 
 /* Enhanced drawSnake function with improved power-up visual effects */
@@ -2356,6 +2445,144 @@ function checkCollisions() {
 
 // Power-up countdown bar is now defined earlier in the file
 
+// Function to schedule periodic spawns of strategic food at key locations
+function scheduleStrategicFoodSpawns() {
+    let foodSpawnInterval;
+    
+    // Clear existing interval if it exists
+    if (window.foodSpawnInterval) {
+        clearInterval(window.foodSpawnInterval);
+    }
+    
+    // Create the strategic food spawn function
+    const spawnStrategicFood = () => {
+        if (!gameRunning) {
+            clearInterval(window.foodSpawnInterval);
+            return;
+        }
+        
+        // Define strategic locations based on game progression and current snake position
+        const strategicLocations = [];
+        
+        // Add locations based on current level
+        if (level >= 2) {
+            // Create food paths leading to corners
+            strategicLocations.push(
+                { x: 80, y: 80, points: 15 + level * 5 },
+                { x: GRID_SIZE - 80, y: 80, points: 15 + level * 5 },
+                { x: 80, y: GRID_SIZE - 80, points: 15 + level * 5 },
+                { x: GRID_SIZE - 80, y: GRID_SIZE - 80, points: 15 + level * 5 }
+            );
+        }
+        
+        if (level >= 3) {
+            // Add power-ups in challenging locations
+            strategicLocations.push(
+                { x: 120, y: 120, points: 10, powerUp: 'speed_boost' },
+                { x: GRID_SIZE - 120, y: GRID_SIZE - 120, points: 10, powerUp: 'invincibility' }
+            );
+        }
+        
+        if (level >= 4) {
+            // Create a trail to encourage exploration
+            const angle = Date.now() / 10000; // Slowly rotating angle
+            for (let i = 0; i < 3; i++) {
+                const radius = 150 + i * 30;
+                strategicLocations.push({
+                    x: centerX + Math.cos(angle + i * Math.PI/4) * radius,
+                    y: centerY + Math.sin(angle + i * Math.PI/4) * radius,
+                    points: 20 + i * 10
+                });
+            }
+        }
+        
+        // If hunger is low, place food in more accessible locations
+        if (hungerTimer < MAX_HUNGER * 0.3) {
+            // Place food between current position and center
+            if (snake.length > 0) {
+                const head = snake[0];
+                const toCenter = {
+                    x: centerX - head.x,
+                    y: centerY - head.y
+                };
+                const dist = Math.sqrt(toCenter.x * toCenter.x + toCenter.y * toCenter.y);
+                if (dist > 20) { // Only if reasonably far from center
+                    const norm = { 
+                        x: toCenter.x / dist, 
+                        y: toCenter.y / dist 
+                    };
+                    // Place food along path to center
+                    strategicLocations.push({
+                        x: head.x + norm.x * 15,
+                        y: head.y + norm.y * 15,
+                        points: 25,
+                        highPriority: true
+                    });
+                }
+            }
+        }
+        
+        // Select a few locations to spawn food at
+        const maxFoodToSpawn = Math.min(3, Math.floor(level / 2) + 1);
+        const foodRequests = [];
+        
+        // First add high priority items
+        const highPriorityLocations = strategicLocations.filter(loc => loc.highPriority);
+        for (const location of highPriorityLocations) {
+            if (foodRequests.length >= maxFoodToSpawn) break;
+            
+            // Ensure the position is valid
+            const x = Math.floor(Math.max(30, Math.min(GRID_SIZE - 30, location.x)));
+            const y = Math.floor(Math.max(30, Math.min(GRID_SIZE - 30, location.y)));
+            
+            foodRequests.push({
+                x: x,
+                y: y,
+                specialFood: true,
+                points: location.points || 15,
+                powerUp: location.powerUp || null,
+                createdAt: Date.now()
+            });
+        }
+        
+        // Then add from remaining locations
+        const remainingLocations = strategicLocations.filter(loc => !loc.highPriority);
+        const shuffled = remainingLocations.sort(() => 0.5 - Math.random());
+        
+        for (const location of shuffled) {
+            if (foodRequests.length >= maxFoodToSpawn) break;
+            
+            // Ensure the position is valid
+            const x = Math.floor(Math.max(30, Math.min(GRID_SIZE - 30, location.x)));
+            const y = Math.floor(Math.max(30, Math.min(GRID_SIZE - 30, location.y)));
+            
+            foodRequests.push({
+                x: x,
+                y: y,
+                specialFood: true,
+                points: location.points || 15,
+                powerUp: location.powerUp || null,
+                createdAt: Date.now()
+            });
+        }
+        
+        // Send food requests if we have any
+        if (foodRequests.length > 0 && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+                type: 'batchFoodRequest',
+                requests: foodRequests
+            }));
+        }
+    };
+    
+    // Start the interval - spawn strategic food every 15-30 seconds based on level
+    const interval = Math.max(15000 - level * 1000, 10000);
+    window.foodSpawnInterval = setInterval(spawnStrategicFood, interval);
+    
+    // Spawn initial strategic food after a short delay
+    setTimeout(spawnStrategicFood, 5000);
+}
+
 function cleanupGame() {
     // Remove temporary UI elements safely
     const tempElements = document.querySelectorAll('.temp-game-element');
@@ -2369,6 +2596,12 @@ function cleanupGame() {
     if (gameLoop) {
         clearInterval(gameLoop);
         gameLoop = null;
+    }
+    
+    // Clear strategic food spawn interval
+    if (window.foodSpawnInterval) {
+        clearInterval(window.foodSpawnInterval);
+        window.foodSpawnInterval = null;
     }
     
     // Cancel any animation frame to stop rendering
@@ -3160,10 +3393,12 @@ function spawnStartingFood() {
     // Accumulate food requests
     let safeZoneFoodRequests = [];
     let specialFoodRequests = [];
+    let strategicFoodRequests = [];
 
     // Configuration
-    const numSafeZoneFood = 2; // Reduced number of safe zone food
-    const numSpecialFood = 2; // Reduced number of special food
+    const numSafeZoneFood = 4; // Increased safe zone food
+    const numSpecialFood = 3; // Increased special food
+    const numStrategicFood = 6; // Strategic food at key locations
     const safeZoneRadius = 10; // Radius around the center for safe zone food
 
     // Create safe zone food requests - simplified for performance
@@ -3191,11 +3426,58 @@ function spawnStartingFood() {
             y: y,
             specialFood: true,
             points: i % 3 === 0 ? 50 : 20,
-            powerUp: i % 4 === 0,
+            powerUp: i % 3 === 0, // Increased power-up frequency
             createdAt: Date.now()
         };
 
         specialFoodRequests.push(foodRequest);
+    }
+
+    // Create strategic food at key locations around the map
+    // These are placed in corridors, near teleports, and at other important junctions
+    
+    // Strategic locations - corners, mid-edges, and teleport corridors
+    const strategicLocations = [
+        // Near corners with good value
+        { x: 50, y: 50, points: 25 },
+        { x: GRID_SIZE - 50, y: 50, points: 25 },
+        { x: 50, y: GRID_SIZE - 50, points: 25 },
+        { x: GRID_SIZE - 50, y: GRID_SIZE - 50, points: 25 },
+        
+        // Mid-edges for easy access
+        { x: centerX, y: 40, points: 15 },
+        { x: centerX, y: GRID_SIZE - 40, points: 15 },
+        { x: 40, y: centerY, points: 15 },
+        { x: GRID_SIZE - 40, y: centerY, points: 15 },
+        
+        // Common teleport corridors with power-ups
+        { x: centerX + 60, y: centerY, points: 15, powerUp: 'speed_boost' },
+        { x: centerX - 60, y: centerY, points: 15, powerUp: 'magnet' },
+        { x: centerX, y: centerY + 60, points: 15, powerUp: 'invincibility' },
+        { x: centerX, y: centerY - 60, points: 15 }
+    ];
+    
+    // Select random strategic locations
+    for (let i = 0; i < numStrategicFood; i++) {
+        const location = strategicLocations[i % strategicLocations.length];
+        
+        // Add some randomness to the position
+        const randomOffset = 5;
+        const x = Math.max(30, Math.min(GRID_SIZE - 30, 
+            location.x + (Math.random() * randomOffset * 2 - randomOffset)));
+        const y = Math.max(30, Math.min(GRID_SIZE - 30, 
+            location.y + (Math.random() * randomOffset * 2 - randomOffset)));
+            
+        const foodRequest = {
+            x: Math.floor(x),
+            y: Math.floor(y),
+            specialFood: true,
+            points: location.points || 20,
+            powerUp: location.powerUp || null,
+            createdAt: Date.now()
+        };
+        
+        strategicFoodRequests.push(foodRequest);
     }
 
     // Send batched food requests with a delay
@@ -3213,6 +3495,7 @@ function spawnStartingFood() {
     // Send batched requests
     sendBatchedRequests(safeZoneFoodRequests, 0);
     sendBatchedRequests(specialFoodRequests, 500);
+    sendBatchedRequests(strategicFoodRequests, 1000); // Send strategic food with a delay
 }
 
 function drawSafeZone() {
