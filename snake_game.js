@@ -891,9 +891,11 @@ function initGame() {
     
     // All sounds are already preloaded during sound manager initialization
     
-    // Play background music
-    console.log("Playing background music");
-    soundManager.playBackgroundMusic();
+    // Play background music, but not on mobile by default
+    if (!isMobile) {
+        console.log("Playing background music");
+        soundManager.playBackgroundMusic();
+    }
     
     // Start the snake at a reasonable position in the larger map
     const centerX = Math.floor(GRID_SIZE / 2);
