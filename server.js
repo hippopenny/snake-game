@@ -1303,6 +1303,137 @@ function createDarkForest(x, y, width, height) {
     }
 }
 
+// Create room with cross pattern
+function createRoomCrossPattern(startX, startY, width, height) {
+    const centerX = startX + Math.floor(width / 2);
+    const centerY = startY + Math.floor(height / 2);
+    
+    // Create horizontal line
+    for (let x = startX + 2; x < startX + width - 2; x++) {
+        walls.push({x, y: centerY});
+    }
+    
+    // Create vertical line
+    for (let y = startY + 2; y < startY + height - 2; y++) {
+        walls.push({x: centerX, y});
+    }
+    
+    // Create openings in the cross
+    walls = walls.filter(wall => 
+        !((wall.x === centerX && Math.abs(wall.y - centerY) <= 1) || 
+          (wall.y === centerY && Math.abs(wall.x - centerX) <= 1)));
+    
+    // Add food in each quadrant
+    const quadrants = [
+        {x: centerX - Math.floor(width / 4), y: centerY - Math.floor(height / 4)},
+        {x: centerX + Math.floor(width / 4), y: centerY - Math.floor(height / 4)},
+        {x: centerX - Math.floor(width / 4), y: centerY + Math.floor(height / 4)},
+        {x: centerX + Math.floor(width / 4), y: centerY + Math.floor(height / 4)}
+    ];
+    
+    quadrants.forEach((pos, i) => {
+        let food = generateNewFood();
+        food.x = pos.x;
+        food.y = pos.y;
+        food.points = 15 + i * 5;
+        food.color = '#FFC107';
+        foods.push(food);
+    });
+}
+
+// Create room with diagonal walls
+function createRoomDiagonalWalls(startX, startY, width, height) {
+    // Create diagonal wall from top-left to bottom-right
+    for (let i = 0; i < Math.min(width, height) - 4; i++) {
+        walls.push({x: startX + 2 + i, y: startY + 2 + i});
+    }
+    
+    // Create diagonal wall from top-right to bottom-left
+    for (let i = 0; i < Math.min(width, height) - 4; i++) {
+        walls.push({x: startX + width - 3 - i, y: startY + 2 + i});
+    }
+    
+    // Create 2-3 openings in the diagonals
+    for (let i = 0; i < 3; i++) {
+        const pos = 2 + Math.floor(Math.random() * (Math.min(width, height) - 4));
+        
+        // Remove walls at opening
+        walls = walls.filter(wall => 
+            !(wall.x === startX + pos && wall.y === startY + pos) &&
+            !(wall.x === startX + width - 1 - pos && wall.y === startY + pos));
+        
+        // Add food near openings
+        if (Math.random() < 0.7) {
+            let food = generateNewFood();
+            food.x = startX + pos;
+            food.y = startY + pos + 1;
+            food.points = 20;
+            food.color = '#FF9800';
+            foods.push(food);
+        }
+    }
+}
+
+// Create room with island in center
+function createRoomIsland(startX, startY, width, height) {
+    const centerX = startX + Math.floor(width / 2);
+    const centerY = startY + Math.floor(height / 2);
+    const islandRadius = Math.min(Math.floor(width / 4), Math.floor(height / 4));
+    
+    // Create circular island
+    for (let angle = 0; angle < 2 * Math.PI; angle += 0.2) {
+        const wallX = Math.floor(centerX + islandRadius * Math.cos(angle));
+        const wallY = Math.floor(centerY + islandRadius * Math.sin(angle));
+        walls.push({x: wallX, y: wallY});
+    }
+    
+    // Add bridge to island
+    const bridgeAngle = Math.random() * Math.PI * 2;
+    const bridgeX = Math.floor(centerX + islandRadius * Math.cos(bridgeAngle));
+    const bridgeY = Math.floor(centerY + islandRadius * Math.sin(bridgeAngle));
+    walls = walls.filter(wall => !(wall.x === bridgeX && wall.y === bridgeY));
+    
+    // Add treasure in center of island
+    const treasureCount = 1 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < treasureCount; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const distance = Math.random() * islandRadius * 0.7;
+        const foodX = Math.floor(centerX + distance * Math.cos(angle));
+        const foodY = Math.floor(centerY + distance * Math.sin(angle));
+        
+        let food = generateNewFood();
+        food.x = foodX;
+        food.y = foodY;
+        
+        // Add either a power-up or high-value food
+        if (i === 0 && Math.random() < 0.5) {
+            // Power-up
+            const powerUpTypes = ['speed_boost', 'invincibility', 'magnet'];
+            const randomPowerUp = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+            food.powerUp = randomPowerUp;
+            food.duration = 15000;
+            
+            switch (randomPowerUp) {
+                case 'speed_boost':
+                    food.color = '#00BCD4';
+                    break;
+                case 'invincibility':
+                    food.color = '#9C27B0';
+                    break;
+                case 'magnet':
+                    food.color = '#FFEB3B';
+                    break;
+            }
+        } else {
+            // High value food
+            food.points = 40;
+            food.color = '#8BC34A';
+        }
+        
+        foods.push(food);
+    }
+}
+
 // Create a treasure vault with high rewards but difficult access
 function createTreasureVault(x, y, width, height) {
     console.log(`Creating treasure vault at (${x},${y}) with size ${width}x${height}`);
