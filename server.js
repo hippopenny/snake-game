@@ -1653,20 +1653,20 @@ function createMazeWithObstacles(startX, startY, width, height) {
         
         switch (side) {
             case 0: // North
-                pathStartX = x + Math.floor(width / 3) + Math.floor(Math.random() * (width / 3));
-                pathStartY = y + 1;
+                pathStartX = startX + Math.floor(width / 3) + Math.floor(Math.random() * (width / 3));
+                pathStartY = startY + 1;
                 break;
             case 1: // East
-                pathStartX = x + width - 2;
-                pathStartY = y + Math.floor(height / 3) + Math.floor(Math.random() * (height / 3));
+                pathStartX = startX + width - 2;
+                pathStartY = startY + Math.floor(height / 3) + Math.floor(Math.random() * (height / 3));
                 break;
             case 2: // South
-                pathStartX = x + Math.floor(width / 3) + Math.floor(Math.random() * (width / 3));
-                pathStartY = y + height - 2;
+                pathStartX = startX + Math.floor(width / 3) + Math.floor(Math.random() * (width / 3));
+                pathStartY = startY + height - 2;
                 break;
             case 3: // West
-                pathStartX = x + 1;
-                pathStartY = y + Math.floor(height / 3) + Math.floor(Math.random() * (height / 3));
+                pathStartX = startX + 1;
+                pathStartY = startY + Math.floor(height / 3) + Math.floor(Math.random() * (height / 3));
                 break;
         }
         
