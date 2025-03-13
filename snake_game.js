@@ -859,7 +859,7 @@ applyGraphicsSettings();
 
 // Initialize leaderboard when the document is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize mini leaderboard
+    // Initialize mini leaderboard - off by default on mobile but can be toggled
     if (isMobile) {
         bestScoresVisible = false;
         bestScoresCanvas.style.display = 'none';
@@ -4487,8 +4487,8 @@ document.body.appendChild(mobileMenuContainer);
 
 // Create mobile menu buttons
 const menuButtons = [
-    // { id: 'minimap', symbol: 'M', title: 'Toggle Minimap' },
-    // { id: 'leaderboard', symbol: 'L', title: 'Toggle Leaderboard' },
+    { id: 'minimap', symbol: 'M', title: 'Toggle Minimap' },
+    { id: 'leaderboard', symbol: 'L', title: 'Toggle Leaderboard' },
     // { id: 'settings', symbol: '⚙️', title: 'Game Settings' }
 ];
 
@@ -4533,9 +4533,11 @@ function handleMobileMenuButton(buttonId) {
     switch (buttonId) {
         case 'minimap':
             toggleMinimap();
+            soundManager.play('menuSelect');
             break;
         case 'leaderboard':
             toggleBestScores();
+            soundManager.play('menuSelect');
             break;
         // case 'settings':
         //     openSettingsMenu();
@@ -4656,10 +4658,6 @@ mobileControlsStyle.textContent = `
         #power-up-status {
             font-size: 16px;
             padding: 5px 10px;
-        }
-            
-        #bestscores-container {
-            display: none;
         }
     }
 `;
