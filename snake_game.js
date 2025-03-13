@@ -884,19 +884,6 @@ function initGame() {
     
     // Initialize wall cache and spatial index
     wallCache.init();
-    wallIndex.init();
-    if (WALLS.length > 0) {
-        wallIndex.rebuild(WALLS);
-    }
-    
-    // All sounds are already preloaded during sound manager initialization
-    
-    // Play background music, but not on mobile by default
-    if (!isMobile) {
-        console.log("Playing background music");
-        soundManager.playBackgroundMusic();
-    }
-    
     // Start the snake at a reasonable position in the larger map
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
@@ -935,20 +922,14 @@ function initGame() {
     // Reset heat map
     initHeatMap();
     
-    // Initialize parallax background elements
-    initBackgroundElements();
-    
-    // Walls are now managed by the server
-    
-    // Activate safe zone for new player
-    activateSafeZone();
-    
     // Spawn starting food around player
     spawnStartingFood();
     
     updateScoreAndLevel();
     updateSpeedDisplay();
     updateHungerBar(); // Initialize hunger bar
+
+    activateSafeZone();
     
     gameOverScreen.style.display = 'none';
     levelUpScreen.style.display = 'none';
@@ -3193,11 +3174,16 @@ function spawnStartingFood() {
         const x = Math.floor(centerX + Math.cos(angle) * distance);
         const y = Math.floor(centerY + Math.sin(angle) * distance);
         
-        safeZoneFoodRequests.push({
+        const foodRequest = {
             x: x,
             y: y,
             safeZoneFood: true
-        });
+        };
+        
+        // Add createdAt timestamp
+        foodRequest.createdAt = Date.now();
+        
+        safeZoneFoodRequests.push(foodRequest);
     }
     
     // Create special food requests
@@ -3208,13 +3194,18 @@ function spawnStartingFood() {
         const x = Math.floor(centerX + Math.cos(angle) * distance);
         const y = Math.floor(centerY + Math.sin(angle) * distance);
         
-        specialFoodRequests.push({
+        const foodRequest = {
             x: x,
             y: y,
             specialFood: true,
             points: i % 3 === 0 ? 50 : 20,
             powerUp: i % 4 === 0
-        });
+        };
+        
+        // Add createdAt timestamp
+        foodRequest.createdAt = Date.now();
+        
+        specialFoodRequests.push(foodRequest);
     }
     
     // Send batched food requests with a delay
@@ -5029,6 +5020,19 @@ function showLoadingScreen(callback) {
             completeLoading();
         }
     });
+    
+    // Initialize wall cache and spatial index
+    wallCache.init();
+    wallIndex.init();
+    if (WALLS.length > 0) {
+        wallIndex.rebuild(WALLS);
+    }
+    
+    // Initialize parallax background elements
+    initBackgroundElements();
+    
+    // Spawn starting food around player
+    spawnStartingFood();
     
     // Start the asset loading
     soundManager.init();
