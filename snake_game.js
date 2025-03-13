@@ -3187,7 +3187,7 @@ function spawnStartingFood() {
     }
     
     // Create special food requests
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 3; i++) {
         const angle = (i / 8) * Math.PI * 2;
         const distance = 20 + Math.random() * 5; // 20-25 cells away
         
