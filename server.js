@@ -590,27 +590,55 @@ function generateWalls() {
     const safeRoomStartX = centerX - safeRoomSize / 2;
     const safeRoomStartY = centerY - safeRoomSize / 2;
     
-    // Add safe room walls with large entrances on all sides
+    // Add safe room walls with patterned entrances on all sides
     
-    // Top and bottom walls with openings
+    // Top and bottom walls with patterned openings (similar to east/west)
     const topEntranceStart = safeRoomStartX + Math.floor(safeRoomSize * 0.4);
     const topEntranceEnd = safeRoomStartX + Math.floor(safeRoomSize * 0.6);
     for (let x = safeRoomStartX; x < safeRoomStartX + safeRoomSize; x++) {
         if (x < topEntranceStart || x > topEntranceEnd) {
             walls.push({x, y: safeRoomStartY});
             walls.push({x, y: safeRoomStartY + safeRoomSize});
+        } else {
+            // Add decorative elements for north/south openings like zigzag pattern
+            if ((x - topEntranceStart) % 3 === 0) {
+                // Create zigzag pattern at entrance
+                walls.push({x, y: safeRoomStartY});
+                walls.push({x, y: safeRoomStartY + safeRoomSize});
+            }
+            // Add small obstacles near the entrances for visual consistency
+            if (x === topEntranceStart + 3) {
+                walls.push({x, y: safeRoomStartY + 3});
+                walls.push({x, y: safeRoomStartY + safeRoomSize - 3});
+            }
+            if (x === topEntranceEnd - 3) {
+                walls.push({x, y: safeRoomStartY + 3});
+                walls.push({x, y: safeRoomStartY + safeRoomSize - 3});
+            }
         }
     }
     
-    // Left and right walls with openings
+    // Left and right walls with openings - keeping the existing pattern but adding consistency
     const sideEntranceStart = safeRoomStartY + Math.floor(safeRoomSize * 0.4);
     const sideEntranceEnd = safeRoomStartY + Math.floor(safeRoomSize * 0.6);
     for (let y = safeRoomStartY; y < safeRoomStartY + safeRoomSize; y++) {
         if (y < sideEntranceStart || y > sideEntranceEnd) {
             walls.push({x: safeRoomStartX, y});
             walls.push({x: safeRoomStartX + safeRoomSize, y});
+        } else {
+            // Add decorative elements for east/west openings
+            if ((y - sideEntranceStart) % 3 === 0) {
+                walls.push({x: safeRoomStartX, y});
+                walls.push({x: safeRoomStartX + safeRoomSize, y});
+            }
         }
     }
+    
+    // Add corner decorations for visual interest
+    walls.push({x: safeRoomStartX + 3, y: safeRoomStartY + 3});
+    walls.push({x: safeRoomStartX + safeRoomSize - 3, y: safeRoomStartY + 3});
+    walls.push({x: safeRoomStartX + 3, y: safeRoomStartY + safeRoomSize - 3});
+    walls.push({x: safeRoomStartX + safeRoomSize - 3, y: safeRoomStartY + safeRoomSize - 3});
 
     // Generate simpler room-based layout
     createRoomBasedLayout();
