@@ -5,6 +5,8 @@ const wss = new WebSocketServer({ port: 8080 });
 // Game constants
 const GRID_SIZE = 400; // Match the client's grid size
 const SAFE_ZONE_RADIUS = 20; // Safe zone radius, used throughout the code
+const MAX_SAFE_ZONE_FOOD = 12; // Limit total safe zone food
+let currentSafeZoneFoodCount = 0; // Track current safe zone food count
 
 // Connection health tracking
 const clientHeartbeats = new Map();
@@ -154,6 +156,10 @@ wss.on('connection', (ws) => {
                 
                 if (requests && Array.isArray(requests)) {
                     requests.forEach(request => {
+                        if (request.safeZoneFood && currentSafeZoneFoodCount >= MAX_SAFE_ZONE_FOOD) {
+                            return;
+                        }
+                        
                         // Create food at the requested position
                         const food = {
                             x: request.x,
@@ -220,6 +226,9 @@ wss.on('connection', (ws) => {
                         
                         if (canPlace) {
                             foods.push(food);
+                            if (request.safeZoneFood) {
+                                currentSafeZoneFoodCount++;
+                            }
                         }
                     });
                 }
@@ -541,6 +550,62 @@ setInterval(() => {
         }
     }
 }, 1000);
+
+function generateNewFood() {
+    let newFood;
+    let validPosition = false;
+    
+    while (!validPosition) {
+        // Generate random lifetime between 20-40 seconds
+        const randomLifetime = BASE_FOOD_LIFETIME + Math.floor(Math.random() * 20000) - 10000;
+        
+        newFood = {
+            x: Math.floor(Math.random() * GRID_SIZE),
+            y: Math.floor(Math.random() * GRID_SIZE),
+            createdAt: Date.now(),
+            blinking: false,
+            lifetime: randomLifetime,
+            countdown: Math.floor(randomLifetime / 1000)
+        };
+        
+        // Determine food type
+        const rand = Math.random();
+        let cumulativeProbability = 0;
+        for (const foodType of FOOD_TYPES) {
+            cumulativeProbability += foodType.probability;
+            if (rand <= cumulativeProbability) {
+                newFood = { ...newFood, ...foodType };
+                break;
+            }
+        }
+        
+        validPosition = true;
+        
+        // Check if food would spawn on any snake or existing food
+        for (const playerId in players) {
+            const snake = players[playerId].snake;
+            if (!snake) continue;
+            
+            for (let i = 0; i < snake.length; i++) {
+                if (newFood.x === snake[i].x && newFood.y === snake[i].y) {
+                    validPosition = false;
+                    break;
+                }
+            }
+            
+            if (!validPosition) break;
+        }
+        
+        for (const food of foods) {
+            if (newFood.x === food.x && newFood.y === food.y) {
+                validPosition = false;
+                break;
+            }
+        }
+    }
+    
+    return newFood;
+}
 
 // Wall generation functions
 function generateWalls() {
