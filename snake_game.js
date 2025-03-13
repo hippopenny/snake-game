@@ -3176,68 +3176,62 @@ function spawnStartingFood() {
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
     
-    // Function to request food creation with a delay
-    const requestFoodWithDelay = (i, isSafeZoneFood) => {
-        setTimeout(() => {
-            // Create food in multiple concentric spiral patterns for better distribution
-            const angle = (i / 10) * Math.PI * 2;
-            
-            // Alternate between inner and outer food - adjusted distances for smaller safe zone
-            let distance;
-            if (i % 2 === 0) {
-                distance = 2 + (i / 2); // Closer food (2-7 cells from center)
-            } else {
-                distance = 8 + (i / 2); // Farther food (8-13 cells from center)
-            }
-            
-            const x = Math.floor(centerX + Math.cos(angle) * distance);
-            const y = Math.floor(centerY + Math.sin(angle) * distance);
-            
-            // Request food creation at this position
-            if (socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: 'requestFood',
-                    x: x,
-                    y: y,
-                    safeZoneFood: true // Flag for server to prioritize this food
-                }));
-            }
-        }, i * 50); // Stagger the requests by 50ms
-    };
+    // Accumulate food requests
+    let safeZoneFoodRequests = [];
+    let specialFoodRequests = [];
     
-    // Function to request special food creation with a delay
-    const requestSpecialFoodWithDelay = (i) => {
-        setTimeout(() => {
-            const angle = (i / 8) * Math.PI * 2;
-            const distance = 20 + Math.random() * 5; // 20-25 cells away
-            
-            const x = Math.floor(centerX + Math.cos(angle) * distance);
-            const y = Math.floor(centerY + Math.sin(angle) * distance);
-            
-            // Request special food creation
-            if (socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: 'requestFood',
-                    x: x,
-                    y: y,
-                    specialFood: true, // Flag for server to create higher value food
-                    points: i % 3 === 0 ? 50 : 20, // Alternate between 50 and 20 points
-                    powerUp: i % 4 === 0 // Every 4th special food is a power-up
-                }));
-            }
-        }, i * 75 + 500); // Stagger the requests by 75ms, starting after 500ms
-    };
-    
-    // Send request to server to create more food in starting area
-    // Reduced from 15 to 10 food items for the smaller safe zone
+    // Create safe zone food requests
     for (let i = 0; i < 10; i++) {
-        requestFoodWithDelay(i, true);
+        const angle = (i / 10) * Math.PI * 2;
+        let distance;
+        if (i % 2 === 0) {
+            distance = 2 + (i / 2); // Closer food (2-7 cells from center)
+        } else {
+            distance = 8 + (i / 2); // Farther food (8-13 cells from center)
+        }
+        
+        const x = Math.floor(centerX + Math.cos(angle) * distance);
+        const y = Math.floor(centerY + Math.sin(angle) * distance);
+        
+        safeZoneFoodRequests.push({
+            x: x,
+            y: y,
+            safeZoneFood: true
+        });
     }
     
-    // Add higher value foods including power-ups slightly further away as incentive
-    for (let i = 0; i < 8; i++) { // Increased from 4 to 8
-        requestSpecialFoodWithDelay(i);
+    // Create special food requests
+    for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const distance = 20 + Math.random() * 5; // 20-25 cells away
+        
+        const x = Math.floor(centerX + Math.cos(angle) * distance);
+        const y = Math.floor(centerY + Math.sin(angle) * distance);
+        
+        specialFoodRequests.push({
+            x: x,
+            y: y,
+            specialFood: true,
+            points: i % 3 === 0 ? 50 : 20,
+            powerUp: i % 4 === 0
+        });
     }
+    
+    // Send batched food requests with a delay
+    const sendBatchedRequests = (requests, delay) => {
+        setTimeout(() => {
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'batchFoodRequest',
+                    requests: requests
+                }));
+            }
+        }, delay);
+    };
+    
+    // Send batched requests
+    sendBatchedRequests(safeZoneFoodRequests, 0);
+    sendBatchedRequests(specialFoodRequests, 500);
 }
 
 function drawSafeZone() {

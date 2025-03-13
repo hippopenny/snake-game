@@ -148,73 +148,80 @@ wss.on('connection', (ws) => {
                     // Broadcast updated food positions to all clients
                     broadcastGameState();
                 }
-            } else if (data.type === 'requestFood') {
-                // Create food at the requested position
-                const food = {
-                    x: data.x,
-                    y: data.y,
-                    createdAt: Date.now(),
-                    blinking: false,
-                    lifetime: BASE_FOOD_LIFETIME * 1.5, // Give safe zone food longer lifetime
-                    countdown: Math.floor((BASE_FOOD_LIFETIME * 1.5) / 1000)
-                };
+            } else if (data.type === 'batchFoodRequest') {
+                // Process batched food requests
+                const requests = data.requests;
                 
-                // Determine food type
-                if (data.specialFood) {
-                    // Special high-value food
-                    if (data.powerUp) {
-                        // Choose a random power-up
-                        const powerUpTypes = ['speed_boost', 'invincibility', 'magnet'];
-                        const randomPowerUp = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+                if (requests && Array.isArray(requests)) {
+                    requests.forEach(request => {
+                        // Create food at the requested position
+                        const food = {
+                            x: request.x,
+                            y: request.y,
+                            createdAt: Date.now(),
+                            blinking: false,
+                            lifetime: BASE_FOOD_LIFETIME * 1.5, // Give safe zone food longer lifetime
+                            countdown: Math.floor((BASE_FOOD_LIFETIME * 1.5) / 1000)
+                        };
                         
-                        // Set power-up food properties
-                        food.points = 5;
-                        food.powerUp = randomPowerUp;
-                        food.duration = 10000; // 10 seconds
-                        
-                        switch (randomPowerUp) {
-                            case 'speed_boost':
-                                food.color = '#00BCD4';
-                                break;
-                            case 'invincibility':
-                                food.color = '#9C27B0';
-                                break;
-                            case 'magnet':
-                                food.color = '#FFEB3B';
-                                break;
+                        // Determine food type
+                        if (request.specialFood) {
+                            // Special high-value food
+                            if (request.powerUp) {
+                                // Choose a random power-up
+                                const powerUpTypes = ['speed_boost', 'invincibility', 'magnet'];
+                                const randomPowerUp = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+                                
+                                // Set power-up food properties
+                                food.points = 5;
+                                food.powerUp = randomPowerUp;
+                                food.duration = 10000; // 10 seconds
+                                
+                                switch (randomPowerUp) {
+                                    case 'speed_boost':
+                                        food.color = '#00BCD4';
+                                        break;
+                                    case 'invincibility':
+                                        food.color = '#9C27B0';
+                                        break;
+                                    case 'magnet':
+                                        food.color = '#FFEB3B';
+                                        break;
+                                }
+                            } else {
+                                // High-value food
+                                food.points = request.points || 20;
+                                food.color = request.points >= 50 ? '#8BC34A' : '#FFC107';
+                            }
+                        } else {
+                            // Regular food in safe zone
+                            food.points = 10;
+                            food.color = '#FF5722';
                         }
-                    } else {
-                        // High-value food
-                        food.points = data.points || 20;
-                        food.color = data.points >= 50 ? '#8BC34A' : '#FFC107';
-                    }
-                } else {
-                    // Regular food in safe zone
-                    food.points = 10;
-                    food.color = '#FF5722';
-                }
-                
-                // Add to foods array if not colliding with anything
-                let canPlace = true;
-                
-                // Check walls
-                for (const wall of walls) {
-                    if (wall.x === food.x && wall.y === food.y) {
-                        canPlace = false;
-                        break;
-                    }
-                }
-                
-                // Check other food
-                for (const existingFood of foods) {
-                    if (existingFood.x === food.x && existingFood.y === food.y) {
-                        canPlace = false;
-                        break;
-                    }
-                }
-                
-                if (canPlace) {
-                    foods.push(food);
+                        
+                        // Add to foods array if not colliding with anything
+                        let canPlace = true;
+                        
+                        // Check walls
+                        for (const wall of walls) {
+                            if (wall.x === food.x && wall.y === food.y) {
+                                canPlace = false;
+                                break;
+                            }
+                        }
+                        
+                        // Check other food
+                        for (const existingFood of foods) {
+                            if (existingFood.x === food.x && existingFood.y === food.y) {
+                                canPlace = false;
+                                break;
+                            }
+                        }
+                        
+                        if (canPlace) {
+                            foods.push(food);
+                        }
+                    });
                 }
             } else if (data.type === 'gameOver') {
                 const playerId = data.id;
