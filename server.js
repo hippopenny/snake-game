@@ -1045,12 +1045,16 @@ function createRoomBasedLayout() {
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
     
-    // Define the main room regions - make them more separated
+    // Ensure safe space around starting point
+    const minSafeDistance = 20;
+    const safeZoneRadius = SAFE_ZONE_RADIUS;
+    
+    // Define the main room regions - make them more separated with increased distance from center
     const regions = [
-        { name: "northwest", x: 40, y: 40, width: centerX - 80, height: centerY - 80 },
-        { name: "northeast", x: centerX + 40, y: 40, width: GRID_SIZE - centerX - 80, height: centerY - 80 },
-        { name: "southwest", x: 40, y: centerY + 40, width: centerX - 80, height: GRID_SIZE - centerY - 80 },
-        { name: "southeast", x: centerX + 40, y: centerY + 40, width: GRID_SIZE - centerX - 80, height: GRID_SIZE - centerY - 80 }
+        { name: "northwest", x: 40, y: 40, width: centerX - 80 - minSafeDistance, height: centerY - 80 - minSafeDistance },
+        { name: "northeast", x: centerX + 40 + minSafeDistance, y: 40, width: GRID_SIZE - centerX - 80 - minSafeDistance, height: centerY - 80 - minSafeDistance },
+        { name: "southwest", x: 40, y: centerY + 40 + minSafeDistance, width: centerX - 80 - minSafeDistance, height: GRID_SIZE - centerY - 80 - minSafeDistance },
+        { name: "southeast", x: centerX + 40 + minSafeDistance, y: centerY + 40 + minSafeDistance, width: GRID_SIZE - centerX - 80 - minSafeDistance, height: GRID_SIZE - centerY - 80 - minSafeDistance }
     ];
     
     // Create different room layouts in each region - more challenging versions
@@ -1093,7 +1097,8 @@ function createNarrowCorridors(centerX, centerY) {
         const corridorWidth = 2; // Make corridors narrow (2 cells wide)
         
         // Start offset from center to avoid overlapping with safe zone
-        const safeZoneRadius = SAFE_ZONE_RADIUS;
+        // Ensure at least 20 cells of safe space around starting point
+        const safeZoneRadius = Math.max(SAFE_ZONE_RADIUS, 20);
         const startOffset = safeZoneRadius + 5;
         
         // Create corridor with some zig-zag patterns
