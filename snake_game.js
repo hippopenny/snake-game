@@ -3834,7 +3834,7 @@ function drawSafeZone() {
     // Reset line dash
     ctx.setLineDash([]);
     
-    // 3. Add minimal particles for mobile, more for desktop
+    // 3. Add evenly spaced particles around the border
     const particleCount = simplifiedRendering ? 4 : 8; // Reduced from 12 to 4/8
     
     for (let i = 0; i < particleCount; i++) {
@@ -3891,13 +3891,13 @@ function drawSafeZone() {
             centerY * CELL_SIZE + CELL_SIZE * 5
         );
         
-        // Simple compass - only on desktop
-        const compassRadius = SAFE_ZONE_RADIUS * CELL_SIZE * 0.2;
+        // Simple circular border instead of compass cross
+        const indicatorRadius = SAFE_ZONE_RADIUS * CELL_SIZE * 0.2;
         ctx.beginPath();
         ctx.arc(
             centerX * CELL_SIZE + CELL_SIZE/2,
             centerY * CELL_SIZE + CELL_SIZE/2,
-            compassRadius,
+            indicatorRadius,
             0,
             Math.PI * 2
         );

@@ -713,7 +713,7 @@ function generateWalls() {
     // Bottom-right corner decoration
     createCornerDecoration(safeRoomStartX + safeRoomSize, safeRoomStartY + safeRoomSize, "bottom-right");
 
-    // Generate enhanced room-based layout
+    // Generate enhanced room-based layout without adding cross patterns in the safe zone
     createRoomBasedLayout();
     
     // Add random connecting walls between regions
