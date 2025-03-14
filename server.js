@@ -564,10 +564,33 @@ function generateWalls() {
     const centerX = Math.floor(GRID_SIZE / 2);
     const centerY = Math.floor(GRID_SIZE / 2);
     
+    // Define additional safe zones around teleport hubs
+    const safeZones = [
+        {x: 100, y: 100, radius: 20}, // Northwest hub
+        {x: GRID_SIZE - 100, y: 100, radius: 20}, // Northeast hub
+        {x: 100, y: GRID_SIZE - 100, radius: 20}, // Southwest hub
+        {x: GRID_SIZE - 100, y: GRID_SIZE - 100, radius: 20} // Southeast hub
+    ];
+    
+    // Expanded safe zone check that includes all safe zones
     const isSafe = (x, y) => {
-        const dx = x - centerX;
-        const dy = y - centerY;
-        return Math.sqrt(dx*dx + dy*dy) < SAFE_ZONE_RADIUS * 1.2;
+        // Check main center safe zone
+        const dxCenter = x - centerX;
+        const dyCenter = y - centerY;
+        if (Math.sqrt(dxCenter*dxCenter + dyCenter*dyCenter) < SAFE_ZONE_RADIUS * 1.2) {
+            return true;
+        }
+        
+        // Check teleport hub safe zones
+        for (const zone of safeZones) {
+            const dx = x - zone.x;
+            const dy = y - zone.y;
+            if (Math.sqrt(dx*dx + dy*dy) < zone.radius) {
+                return true;
+            }
+        }
+        
+        return false;
     };
     
     // Create outer border walls with varied patterns and openings
@@ -3527,10 +3550,10 @@ function addTeleportHubs() {
     
     // Define hub locations
     const hubLocations = [
-        {x: 100, y: 100}, // Northwest hub
-        {x: GRID_SIZE - 100, y: 100}, // Northeast hub  
-        {x: 100, y: GRID_SIZE - 100}, // Southwest hub
-        {x: GRID_SIZE - 100, y: GRID_SIZE - 100} // Southeast hub
+        {x: 100, y: 100, radius: 20}, // Northwest hub
+        {x: GRID_SIZE - 100, y: 100, radius: 20}, // Northeast hub  
+        {x: 100, y: GRID_SIZE - 100, radius: 20}, // Southwest hub
+        {x: GRID_SIZE - 100, y: GRID_SIZE - 100, radius: 20} // Southeast hub
     ];
     
     // Create each teleport hub
@@ -3544,10 +3567,11 @@ function createTeleportHub(centerX, centerY, hubIndex) {
     console.log(`Creating teleport hub at (${centerX},${centerY})`);
     
     const hubRadius = 15;
+    const safeRadius = 20; // Ensure at least 20 steps of safe space
     
-    // Clear any existing walls in the hub area
-    for (let dx = -hubRadius; dx <= hubRadius; dx++) {
-        for (let dy = -hubRadius; dy <= hubRadius; dy++) {
+    // Clear any existing walls in the hub area AND the safe zone
+    for (let dx = -safeRadius; dx <= safeRadius; dx++) {
+        for (let dy = -safeRadius; dy <= safeRadius; dy++) {
             const x = centerX + dx;
             const y = centerY + dy;
             walls = walls.filter(w => !(w.x === x && w.y === y));
