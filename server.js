@@ -557,6 +557,21 @@ function generateNewFood() {
 }
 
 // Wall generation functions
+function clearSafeZone() {
+    const centerX = Math.floor(GRID_SIZE / 2);
+    const centerY = Math.floor(GRID_SIZE / 2);
+    const safeRadius = SAFE_ZONE_RADIUS * 0.7; 
+    
+    // Remove any walls within the safe zone
+    walls = walls.filter(wall => {
+        const dx = wall.x - centerX;
+        const dy = wall.y - centerY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        return distance > safeRadius;
+    });
+}
+
+// Wall generation functions
 function generateWalls() {
     walls = [];
 
@@ -722,6 +737,8 @@ function generateWalls() {
     
     // Add teleport hubs at strategic locations
     addTeleportHubs();
+
+    clearSafeZone();
 }
 
 // Function to create decorative corner patterns
