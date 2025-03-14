@@ -598,24 +598,22 @@ function generateWalls() {
     
     // Add horizontal border walls with different patterns
     for (let x = border; x < GRID_SIZE - border; x += 2) {
+        if (isSafe(x, border)) continue; // Skip safe zone
+        if (isSafe(x, GRID_SIZE - border - 1)) continue; // Skip safe zone
         // Create different wall patterns based on position
         if (x % 8 === 0) {
             // Create decorative column with double thickness
-            if (!isSafe(x, border)) {
-                walls.push({x, y: border});
-                walls.push({x, y: border - 1});
-            }
-            if (!isSafe(x, GRID_SIZE - border - 1)) {
-                walls.push({x, y: GRID_SIZE - border - 1});
-                walls.push({x, y: GRID_SIZE - border - 2});
-            }
+            walls.push({x, y: border});
+            walls.push({x, y: border - 1});
+            walls.push({x, y: GRID_SIZE - border - 1});
+            walls.push({x, y: GRID_SIZE - border - 2});
         } else if (x % 15 === 0) {
             // Create larger opening
             continue;
         } else {
             // Standard wall segments with small gaps
-            if (!isSafe(x, border)) walls.push({x, y: border});
-            if (!isSafe(x, GRID_SIZE - border - 1)) walls.push({x, y: GRID_SIZE - border - 1});
+            walls.push({x, y: border});
+            walls.push({x, y: GRID_SIZE - border - 1});
         }
     }
     
