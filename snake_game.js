@@ -56,15 +56,23 @@ const SAFE_ZONE_DURATION = 7000; // Safe zone protection lasts 7 seconds
 
 const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-// 1. Completely disable shadows on mobile - will be called after ctx is initialized
+// Apply graphics settings - called after ctx is initialized
 function applyGraphicsSettings() {
-    if (isMobile && ctx) {
+    // Always disable shadows for all devices for better performance
+    if (ctx) {
         try {
             // Replace ALL shadow operations with this empty function
             const originalShadowBlur = ctx.__proto__.__lookupSetter__('shadowBlur');
             Object.defineProperty(ctx.__proto__, 'shadowBlur', {
                 set: function(val) { /* Do nothing - shadows disabled */ },
                 get: function() { return 0; }
+            });
+            
+            // Also disable shadowColor for complete shadow disabling
+            const originalShadowColor = ctx.__proto__.__lookupSetter__('shadowColor');
+            Object.defineProperty(ctx.__proto__, 'shadowColor', {
+                set: function(val) { /* Do nothing - shadows disabled */ },
+                get: function() { return 'transparent'; }
             });
         } catch (e) {
             console.log("Failed to modify canvas shadows:", e);
@@ -1350,12 +1358,13 @@ function drawFood(food) {
     // Calculate pulse effect - enhanced for high-value foods
     const isHighValue = food.points >= 30;
     const isStrategic = food.points >= 50 || (food.powerUp && food.points >= 20);
+    const isTeleportFood = food.color === '#9C27B0'; // Purple color indicates teleport food
     
-    const pulseSpeed = isStrategic ? 150 : (isHighValue ? 180 : 200);
-    const pulseAmount = isStrategic ? 0.15 : (isHighValue ? 0.12 : 0.1);
+    const pulseSpeed = isTeleportFood ? 120 : (isStrategic ? 150 : (isHighValue ? 180 : 200));
+    const pulseAmount = isTeleportFood ? 0.2 : (isStrategic ? 0.15 : (isHighValue ? 0.12 : 0.1));
     
     const pulse = 1 + pulseAmount * Math.sin(Date.now() / pulseSpeed);
-    const baseSize = isStrategic ? CELL_SIZE / 1.7 : (isHighValue ? CELL_SIZE / 1.8 : CELL_SIZE / 2);
+    const baseSize = isTeleportFood ? CELL_SIZE / 1.6 : (isStrategic ? CELL_SIZE / 1.7 : (isHighValue ? CELL_SIZE / 1.8 : CELL_SIZE / 2));
     const size = baseSize * pulse;
     
     // Determine color based on blinking state
@@ -1366,8 +1375,11 @@ function drawFood(food) {
     // Draw food with pulse effect
     ctx.fillStyle = color;
     
-    // Use different shapes for strategic foods
-    if (isStrategic) {
+    // Use different shapes for different types of food
+    if (isTeleportFood) {
+        // Use hexagon shape for teleport foods
+        drawFoodHexagon(food.x * CELL_SIZE + CELL_SIZE / 2, food.y * CELL_SIZE + CELL_SIZE / 2, size * 1.2, color);
+    } else if (isStrategic) {
         // Use star shape for strategic/high-value foods
         drawFoodStar(food.x * CELL_SIZE + CELL_SIZE / 2, food.y * CELL_SIZE + CELL_SIZE / 2, size, color);
     } else if (isHighValue) {
@@ -1386,9 +1398,10 @@ function drawFood(food) {
         ctx.fill();
     }
     
-    // Add glow effect for power-up foods or strategic foods
-    if (food.powerUp || isStrategic) {
-        // Draw highlight without shadow for better performance
+    // Add visual effect for power-up foods, strategic foods, or teleport foods
+    // Using concentric rings instead of glow for better performance
+    if (food.powerUp || isStrategic || isTeleportFood) {
+        // Draw concentric rings instead of glow/shadow
         ctx.beginPath();
         ctx.arc(
             food.x * CELL_SIZE + CELL_SIZE / 2,
@@ -1397,26 +1410,50 @@ function drawFood(food) {
             0,
             Math.PI * 2
         );
-        ctx.strokeStyle = food.color;
+        ctx.strokeStyle = color;
         ctx.lineWidth = 2;
         ctx.stroke();
         
-        // Add a second layer for glow-like effect without shadows
-        const glowColor = food.color.replace('rgb', 'rgba').replace(')', ', 0.5)');
-        ctx.strokeStyle = glowColor;
-        ctx.lineWidth = 4;
+        // Draw second ring
         ctx.beginPath();
         ctx.arc(
             food.x * CELL_SIZE + CELL_SIZE / 2,
             food.y * CELL_SIZE + CELL_SIZE / 2,
-            size * 1.4,
+            size * 1.5,
             0,
             Math.PI * 2
         );
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
         ctx.stroke();
         
-        // Add additional rotating effect for strategic foods
-        if (isStrategic) {
+        // For teleport foods, add distinctive rotating dots
+        if (isTeleportFood) {
+            const rotationSpeed = Date.now() / 600; // Faster rotation
+            const orbitRadius = size * 1.8;
+            
+            for (let i = 0; i < 4; i++) {
+                const angle = rotationSpeed + (i * Math.PI * 2 / 4);
+                const orbitX = food.x * CELL_SIZE + CELL_SIZE / 2 + Math.cos(angle) * orbitRadius;
+                const orbitY = food.y * CELL_SIZE + CELL_SIZE / 2 + Math.sin(angle) * orbitRadius;
+                
+                // Draw rotating dots
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.arc(orbitX, orbitY, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Connect dots to center with lines
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(food.x * CELL_SIZE + CELL_SIZE / 2, food.y * CELL_SIZE + CELL_SIZE / 2);
+                ctx.lineTo(orbitX, orbitY);
+                ctx.stroke();
+            }
+        }
+        // Add rotating effect for strategic foods
+        else if (isStrategic) {
             const rotationSpeed = Date.now() / 1000;
             const orbitRadius = size * 0.8;
             
@@ -1433,8 +1470,16 @@ function drawFood(food) {
         }
     }
     
-    // Draw point value for high-value foods instead of countdown
-    if (isHighValue || isStrategic) {
+    // Draw point value or special indicators
+    if (isTeleportFood) {
+        // For teleport foods, draw 'TP' text
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 10px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('TP', food.x * CELL_SIZE + CELL_SIZE / 2, food.y * CELL_SIZE + CELL_SIZE / 2);
+    } else if (isHighValue || isStrategic) {
+        // For high value foods, draw point value
         const fontSize = isStrategic ? 14 : 12;
         ctx.fillStyle = '#FFFFFF';
         ctx.font = `bold ${fontSize}px Arial`;
@@ -1450,7 +1495,7 @@ function drawFood(food) {
         ctx.fillText(food.countdown, food.x * CELL_SIZE + CELL_SIZE / 2, food.y * CELL_SIZE + CELL_SIZE / 2);
     }
     
-    // Food spawn animation
+    // Food spawn animation - simplified for better performance
     if (Date.now() - food.createdAt < 1000) {
         const progress = (Date.now() - food.createdAt) / 1000;
         const animSize = CELL_SIZE * (0.5 + 0.5 * Math.sin(progress * Math.PI));
@@ -1466,9 +1511,9 @@ function drawFood(food) {
         );
         ctx.stroke();
         
-        // Add spawn particles - more for strategic/high-value foods
-        const particleCount = isStrategic ? 3 : (isHighValue ? 2 : 1);
-        if (progress < 0.3 && Math.random() < 0.3) {
+        // Add spawn particles with reduced frequency
+        if (progress < 0.3 && Math.random() < 0.2) {
+            const particleCount = isTeleportFood ? 5 : (isStrategic ? 3 : (isHighValue ? 2 : 1));
             createParticles(
                 food.x,
                 food.y,
@@ -1481,30 +1526,37 @@ function drawFood(food) {
         }
     }
     
-    // Draw power-up icon if applicable
-    if (food.powerUp) {
-        let icon = '';
-        switch (food.powerUp) {
-            case 'speed_boost':
-                icon = '⚡';
-                break;
-            case 'invincibility':
-                icon = '★';
-                break;
-            case 'magnet':
-                icon = '🧲';
-                break;
-        }
+    // Draw power-up icon if applicable and not already showing something else
+    if (food.powerUp && !isHighValue && !isStrategic && !isTeleportFood) {
+        let icon = getPowerUpIcon(food.powerUp);
         
-        // Only draw icon if not showing point value
-        if (!isHighValue && !isStrategic) {
-            ctx.fillStyle = '#FFFFFF';
-            ctx.font = 'bold 12px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(icon, food.x * CELL_SIZE + CELL_SIZE / 2, food.y * CELL_SIZE + CELL_SIZE / 2);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(icon, food.x * CELL_SIZE + CELL_SIZE / 2, food.y * CELL_SIZE + CELL_SIZE / 2);
+    }
+}
+
+// Helper function to draw hexagon-shaped food for teleport indicators
+function drawFoodHexagon(x, y, size, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    
+    for (let i = 0; i < 6; i++) {
+        const angle = (i * Math.PI / 3) - Math.PI / 6;
+        const pointX = x + size * Math.cos(angle);
+        const pointY = y + size * Math.sin(angle);
+        
+        if (i === 0) {
+            ctx.moveTo(pointX, pointY);
+        } else {
+            ctx.lineTo(pointX, pointY);
         }
     }
+    
+    ctx.closePath();
+    ctx.fill();
 }
 
 // Helper function to draw star-shaped food
@@ -2014,7 +2066,13 @@ function checkAndEatFood() {
             hungerTimer = Math.min(MAX_HUNGER, hungerTimer + (food.points * 0.8));
             updateHungerBar();
             
-            showFoodEffect(food);
+            // Check if it's a teleport food (purple color)
+            const isTeleportFood = food.color === '#9C27B0';
+            if (isTeleportFood) {
+                showTeleportEffect(food);
+            } else {
+                showFoodEffect(food);
+            }
             
             // Notify server about the eaten food
             if (socket.readyState === WebSocket.OPEN) {
@@ -2032,6 +2090,61 @@ function checkAndEatFood() {
         }
     }
     return false; // No food eaten
+}
+
+// Function to show teleport effect when eating teleport food
+function showTeleportEffect(food) {
+    // Create intense particle effect
+    createParticles(
+        food.x,
+        food.y,
+        '#9C27B0', // Purple
+        15, // More particles
+        3,
+        5,
+        1200
+    );
+    
+    // Play teleport sound
+    soundManager.play('teleport', { volume: 0.8 });
+    
+    // Add to canvas animations for teleport effect
+    powerUpAnimations.push({
+        text: 'TELEPORT!',
+        x: food.x * CELL_SIZE,
+        y: food.y * CELL_SIZE,
+        color: '#9C27B0',
+        startTime: Date.now(),
+        duration: 1500
+    });
+    
+    // Add teleport shockwave effect
+    shockwaves.push({
+        x: food.x * CELL_SIZE + CELL_SIZE/2,
+        y: food.y * CELL_SIZE + CELL_SIZE/2,
+        color: '#9C27B0',
+        startTime: Date.now(),
+        maxSize: 100,
+        duration: 1000
+    });
+    
+    // Create teleport flash effect with concentric rings
+    const numRings = 5;
+    for (let i = 1; i <= numRings; i++) {
+        setTimeout(() => {
+            shockwaves.push({
+                x: food.x * CELL_SIZE + CELL_SIZE/2,
+                y: food.y * CELL_SIZE + CELL_SIZE/2,
+                color: i % 2 === 0 ? '#9C27B0' : '#FFFFFF',
+                startTime: Date.now(),
+                maxSize: 150 - i * 20,
+                duration: 800 - i * 100
+            });
+        }, i * 100);
+    }
+    
+    // Add screen shake for teleport activation
+    shakeScreen(8, 500);
 }
 
 function gameStep() {
@@ -3246,7 +3359,7 @@ function updateBackgroundCache() {
 
 // Wall formation functions removed - now handled by the server
 
-// Wall caching system to improve performance
+// Wall caching system with shadow-free visuals
 const wallCache = {
     initialized: false,
     canvas: null,
@@ -3261,19 +3374,93 @@ const wallCache = {
         this.canvas.height = this.size;
         this.ctx = this.canvas.getContext('2d');
         
-        // Pre-render wall with 3D effect
+        // Pre-render wall with simple visual effect (no shadows)
         this.ctx.fillStyle = WALL_COLOR;
         this.ctx.fillRect(0, 0, this.size, this.size);
         
-        // Add highlights
+        // Add lighter highlight on top-left (top 25% and left 25%)
         this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
         this.ctx.fillRect(0, 0, this.size, this.size / 4);
         this.ctx.fillRect(0, 0, this.size / 4, this.size);
         
-        // Add shadows
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        // Add darker area on bottom-right (bottom 25% and right 25%)
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         this.ctx.fillRect(0, this.size - this.size / 4, this.size, this.size / 4);
         this.ctx.fillRect(this.size - this.size / 4, 0, this.size / 4, this.size);
+        
+        // Add grid pattern for visual interest
+        this.ctx.strokeStyle = 'rgba(50, 50, 50, 0.3)';
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, this.size / 2);
+        this.ctx.lineTo(this.size, this.size / 2);
+        this.ctx.moveTo(this.size / 2, 0);
+        this.ctx.lineTo(this.size / 2, this.size);
+        this.ctx.stroke();
+        
+        this.initialized = true;
+    }
+};
+
+// Create different wall styles for variety
+const wallStyles = {
+    initialized: false,
+    types: {
+        standard: null,
+        teleport: null,
+        connector: null
+    },
+    init: function() {
+        if (this.initialized) return;
+        
+        // Create standard wall style
+        this.types.standard = document.createElement('canvas');
+        this.types.standard.width = CELL_SIZE;
+        this.types.standard.height = CELL_SIZE;
+        const stdCtx = this.types.standard.getContext('2d');
+        
+        stdCtx.fillStyle = WALL_COLOR;
+        stdCtx.fillRect(0, 0, CELL_SIZE, CELL_SIZE);
+        stdCtx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        stdCtx.fillRect(0, 0, CELL_SIZE, CELL_SIZE / 4);
+        stdCtx.fillRect(0, 0, CELL_SIZE / 4, CELL_SIZE);
+        stdCtx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        stdCtx.fillRect(0, CELL_SIZE - CELL_SIZE / 4, CELL_SIZE, CELL_SIZE / 4);
+        stdCtx.fillRect(CELL_SIZE - CELL_SIZE / 4, 0, CELL_SIZE / 4, CELL_SIZE);
+        
+        // Create teleport wall style
+        this.types.teleport = document.createElement('canvas');
+        this.types.teleport.width = CELL_SIZE;
+        this.types.teleport.height = CELL_SIZE;
+        const tpCtx = this.types.teleport.getContext('2d');
+        
+        tpCtx.fillStyle = '#9C27B0'; // Purple for teleports
+        tpCtx.fillRect(0, 0, CELL_SIZE, CELL_SIZE);
+        tpCtx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        tpCtx.fillRect(0, 0, CELL_SIZE, CELL_SIZE / 4);
+        tpCtx.fillRect(0, 0, CELL_SIZE / 4, CELL_SIZE);
+        
+        // Add dotted pattern
+        tpCtx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        for (let i = 0; i < CELL_SIZE; i += 4) {
+            tpCtx.fillRect(i, i, 2, 2);
+            tpCtx.fillRect(i, CELL_SIZE - i, 2, 2);
+        }
+        
+        // Create connector wall style
+        this.types.connector = document.createElement('canvas');
+        this.types.connector.width = CELL_SIZE;
+        this.types.connector.height = CELL_SIZE;
+        const connCtx = this.types.connector.getContext('2d');
+        
+        connCtx.fillStyle = '#607D8B'; // Blue-grey for connectors
+        connCtx.fillRect(0, 0, CELL_SIZE, CELL_SIZE);
+        
+        // Add striped pattern
+        connCtx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        for (let i = 0; i < CELL_SIZE; i += 6) {
+            connCtx.fillRect(0, i, CELL_SIZE, 2);
+        }
         
         this.initialized = true;
     }
@@ -3340,6 +3527,9 @@ function drawWalls() {
     const endX = startX + Math.ceil(VIEWPORT_WIDTH / CELL_SIZE) + 1;
     const endY = startY + Math.ceil(VIEWPORT_HEIGHT / CELL_SIZE) + 1;
     
+    // Track teleport hubs we encounter for enhanced visualization
+    const visibleTeleportHubs = detectTeleportHubs(startX, startY, endX, endY);
+    
     // Only draw walls that are in viewport
     for (const wall of WALLS) {
         const wallX = wall.x * CELL_SIZE;
@@ -3351,8 +3541,87 @@ function drawWalls() {
             continue;
         }
         
-        // Draw using pre-rendered wall cache
-        ctx.drawImage(wallCache.canvas, wallX, wallY);
+        // Draw using pre-rendered wall cache with possible color variations
+        // Check if this wall is part of a teleport hub
+        const isHubWall = visibleTeleportHubs.some(hub => 
+            Math.abs(wall.x - hub.x) <= hub.radius && 
+            Math.abs(wall.y - hub.y) <= hub.radius);
+            
+        if (isHubWall) {
+            // Draw teleport hub wall with distinct color
+            ctx.fillStyle = '#9C27B0'; // Purple for teleport hub walls
+            ctx.fillRect(wallX, wallY, CELL_SIZE, CELL_SIZE);
+            
+            // Add simple highlight without using shadows
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.fillRect(wallX, wallY, CELL_SIZE/2, CELL_SIZE/2);
+        } else {
+            // Draw normal wall using pre-rendered cache
+            ctx.drawImage(wallCache.canvas, wallX, wallY);
+        }
+    }
+    
+    // Draw extra teleport hub indicators
+    visibleTeleportHubs.forEach(hub => {
+        drawTeleportHubIndicator(hub);
+    });
+}
+
+// Function to detect teleport hubs in the visible area
+function detectTeleportHubs(startX, startY, endX, endY) {
+    const hubs = [];
+    const hubLocations = [
+        {x: 100, y: 100, radius: 15},
+        {x: GRID_SIZE - 100, y: 100, radius: 15},
+        {x: 100, y: GRID_SIZE - 100, radius: 15},
+        {x: GRID_SIZE - 100, y: GRID_SIZE - 100, radius: 15}
+    ];
+    
+    // Check if any hubs are in the visible area
+    hubLocations.forEach(hub => {
+        if (hub.x >= startX && hub.x <= endX && hub.y >= startY && hub.y <= endY) {
+            hubs.push(hub);
+        }
+    });
+    
+    return hubs;
+}
+
+// Function to draw enhanced teleport hub indicators
+function drawTeleportHubIndicator(hub) {
+    const hubX = hub.x * CELL_SIZE;
+    const hubY = hub.y * CELL_SIZE;
+    const radius = hub.radius * CELL_SIZE;
+    
+    // Draw pulsing outer ring (simple animation without shadows)
+    const pulseScale = 1 + 0.1 * Math.sin(Date.now() / 300);
+    
+    // Draw outer ring
+    ctx.strokeStyle = '#E91E63'; // Pink
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(hubX + CELL_SIZE/2, hubY + CELL_SIZE/2, radius * pulseScale, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Draw teleport text
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('TELEPORT', hubX + CELL_SIZE/2, hubY + CELL_SIZE/2 - 10);
+    ctx.fillText('HUB', hubX + CELL_SIZE/2, hubY + CELL_SIZE/2 + 10);
+    
+    // Draw particles occasionally for visual effect
+    if (Math.random() < 0.1) {
+        createParticles(
+            hub.x,
+            hub.y,
+            '#9C27B0',
+            3,
+            2,
+            3,
+            600
+        );
     }
 }
 

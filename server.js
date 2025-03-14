@@ -570,81 +570,333 @@ function generateWalls() {
         return Math.sqrt(dx*dx + dy*dy) < SAFE_ZONE_RADIUS * 1.2;
     };
     
-    // Create outer border walls with simpler structure
+    // Create outer border walls with varied patterns and openings
     const border = 20; 
     
-    // Add horizontal border walls
-    for (let x = border; x < GRID_SIZE - border; x += 2) { // Add gaps by incrementing by 2
-        if (!isSafe(x, border)) walls.push({x, y: border});
-        if (!isSafe(x, GRID_SIZE - border - 1)) walls.push({x, y: GRID_SIZE - border - 1});
+    // Add horizontal border walls with different patterns
+    for (let x = border; x < GRID_SIZE - border; x += 2) {
+        // Create different wall patterns based on position
+        if (x % 8 === 0) {
+            // Create decorative column with double thickness
+            if (!isSafe(x, border)) {
+                walls.push({x, y: border});
+                walls.push({x, y: border - 1});
+            }
+            if (!isSafe(x, GRID_SIZE - border - 1)) {
+                walls.push({x, y: GRID_SIZE - border - 1});
+                walls.push({x, y: GRID_SIZE - border - 2});
+            }
+        } else if (x % 15 === 0) {
+            // Create larger opening
+            continue;
+        } else {
+            // Standard wall segments with small gaps
+            if (!isSafe(x, border)) walls.push({x, y: border});
+            if (!isSafe(x, GRID_SIZE - border - 1)) walls.push({x, y: GRID_SIZE - border - 1});
+        }
     }
     
-    // Add vertical border walls
-    for (let y = border; y < GRID_SIZE - border; y += 2) { // Add gaps by incrementing by 2
-        if (!isSafe(border, y)) walls.push({x: border, y});
-        if (!isSafe(GRID_SIZE - border - 1, y)) walls.push({x: GRID_SIZE - border - 1, y});
+    // Add vertical border walls with varied patterns
+    for (let y = border; y < GRID_SIZE - border; y += 2) {
+        // Create different wall patterns based on position
+        if (y % 8 === 0) {
+            // Create decorative row with double thickness
+            if (!isSafe(border, y)) {
+                walls.push({x: border, y});
+                walls.push({x: border - 1, y});
+            }
+            if (!isSafe(GRID_SIZE - border - 1, y)) {
+                walls.push({x: GRID_SIZE - border - 1, y});
+                walls.push({x: GRID_SIZE - border - 2, y});
+            }
+        } else if (y % 15 === 0) {
+            // Create larger opening
+            continue;
+        } else {
+            // Standard wall segments with small gaps
+            if (!isSafe(border, y)) walls.push({x: border, y});
+            if (!isSafe(GRID_SIZE - border - 1, y)) walls.push({x: GRID_SIZE - border - 1, y});
+        }
     }
     
-    // Create the safe zone at the center
+    // Create the safe zone at the center with enhanced visual design
     const safeRoomSize = SAFE_ZONE_RADIUS * 2; 
     const safeRoomStartX = centerX - safeRoomSize / 2;
     const safeRoomStartY = centerY - safeRoomSize / 2;
     
-    // Add safe room walls with patterned entrances on all sides
+    // Add safe room walls with distinctive entrance patterns on all sides
     
-    // Top and bottom walls with patterned openings (similar to east/west)
+    // Top and bottom walls with patterned openings
     const topEntranceStart = safeRoomStartX + Math.floor(safeRoomSize * 0.4);
     const topEntranceEnd = safeRoomStartX + Math.floor(safeRoomSize * 0.6);
     for (let x = safeRoomStartX; x < safeRoomStartX + safeRoomSize; x++) {
         if (x < topEntranceStart || x > topEntranceEnd) {
+            // Add decorative wall patterns
+            if ((x - safeRoomStartX) % 3 === 0) {
+                // Create double-thickness decorative elements
+                walls.push({x, y: safeRoomStartY - 1});
+                walls.push({x, y: safeRoomStartY + safeRoomSize + 1});
+            }
             walls.push({x, y: safeRoomStartY});
             walls.push({x, y: safeRoomStartY + safeRoomSize});
         } else {
-            // Add decorative elements for north/south openings like zigzag pattern
+            // Create distinctive gateway pattern at entrances
             if ((x - topEntranceStart) % 3 === 0) {
-                // Create zigzag pattern at entrance
                 walls.push({x, y: safeRoomStartY});
                 walls.push({x, y: safeRoomStartY + safeRoomSize});
             }
-            // Add small obstacles near the entrances for visual consistency
-            if (x === topEntranceStart + 3) {
-                walls.push({x, y: safeRoomStartY + 3});
-                walls.push({x, y: safeRoomStartY + safeRoomSize - 3});
-            }
-            if (x === topEntranceEnd - 3) {
-                walls.push({x, y: safeRoomStartY + 3});
-                walls.push({x, y: safeRoomStartY + safeRoomSize - 3});
+            // Add visual gateway markers
+            if (x === topEntranceStart || x === topEntranceEnd) {
+                walls.push({x, y: safeRoomStartY - 2});
+                walls.push({x, y: safeRoomStartY + safeRoomSize + 2});
             }
         }
     }
     
-    // Left and right walls with openings - keeping the existing pattern but adding consistency
+    // Left and right walls with distinctive openings
     const sideEntranceStart = safeRoomStartY + Math.floor(safeRoomSize * 0.4);
     const sideEntranceEnd = safeRoomStartY + Math.floor(safeRoomSize * 0.6);
     for (let y = safeRoomStartY; y < safeRoomStartY + safeRoomSize; y++) {
         if (y < sideEntranceStart || y > sideEntranceEnd) {
+            // Add decorative wall patterns
+            if ((y - safeRoomStartY) % 3 === 0) {
+                // Create double-thickness decorative elements
+                walls.push({x: safeRoomStartX - 1, y});
+                walls.push({x: safeRoomStartX + safeRoomSize + 1, y});
+            }
             walls.push({x: safeRoomStartX, y});
             walls.push({x: safeRoomStartX + safeRoomSize, y});
         } else {
-            // Add decorative elements for east/west openings
+            // Create distinctive gateway pattern at entrances
             if ((y - sideEntranceStart) % 3 === 0) {
                 walls.push({x: safeRoomStartX, y});
                 walls.push({x: safeRoomStartX + safeRoomSize, y});
             }
+            // Add visual gateway markers
+            if (y === sideEntranceStart || y === sideEntranceEnd) {
+                walls.push({x: safeRoomStartX - 2, y});
+                walls.push({x: safeRoomStartX + safeRoomSize + 2, y});
+            }
         }
     }
     
-    // Add corner decorations for visual interest
-    walls.push({x: safeRoomStartX + 3, y: safeRoomStartY + 3});
-    walls.push({x: safeRoomStartX + safeRoomSize - 3, y: safeRoomStartY + 3});
-    walls.push({x: safeRoomStartX + 3, y: safeRoomStartY + safeRoomSize - 3});
-    walls.push({x: safeRoomStartX + safeRoomSize - 3, y: safeRoomStartY + safeRoomSize - 3});
+    // Add distinctive corner decorations for visual interest
+    // Top-left corner decoration
+    createCornerDecoration(safeRoomStartX, safeRoomStartY, "top-left");
+    // Top-right corner decoration
+    createCornerDecoration(safeRoomStartX + safeRoomSize, safeRoomStartY, "top-right");
+    // Bottom-left corner decoration
+    createCornerDecoration(safeRoomStartX, safeRoomStartY + safeRoomSize, "bottom-left");
+    // Bottom-right corner decoration
+    createCornerDecoration(safeRoomStartX + safeRoomSize, safeRoomStartY + safeRoomSize, "bottom-right");
 
-    // Generate simpler room-based layout
+    // Generate enhanced room-based layout
     createRoomBasedLayout();
     
-    // Add teleport tunnels for quick travel around the map
+    // Add random connecting walls between regions
+    addRandomConnectingWalls();
+    
+    // Add enhanced teleport tunnels with visual markers for quick travel
     addTeleportTunnels();
+    
+    // Add teleport hubs at strategic locations
+    addTeleportHubs();
+}
+
+// Function to create decorative corner patterns
+function createCornerDecoration(x, y, position) {
+    const size = 4;
+    
+    // Create different corner decorations based on position
+    switch(position) {
+        case "top-left":
+            for (let i = 0; i < size; i++) {
+                walls.push({x: x - i, y: y - i});
+            }
+            break;
+        case "top-right":
+            for (let i = 0; i < size; i++) {
+                walls.push({x: x + i, y: y - i});
+            }
+            break;
+        case "bottom-left":
+            for (let i = 0; i < size; i++) {
+                walls.push({x: x - i, y: y + i});
+            }
+            break;
+        case "bottom-right":
+            for (let i = 0; i < size; i++) {
+                walls.push({x: x + i, y: y + i});
+            }
+            break;
+    }
+}
+
+// Function to add random connecting walls between different regions
+function addRandomConnectingWalls() {
+    console.log("Adding random connecting walls between regions...");
+    
+    // Define regions to connect
+    const regions = [
+        // Quadrant boundaries
+        {x1: 50, y1: 50, x2: GRID_SIZE/2 - 50, y2: GRID_SIZE/2 - 50}, // Northwest
+        {x1: GRID_SIZE/2 + 50, y1: 50, x2: GRID_SIZE - 50, y2: GRID_SIZE/2 - 50}, // Northeast
+        {x1: 50, y1: GRID_SIZE/2 + 50, x2: GRID_SIZE/2 - 50, y2: GRID_SIZE - 50}, // Southwest
+        {x1: GRID_SIZE/2 + 50, y1: GRID_SIZE/2 + 50, x2: GRID_SIZE - 50, y2: GRID_SIZE - 50} // Southeast
+    ];
+    
+    // Create different types of connecting walls
+    const wallTypes = ["zigzag", "dotted", "solid", "dashed"];
+    
+    // Connect regions with different wall types
+    for (let i = 0; i < regions.length; i++) {
+        const startRegion = regions[i];
+        const endRegion = regions[(i + 1) % regions.length];
+        
+        // Choose start and end points
+        const startX = Math.floor(startRegion.x1 + Math.random() * (startRegion.x2 - startRegion.x1));
+        const startY = Math.floor(startRegion.y1 + Math.random() * (startRegion.y2 - startRegion.y1));
+        const endX = Math.floor(endRegion.x1 + Math.random() * (endRegion.x2 - endRegion.x1));
+        const endY = Math.floor(endRegion.y1 + Math.random() * (endRegion.y2 - endRegion.y1));
+        
+        // Choose a random wall type
+        const wallType = wallTypes[Math.floor(Math.random() * wallTypes.length)];
+        
+        // Create connecting wall
+        createConnectingWall(startX, startY, endX, endY, wallType);
+    }
+    
+    // Add a few more random connections
+    for (let i = 0; i < 5; i++) {
+        const startRegionIdx = Math.floor(Math.random() * regions.length);
+        let endRegionIdx;
+        do {
+            endRegionIdx = Math.floor(Math.random() * regions.length);
+        } while (endRegionIdx === startRegionIdx);
+        
+        const startRegion = regions[startRegionIdx];
+        const endRegion = regions[endRegionIdx];
+        
+        // Choose start and end points
+        const startX = Math.floor(startRegion.x1 + Math.random() * (startRegion.x2 - startRegion.x1));
+        const startY = Math.floor(startRegion.y1 + Math.random() * (startRegion.y2 - startRegion.y1));
+        const endX = Math.floor(endRegion.x1 + Math.random() * (endRegion.x2 - endRegion.x1));
+        const endY = Math.floor(endRegion.y1 + Math.random() * (endRegion.y2 - endRegion.y1));
+        
+        // Choose a random wall type
+        const wallType = wallTypes[Math.floor(Math.random() * wallTypes.length)];
+        
+        // Create connecting wall
+        createConnectingWall(startX, startY, endX, endY, wallType);
+    }
+}
+
+// Function to create connecting walls with different visual styles
+function createConnectingWall(startX, startY, endX, endY, type) {
+    // Calculate direction vector
+    const dx = endX - startX;
+    const dy = endY - startY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    // Calculate step sizes
+    const steps = Math.ceil(distance);
+    const stepX = dx / steps;
+    const stepY = dy / steps;
+    
+    // Create walls based on type
+    switch (type) {
+        case "zigzag":
+            // Create zigzag pattern
+            let zigWidth = 5;
+            for (let i = 0; i <= steps; i++) {
+                const t = i / steps;
+                const offset = Math.sin(t * 10) * zigWidth;
+                const perpX = -dy / distance;
+                const perpY = dx / distance;
+                
+                const x = Math.floor(startX + dx * t + perpX * offset);
+                const y = Math.floor(startY + dy * t + perpY * offset);
+                
+                // Add wall segment
+                walls.push({x, y});
+                
+                // Add occasional perpendicular segments for visual interest
+                if (i % 10 === 0) {
+                    walls.push({x: x + Math.floor(perpX * 2), y: y + Math.floor(perpY * 2)});
+                    walls.push({x: x - Math.floor(perpX * 2), y: y - Math.floor(perpY * 2)});
+                }
+            }
+            break;
+            
+        case "dotted":
+            // Create dotted path
+            for (let i = 0; i <= steps; i += 3) {
+                const x = Math.floor(startX + stepX * i);
+                const y = Math.floor(startY + stepY * i);
+                
+                // Add dot (2x2 wall segment)
+                walls.push({x, y});
+                if (i % 9 === 0) {
+                    walls.push({x: x+1, y});
+                    walls.push({x, y: y+1});
+                    walls.push({x: x+1, y: y+1});
+                }
+            }
+            break;
+            
+        case "solid":
+            // Create solid wall
+            for (let i = 0; i <= steps; i++) {
+                const x = Math.floor(startX + stepX * i);
+                const y = Math.floor(startY + stepY * i);
+                walls.push({x, y});
+                
+                // Add thickness for visual interest
+                if (i % 5 === 0) {
+                    const perpX = Math.floor(-dy / distance);
+                    const perpY = Math.floor(dx / distance);
+                    walls.push({x: x + perpX, y: y + perpY});
+                }
+            }
+            break;
+            
+        case "dashed":
+            // Create dashed wall
+            for (let i = 0; i <= steps; i++) {
+                // Only add wall segment for certain intervals
+                if (Math.floor(i / 5) % 2 === 0) {
+                    const x = Math.floor(startX + stepX * i);
+                    const y = Math.floor(startY + stepY * i);
+                    walls.push({x, y});
+                }
+            }
+            break;
+    }
+    
+    // Add openings in the wall for passage
+    const numOpenings = 1 + Math.floor(Math.random() * 3); // 1-3 openings
+    
+    for (let i = 0; i < numOpenings; i++) {
+        const openingPos = 0.2 + Math.random() * 0.6; // Opening position (20-80% along the wall)
+        const openingX = Math.floor(startX + dx * openingPos);
+        const openingY = Math.floor(startY + dy * openingPos);
+        
+        // Clear walls around the opening
+        const openingSize = 1 + Math.floor(Math.random() * 2); // 1-2 cell opening
+        for (let ox = -openingSize; ox <= openingSize; ox++) {
+            for (let oy = -openingSize; oy <= openingSize; oy++) {
+                walls = walls.filter(w => !(w.x === openingX + ox && w.y === openingY + oy));
+            }
+        }
+        
+        // Add food near opening as a visual marker
+        let food = generateNewFood();
+        food.x = openingX;
+        food.y = openingY;
+        food.points = 20;
+        food.color = '#FFC107';
+        foods.push(food);
+    }
 }
 
 // Create interconnecting tunnels between different regions of the map
@@ -3170,11 +3422,11 @@ function addProminentEdgeTeleports() {
     }
 }
 
-// Add teleport tunnels at map edges
+// Add teleport tunnels at map edges with improved visuals
 function addEdgeTeleports() {
     const border = 20; // Border position
     
-    // Create horizontal teleports (top to bottom)
+    // Create horizontal teleports (top to bottom) with enhanced visuals
     for (let x = border + 20; x < GRID_SIZE - border - 20; x += 80) {
         // Top teleport
         const topY = border;
@@ -3186,34 +3438,44 @@ function addEdgeTeleports() {
         walls = walls.filter(w => !(w.x === x && w.y === topY));
         walls = walls.filter(w => !(w.x === x && w.y === bottomY));
         
-        // Add visual indicators
-        for (let i = 1; i <= 2; i++) {
-            // Top teleport indicators
-            walls.push({x: x-i, y: topY+1});
-            walls.push({x: x+i, y: topY+1});
-            
-            // Bottom teleport indicators
-            walls.push({x: x-i, y: bottomY-1});
-            walls.push({x: x+i, y: bottomY-1});
+        // Create distinctive teleport markers (simplified visual without shadows)
+        const markerSize = 4;
+        
+        // Top teleport marker - square pattern
+        for (let dx = -markerSize; dx <= markerSize; dx += 2) {
+            for (let dy = -markerSize; dy <= markerSize; dy += 2) {
+                if (Math.abs(dx) === markerSize || Math.abs(dy) === markerSize) {
+                    walls.push({x: x + dx, y: topY + Math.abs(dy) + 1});
+                }
+            }
         }
         
-        // Add special food near teleports
+        // Bottom teleport marker - square pattern
+        for (let dx = -markerSize; dx <= markerSize; dx += 2) {
+            for (let dy = -markerSize; dy <= markerSize; dy += 2) {
+                if (Math.abs(dx) === markerSize || Math.abs(dy) === markerSize) {
+                    walls.push({x: x + dx, y: bottomY - Math.abs(dy) - 1});
+                }
+            }
+        }
+        
+        // Add special food near teleports with distinctive color
         let topFood = generateNewFood();
         topFood.x = x;
         topFood.y = topY + 3;
         topFood.points = 25;
-        topFood.color = '#FF9800';
+        topFood.color = '#9C27B0'; // Purple for teleport identification
         foods.push(topFood);
         
         let bottomFood = generateNewFood();
         bottomFood.x = x;
         bottomFood.y = bottomY - 3;
         bottomFood.points = 25;
-        bottomFood.color = '#FF9800';
+        bottomFood.color = '#9C27B0'; // Purple for teleport identification
         foods.push(bottomFood);
     }
     
-    // Create vertical teleports (left to right)
+    // Create vertical teleports (left to right) with enhanced visuals
     for (let y = border + 20; y < GRID_SIZE - border - 20; y += 80) {
         // Left teleport
         const leftX = border;
@@ -3225,32 +3487,148 @@ function addEdgeTeleports() {
         walls = walls.filter(w => !(w.x === leftX && w.y === y));
         walls = walls.filter(w => !(w.x === rightX && w.y === y));
         
-        // Add visual indicators
-        for (let i = 1; i <= 2; i++) {
-            // Left teleport indicators
-            walls.push({x: leftX+1, y: y-i});
-            walls.push({x: leftX+1, y: y+i});
-            
-            // Right teleport indicators
-            walls.push({x: rightX-1, y: y-i});
-            walls.push({x: rightX-1, y: y+i});
+        // Create distinctive teleport markers (simplified visual without shadows)
+        const markerSize = 4;
+        
+        // Left teleport marker - circle pattern
+        for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
+            const dx = Math.floor(Math.cos(angle) * markerSize);
+            const dy = Math.floor(Math.sin(angle) * markerSize);
+            walls.push({x: leftX + Math.abs(dx) + 1, y: y + dy});
         }
         
-        // Add special food near teleports
+        // Right teleport marker - circle pattern
+        for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
+            const dx = Math.floor(Math.cos(angle) * markerSize);
+            const dy = Math.floor(Math.sin(angle) * markerSize);
+            walls.push({x: rightX - Math.abs(dx) - 1, y: y + dy});
+        }
+        
+        // Add special food near teleports with distinctive color
         let leftFood = generateNewFood();
         leftFood.x = leftX + 3;
         leftFood.y = y;
         leftFood.points = 25;
-        leftFood.color = '#FF9800';
+        leftFood.color = '#9C27B0'; // Purple for teleport identification
         foods.push(leftFood);
         
         let rightFood = generateNewFood();
         rightFood.x = rightX - 3;
         rightFood.y = y;
         rightFood.points = 25;
-        rightFood.color = '#FF9800';
+        rightFood.color = '#9C27B0'; // Purple for teleport identification
         foods.push(rightFood);
     }
+}
+
+// Create teleport hubs at strategic locations
+function addTeleportHubs() {
+    console.log("Adding teleport hubs at strategic locations...");
+    
+    // Define hub locations
+    const hubLocations = [
+        {x: 100, y: 100}, // Northwest hub
+        {x: GRID_SIZE - 100, y: 100}, // Northeast hub  
+        {x: 100, y: GRID_SIZE - 100}, // Southwest hub
+        {x: GRID_SIZE - 100, y: GRID_SIZE - 100} // Southeast hub
+    ];
+    
+    // Create each teleport hub
+    hubLocations.forEach((hub, hubIndex) => {
+        createTeleportHub(hub.x, hub.y, hubIndex);
+    });
+}
+
+// Function to create a teleport hub with distinctive visual design
+function createTeleportHub(centerX, centerY, hubIndex) {
+    console.log(`Creating teleport hub at (${centerX},${centerY})`);
+    
+    const hubRadius = 15;
+    
+    // Clear any existing walls in the hub area
+    for (let dx = -hubRadius; dx <= hubRadius; dx++) {
+        for (let dy = -hubRadius; dy <= hubRadius; dy++) {
+            const x = centerX + dx;
+            const y = centerY + dy;
+            walls = walls.filter(w => !(w.x === x && w.y === y));
+        }
+    }
+    
+    // Create outer ring of teleport hub
+    for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 16) {
+        const x = Math.floor(centerX + Math.cos(angle) * hubRadius);
+        const y = Math.floor(centerY + Math.sin(angle) * hubRadius);
+        walls.push({x, y});
+    }
+    
+    // Create 4 entrance/exit points at cardinal directions
+    const entrances = [
+        {dx: 0, dy: -hubRadius}, // North
+        {dx: hubRadius, dy: 0},  // East
+        {dx: 0, dy: hubRadius},  // South
+        {dx: -hubRadius, dy: 0}  // West
+    ];
+    
+    entrances.forEach(entrance => {
+        // Clear entrance
+        const entranceX = centerX + entrance.dx;
+        const entranceY = centerY + entrance.dy;
+        walls = walls.filter(w => !(w.x === entranceX && w.y === entranceY));
+        
+        // Add visual markers near entrance
+        walls.push({x: entranceX + entrance.dy, y: entranceY + entrance.dx});
+        walls.push({x: entranceX - entrance.dy, y: entranceY - entrance.dx});
+    });
+    
+    // Create inner teleport markers
+    for (let i = 0; i < 4; i++) {
+        const angle = (i / 4) * Math.PI * 2;
+        const innerRadius = hubRadius * 0.6;
+        
+        const markerX = Math.floor(centerX + Math.cos(angle) * innerRadius);
+        const markerY = Math.floor(centerY + Math.sin(angle) * innerRadius);
+        
+        // Create distinctive marker walls
+        for (let mx = -1; mx <= 1; mx++) {
+            for (let my = -1; my <= 1; my++) {
+                if (mx === 0 && my === 0) continue; // Skip center
+                walls.push({x: markerX + mx, y: markerY + my});
+            }
+        }
+        
+        // Add special teleport food at each marker
+        let markerFood = generateNewFood();
+        markerFood.x = markerX;
+        markerFood.y = markerY;
+        markerFood.points = 30;
+        markerFood.color = '#9C27B0'; // Purple for teleport identification
+        
+        // Every other hub has power-ups
+        if (hubIndex % 2 === 0) {
+            const powerUpTypes = ['speed_boost', 'invincibility', 'magnet'];
+            const randomPowerUp = powerUpTypes[i % powerUpTypes.length];
+            markerFood.powerUp = randomPowerUp;
+            markerFood.duration = 12000;
+        }
+        
+        foods.push(markerFood);
+    }
+    
+    // Add central hub marker
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+            if (dx === 0 && dy === 0) continue; // Skip center
+            walls.push({x: centerX + dx, y: centerY + dy});
+        }
+    }
+    
+    // Add central high-value food
+    let centerFood = generateNewFood();
+    centerFood.x = centerX;
+    centerFood.y = centerY;
+    centerFood.points = 50;
+    centerFood.color = '#E91E63'; // Pink for high-value hub center
+    foods.push(centerFood);
 }
 
 // Add secret warp tunnels at key points in the map
